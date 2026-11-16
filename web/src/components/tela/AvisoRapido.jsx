@@ -3,10 +3,10 @@ import { Megaphone, MonitorPlay } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
-import { avisoRapido, devices, brand } from '../../api.js';
+import { avisoRapido, devices, brand, lote } from '../../api.js';
 import { carregarModelos } from '../../lib/modelosOuro.js';
-import { gravarEmLote, avisarComDesfazer } from '../../lib/rodar.js';
-import { pecaDoAviso, aplicarAviso, telasDoAviso } from '../../lib/aviso.js';
+import { avisarComDesfazer } from '../../lib/rodar.js';
+import { pecaDoAviso, telasDoAviso, hojeDoAviso } from '../../lib/aviso.js';
 import { aviso as avisos } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
 import { MiniConversa, comPergunta } from './MiniConversa.jsx';
@@ -61,17 +61,21 @@ export function AvisoRapido({ onFechar, avisoInicial }) {
     finally { setMontando(false); }
   }
 
+  /*
+   * O SERVIDOR PÕE O AVISO EM CADA TV (teste de carga, 16/11). O painel lia
+   * a programação de cada TV, punha o aviso e mandava todas de volta: numa
+   * conta de RH, acima de ~20 TVs o envio passava de 2 MB e era recusado.
+   * Agora vai "este aviso nestas TVs" num pedido só (POST /api/lote/aviso),
+   * com as mesmas regras do envio em lote: tudo ou nada (a TV sem zona que
+   * caiba o aviso barra o envio inteiro, dizendo qual), a loja de cada TV, a
+   * aprovação e o Desfazer.
+   */
   async function enviar() {
     setEnviando(true);
     try {
-      const id = 'avs_' + Date.now().toString(36);
-      // A TV sem zona que caiba o aviso pára o envio inteiro, dizendo qual (nada vai pela metade).
-      const naTela = (cfg, tv) => {
-        try { return aplicarAviso(cfg, item, aviso, id); }
-        catch (e) { throw new Error((tv.name || 'Uma TV') + ': ' + e.message + '. Nada foi enviado.'); }
-      };
-      const r = await gravarEmLote(alvos, naTela, 'Aviso: ' + aviso.titulo);
-      avisarComDesfazer('Aviso no ar em ' + alvos.length + (alvos.length === 1 ? ' TV.' : ' TVs.'), r.lote);
+      const r = await lote.aviso(alvos.map((t) => t.id), item, { titulo: aviso.titulo, prioridade: aviso.prioridade, ate: aviso.ate || '' }, hojeDoAviso());
+      // Com a aprovação ligada (202), o "Mandado para aprovação" de lib/avisos.js toma o lugar deste.
+      avisarComDesfazer('Aviso no ar em ' + alvos.length + (alvos.length === 1 ? ' TV.' : ' TVs.'), r && r.lote);
       onFechar();
     } catch (e) { avisos.erro('aviso', e.message || 'Não deu para pôr nas TVs.'); }
     finally { setEnviando(false); }

@@ -364,8 +364,26 @@ async function pausaDaConta(tenantId) {
   const noAr = lista.filter((d) => e.noAr.includes(d.id)).map((d) => d.name || 'TV');
   return { noAr, pausadas: Math.max(0, lista.length - noAr.length), texto: plans.PAUSA.texto };
 }
+/*
+ * Quantas TVs a conta tem, para o freio do painel (server/limites.js, tetoDe:
+ * max(600, 3 × TVs)). Cinco minutos de memória, como o selo: o freio é
+ * consultado em todo pedido do painel e não pode virar uma contagem no banco
+ * a cada clique. Parear e remover esquecem o número (esquecerSelo), então a
+ * conta que está instalando 300 TVs vê o teto subir junto.
+ */
+const telasCache = new Map();
+async function telasDaConta(tenantId) {
+  const c = telasCache.get(tenantId);
+  if (c && Date.now() - c.em < 5 * 60 * 1000) return c.n;
+  let n = c ? c.n : 0;
+  try { n = Number(await db.countDevices(tenantId)) || 0; } catch (e) { /* banco ocupado: fica o número de antes */ }
+  telasCache.set(tenantId, { n, em: Date.now() });
+  if (telasCache.size > 5000) telasCache.delete(telasCache.keys().next().value);
+  return n;
+}
 // O plano mudou (pagou, cancelou, rebaixou): a TV sabe no pulso seguinte.
-function esquecerSelo(tenantId) { seloCache.delete(tenantId); }
+// Também a conta de TVs (pareou, removeu): o freio do painel se recalcula.
+function esquecerSelo(tenantId) { seloCache.delete(tenantId); telasCache.delete(tenantId); }
 /*
  * O SELO SAI NA HORA (QA de lançamento, 03/11): o e-mail e o painel dizem
  * que o selo some ao assinar, e ele levava até 5 minutos (o cache acima) mais
@@ -700,7 +718,8 @@ async function handleApi(req, res, pathname, query) {
    */
   if (sess && sess.tenant_id) {
     const classe = classeDaSessao(parts, req.method);
-    const v = limites.permitir(classe, sess.tenant_id);
+    // O teto do painel cresce com o número de TVs da conta (server/limites.js, tetoDe).
+    const v = limites.permitir(classe, sess.tenant_id, undefined, classe === 'painel' ? await telasDaConta(sess.tenant_id) : undefined);
     if (!v.ok) {
       return sendJson(res, 429, {
         error: 'muitas requisições desta conta em pouco tempo. Espere um instante e tente de novo.',
