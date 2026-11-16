@@ -449,6 +449,8 @@ module.exports = function (ctx) {
         return {
           id: d.id, name: d.name, code: d.code, hasConfig: !!d.has_config, updatedAt: d.updated_at, lastSeen: d.last_seen,
           expediente: vigia.normalizarExpediente(d.expediente),
+          // Reteste 3: a TV que nunca salvou horário abre o formulário com o padrão novo (o relógio fora dele).
+          horarioSalvo: !!d.expediente,
           grupo: d.grupo || '',
           info,
           // D41: a casca Android desta TV está atrás da publicada (o nome da nova; vazio se não).

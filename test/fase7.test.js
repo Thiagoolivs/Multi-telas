@@ -51,7 +51,8 @@ test('a TV no centro: ao vivo, e "como vai ficar" quando há rascunho', () => {
 test('"Pôr na TV" numa barra fixa, com Desfazer e Refazer', () => {
   const s = semComentarios(ler('web/src/pages/ContentEditorPage.jsx'));
   assert.match(s, /sticky bottom-\[calc\(60px\+env\(safe-area-inset-bottom\)\)\] z-20 mt-4 lg:bottom-3/, 'a barra some ao rolar, ou fica atrás da barra do celular');
-  assert.match(s, /\{publishing \? 'Pondo na TV…' : 'Pôr na TV'\}/);
+  // Reteste 3: com a aprovação ligada, o mesmo botão diz que vira pedido (lib/aprovacao.js).
+  assert.match(s, /\{publishing \? \(vaiPedir \? 'Pedindo aprovação…' : 'Pondo na TV…'\) : \(vaiPedir \? 'Pedir aprovação' : 'Pôr na TV'\)\}/);
   assert.ok(!/Publicar na TV/.test(s), 'sobrou "Publicar na TV"');
   // Publicar guarda o que estava; desfazer põe de volta (e refaz no segundo toque).
   assert.match(s, /anterior\.current = naTV\.current; naTV\.current = alvo;/);
