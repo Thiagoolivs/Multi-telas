@@ -351,6 +351,36 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
   8. Exemplo de outro negócio sobre a foto da conta ("Óculos de sol 30% off" sobre um pão) e exemplo de Saúde com desconto e preço sem "R$".
   9. Acessibilidade: o papel do membro em Equipe sem nome (crítico no axe), contrastes da Plataforma e tabelas da Privacidade.
   10. Só Chromium medido, `/apk/versao.json` em 404, a landing sem prova social e o e-mail de confirmar genérico.
+- [x] **Corrigido depois do reteste 3 (16/11, PRs 342, 343 e o seguinte):**
+  - **A TV (itens 2, 3, 4 e a logo):**
+    - O QR vazio leva o contato real da conta (site da Marca, depois o "WhatsApp ou site"). A peça que só existe pelo QR e não tem contato sai do ar e de Prontos; as outras perdem só o QR.
+    - O rodapé de pagamento fica com no máximo metade da faixa, e o rodapé não repete o que o cabeçalho já mostra.
+    - A letra mínima é 4,5% em todo local. As zonas pequenas apertam o espaço antes de encolher, e 5 cardápios que perdiam letra na TV de verdade foram recompostos.
+    - A logo do cabeçalho é maior, e a margem transparente dela é cortada.
+    - A tabela de preços nunca fica abaixo do piso, e a caixa se mede de novo quando a fonte chega ou a zona muda de tamanho (a régua do CI oscilava).
+  - **O painel (itens 5 a 9):**
+    - O nome da TV aparece inteiro.
+    - A contagem sai de cima da prévia, e o membro vê "Pedir aprovação".
+    - Fora do horário, o relógio é o recomendado.
+    - Exemplo e foto do mesmo negócio, e Saúde sem preço.
+    - Equipe, Plataforma e Privacidade sem violações no axe.
+  - **A conta grande:**
+    - Telas e Programação leves.
+    - Todo envio para muitas TVs num pedido só (aviso, campanha, peça, publicar, Agenda, Indicadores, Planilhas, Telas prontas, quiz), e a aprovação grande carregada por TV.
+    - 300 TVs novas por hora por IP, e o freio do painel cresce com a conta.
+    - A 2ª TV do grátis diz por quê.
+  - **O app Android:**
+    - O silêncio da página conta como travamento.
+    - O WebView é renovado de madrugada.
+    - O painel avisa quando o app não é a tela inicial.
+    - Comando "reiniciar" e limpeza do cache de mídia.
+  - **Falta:**
+    - O pedido de aprovação grande ainda guarda a programação inteira de cada TV.
+    - Medir as operações de 300 TVs no Postgres.
+    - Textos neutros no manifesto para os exemplos que ainda mostram outro negócio ("Desde 1987", "Cabelo · Unhas · Estética", o telefone e o Wi-Fi de exemplo).
+    - A logo escura sem versão clara some no cabeçalho escuro.
+    - A régua mede a tela cheia no tamanho de referência, não no tamanho real da zona.
+    - O app novo ainda não rodou num TV box de verdade.
 - [ ] **Bloco 2 e os cenários de IA do bloco 3:** dependem do crédito do Gemini.
 - [ ] **Os pilotos:** com você, pelo roteiro.
 - **O que falta para cada bloco chegar a 9 (do primeiro reteste, 05/11; quase tudo corrigido em 06/11):**
