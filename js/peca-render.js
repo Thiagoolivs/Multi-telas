@@ -697,12 +697,6 @@
   }
 
   /*
-   * O lugar de logo da peça (D8). Peça sem logo própria usa a da marca; e a
-   * logo da marca vai na versão que lê no fundo DA PEÇA: a branca no fundo
-   * escuro, a escura no claro (D7). Logo de outra marca, gravada na peça,
-   * fica como está.
-   */
-  /*
    * A LOGO SEM A MARGEM VAZIA (reteste 3, 14/11). A logo que a pessoa sobe
    * costuma vir com muito vazio em volta (a do teste: 600×300, com o desenho
    * em metade da altura), e o cabeçalho dá a ela a ALTURA da faixa: o "Sol"
@@ -760,7 +754,7 @@
       }
     }
     if (x1 < 0) return '';
-    // Margem pequena (menos de 6% de cada lado, somados): não compensa trocar a imagem.
+    // Margem pequena (menos de 6% da largura e da altura, somados os dois lados): não compensa trocar a imagem.
     if ((w - (x1 - x0 + 1)) / w < 0.06 && (h - (y1 - y0 + 1)) / h < 0.06) return '';
     const m = Math.round(Math.max(x1 - x0, y1 - y0) * 0.02);
     x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(w - 1, x1 + m); y1 = Math.min(h - 1, y1 + m);
@@ -770,6 +764,12 @@
     return out.toDataURL('image/png');
   }
 
+  /*
+   * O lugar de logo da peça (D8). Peça sem logo própria usa a da marca; e a
+   * logo da marca vai na versão que lê no fundo DA PEÇA: a branca no fundo
+   * escuro, a escura no claro (D7). Logo de outra marca, gravada na peça,
+   * fica como está.
+   */
   function luminanciaHex(h) {
     let s = String(h || '').replace('#', '');
     // '#fff' é '#ffffff' (revisão do consultor no D8): sem expandir, virava 0x000fff e lia como escuro.

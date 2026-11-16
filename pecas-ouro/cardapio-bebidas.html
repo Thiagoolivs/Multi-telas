@@ -28,7 +28,13 @@ h1 { margin-top: 1.8cqw; font: 400 max(var(--mt-piso, 0cqw), 7.4cqw)/.95 var(--m
   .tabela { margin-top: 6cqw; }
   .linha { grid-template-columns: 1fr repeat(3, 17cqw); padding: 3.4cqw 0; border-bottom-width: .2cqw; }
   .topo { border-bottom-width: .3cqw; }
-  .topo span { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); }
+  /*
+   * Reteste 3 (14/11): na TV de verdade (1038×1878 em pé, 1056×1056 na
+   * quadrada) o espaçado dos tamanhos, em em, crescia com a letra do balcão:
+   * "600 ML" quebrava, "JARRA" passava da margem e a letra cedia a 94%. O
+   * espaçado aperta; o tamanho longo quebra dentro da coluna dele.
+   */
+  .topo span { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); letter-spacing: .06em; line-height: 1.05; text-wrap: balance; }
   .linha b { font-size: max(var(--mt-piso, 0cqw), 4cqw); }
   .p { font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
 }

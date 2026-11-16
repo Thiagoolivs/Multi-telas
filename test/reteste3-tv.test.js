@@ -179,6 +179,28 @@ test('a letra mínima é 4,5% em todo local, e a zona pequena se recompõe antes
   assert.match(ler('tools', 'regua-tv.mjs'), /const PISO_DA_FRENTE = \{ comercio: 4\.5, saude: 4\.5, empresa: 4\.5 \};/);
 });
 
+test('os cardápios cabem com a letra inteira na zona de verdade da TV (1896×1056, 1038×1878, 1056×1056)', () => {
+  /*
+   * A bancada desenha a tela cheia no tamanho de referência; a TV tem a
+   * fresta do palco, e a letra do balcão ocupa 2% a 4% a mais da zona. Na
+   * varredura do reteste 3 (306 peças × TV) cediam: o prato do dia deitado
+   * (81%), as bebidas (94%) e as categorias (97%) em pé, a lista de ofertas e
+   * o comunicado na quadrada (97%). Os ajustes que os fazem caber:
+   */
+  const dia = ler('pecas-ouro', 'cardapio-dia-foto.html');
+  assert.match(dia, /\.bloco \{ position: absolute; left: 6cqw; top: 11\.5cqh; bottom: 5cqh; width: 36cqw;/);
+  assert.match(dia, /\.quando \{ font: 600 max\(var\(--mt-piso, 0cqw\), 1\.15cqw\)\/1\.2 var\(--mt-fonte-texto\); letter-spacing: \.08em;/);
+  assert.match(ler('pecas-ouro', 'cardapio-bebidas.html'), /\.topo span \{ font-size: max\(var\(--mt-piso, 0cqw\), 2\.2cqw\); letter-spacing: \.06em; line-height: 1\.05; text-wrap: balance; \}/);
+  assert.match(ler('pecas-ouro', 'cardapio-categorias.html'), /\.nota \{ font-size: max\(var\(--mt-piso, 0cqw\), 2cqw\); letter-spacing: \.02em; \}/);
+  assert.match(ler('pecas-ouro', 'oferta-lista.html'), /\.valor small \{ vertical-align: top; \}/);
+  assert.match(ler('pecas-ouro', 'cardapio-colunas.html'), /padding: 1\.2cqw 0 1\.1cqw; \}/);
+  assert.match(ler('pecas-ouro', 'gente-comunicado.html'), /\.assina \{ flex-wrap: wrap;/);
+  for (const id of ['cardapio-dia-foto', 'cardapio-bebidas', 'cardapio-categorias', 'oferta-lista', 'cardapio-colunas', 'gente-comunicado']) {
+    const h = P.higienizar(daPeca(id));
+    assert.equal(h.ok, true, id + ': ' + h.problemas.join(' | '));
+  }
+});
+
 /* ---------------- 4. A logo do cabeçalho ---------------- */
 
 test('a logo do cabeçalho: sem a margem vazia e maior, no cabeçalho padrão e nas seis peças', () => {

@@ -138,7 +138,8 @@ test('as peças-ouro em tela cheia cabem nas 11 marcas, e o robô bloqueia a que
   assert.match(B, /fig\.dataset\.marca = marca\.id;/);
   // A quadrada de quem cedia com a fonte de título larga (7 das 11 marcas, 97%).
   assert.match(ler('pecas-ouro/institucional-lancamento.html'), /\.apoio \{ margin-top: 2\.4cqw; font-size: max\(var\(--mt-piso, 0cqw\), 2\.4cqw\); line-height: 1\.3; max-width: none; \}/);
-  assert.match(ler('pecas-ouro/gente-comunicado.html'), /\.texto \{ font-size: max\(var\(--mt-piso, 0cqw\), 2\.8cqw\); margin-top: 3cqw; max-width: none; line-height: 1\.4; \}/);
+  // Reteste 3: na zona de verdade da TV quadrada (1056×1056) e com a letra de 4,5% também na Empresas, a entrelinha aperta mais.
+  assert.match(ler('pecas-ouro/gente-comunicado.html'), /\.texto \{ font-size: max\(var\(--mt-piso, 0cqw\), 2\.8cqw\); margin-top: 2\.2cqw; max-width: none; line-height: 1\.22; \}/);
 });
 
 test('o destaque e a lateral cabem com a letra do balcão na TV com a margem contra o corte, e o robô bloqueia 2%, 3% e 5%', () => {
