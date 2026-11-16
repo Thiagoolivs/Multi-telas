@@ -1638,6 +1638,90 @@ module.exports = function (ctx) {
       descricao: (op) => op.titulo,
       aplicar: (cfg, tela, op, c) => loteTv.montarPublicacao(cfg, op, c.agora),
     },
+    /*
+     * A Agenda (D23): as datas guardadas na zona principal de cada TV, cada
+     * TV com as dela (`entradas`: as datas que ela recebe e as que saem dela).
+     */
+    calendario: {
+      porEntrada: true,
+      limpar(o) {
+        const eventos = Array.isArray(o.eventos) ? o.eventos.slice(0, 300) : [];
+        const limpos = eventos.map((e) => {
+          if (!ehObjeto(e) || !curto(e.id, 64) || !DIA_ISO.test(String(e.data || ''))) return null;
+          if (e.item != null && !itemOk(e.item)) return null;
+          return { id: curto(e.id, 64), tipo: curto(e.tipo, 20), prioridade: curto(e.prioridade, 20), data: String(e.data),
+            antecedencia: Math.max(0, Math.min(366, Math.floor(Number(e.antecedencia) || 0))), item: e.item || null };
+        });
+        const entradas = (Array.isArray(o.entradas) ? o.entradas.slice(0, OPERACAO_MAX) : []).map((x) => {
+          if (!ehObjeto(x)) return null;
+          const dela = Array.isArray(x.dela) ? x.dela.filter((i) => Number.isInteger(i) && i >= 0 && i < limpos.length) : [];
+          const fora = Array.isArray(x.fora) ? x.fora.map((id) => curto(id, 64)).filter(Boolean).slice(0, 300) : [];
+          return { dela, fora };
+        });
+        if (limpos.some((e) => !e) || !entradas.length || entradas.some((x) => !x)) return recusa('As datas vieram incompletas. Abra a Agenda de novo e tente outra vez.', 'operacao-invalida');
+        return { op: { eventos: limpos, entradas } };
+      },
+      descricao: () => 'Calendário',
+      aplicar: (cfg, tela, op) => { const e = op.entradas[tela.entrada]; return loteTv.aplicarCalendario(cfg, e.dela.map((i) => op.eventos[i]), e.fora); },
+    },
+    // Apagar uma data: a peça dela sai das TVs em que estava.
+    'tirar-calendario': {
+      limpar(o) {
+        const id = curto(o.id, 64);
+        if (!id) return recusa('A data veio incompleta. Abra a Agenda de novo e tente outra vez.', 'operacao-invalida');
+        return { op: { id, titulo: curto(o.titulo, 100) } };
+      },
+      descricao: (op) => 'Tirar: ' + (op.titulo || 'data da Agenda'),
+      aplicar: (cfg, tela, op) => loteTv.tirarDoCalendario(cfg, op.id),
+    },
+    // Um indicador (D36): o cartão ao vivo no fim da área principal, no lugar do mesmo indicador.
+    indicador: {
+      limpar(o) {
+        const it = o.item;
+        if (!itemOk(it) || it.type !== 'kpi' || !curto(it.indicador, 120)) return recusa(PECA_INVALIDA, 'operacao-invalida');
+        return { op: { item: { type: 'kpi', indicador: curto(it.indicador, 120), rotulo: curto(it.rotulo, 120), duracao: Math.max(4, Math.min(120, Number(it.duracao) || 12)) } } };
+      },
+      descricao: (op) => 'Indicador: ' + (op.item.rotulo || op.item.indicador),
+      aplicar: (cfg, tela, op) => loteTv.porIndicador(cfg, op.item),
+    },
+    // Uma planilha de preços (fase 11): a tabela ou o cardápio, no lugar da mesma planilha.
+    planilha: {
+      limpar(o) {
+        const it = o.item;
+        if (!itemOk(it) || !curto(it.planilha, 64) || !curto(it.type, 40)) return recusa(PECA_INVALIDA, 'operacao-invalida');
+        return { op: { item: it, nome: curto(o.nome, 100) } };
+      },
+      descricao: (op) => 'Planilha: ' + (op.nome || 'planilha'),
+      aplicar: (cfg, tela, op) => loteTv.porPlanilha(cfg, op.item),
+    },
+    // Uma tela pronta (EXECUTOR §2c): o layout dela e as peças de cada grupo; o resto da programação fica.
+    'tela-pronta': {
+      limpar(o) {
+        const t = ehObjeto(o.tela) ? o.tela : null;
+        const existe = t && Array.isArray(globalThis.MT_LAYOUTS) && globalThis.MT_LAYOUTS.some((l) => l.id === t.layout);
+        const grupos = t && ehObjeto(t.grupos) ? t.grupos : null;
+        const listas = grupos ? Object.keys(grupos).map((g) => grupos[g]) : [];
+        if (!existe || !listas.every((l) => Array.isArray(l) && l.length <= 20 && l.every(itemOk))) return recusa('A tela pronta veio incompleta. Abra de novo e tente outra vez.', 'operacao-invalida');
+        const mensagens = (Array.isArray(t.mensagens) ? t.mensagens : []).filter((m) => typeof m === 'string').map((m) => m.slice(0, 1000)).slice(0, 50);
+        return { op: { tela: { id: curto(t.id, 80), nome: curto(t.nome, 100), layout: t.layout, grupos, mensagens } } };
+      },
+      descricao: (op) => 'Tela pronta: ' + (op.tela.nome || 'tela pronta'),
+      aplicar: (cfg, tela, op) => loteTv.aplicarTelaPronta(cfg, op.tela),
+    },
+    /*
+     * O quiz do Criar (24/10): na zona pedida, ou na principal se a TV não
+     * tem a pedida — essas TVs voltam em `marcadas`, e o painel avisa.
+     */
+    quiz: {
+      limpar(o) {
+        const q = ehObjeto(o.quiz) ? o.quiz : null;
+        if (!q || !itemOk(q) || !Array.isArray(q.perguntas) || !q.perguntas.length || q.perguntas.length > 50 || !curto(o.id, 80)) return recusa('O quiz veio incompleto. Monte de novo e tente outra vez.', 'operacao-invalida');
+        return { op: { quiz: q, zona: o.zona === 'lateral' ? 'lateral' : 'principal', id: curto(o.id, 80) } };
+      },
+      descricao: (op) => 'Quiz: ' + (curto(op.quiz.titulo, 100) || 'quiz'),
+      aplicar: (cfg, tela, op) => loteTv.aplicarQuiz(cfg, op.quiz, op.zona, op.id),
+      marcar: (cfg, tela, op) => loteTv.zonaDoQuiz(cfg, op.zona).caiu,
+    },
   };
 
   async function rotaOperacao(res, sess, b) {
@@ -1669,7 +1753,7 @@ module.exports = function (ctx) {
     const descricao = String(tipo.descricao(op) || 'Envio').slice(0, 120);
     // Alguém gravou numa das TVs entre ler e gravar (aplicarLote desfaz tudo): lê de novo e aplica outra vez, até três vezes.
     for (let tentativa = 0; tentativa < 3; tentativa++) {
-      const montado = await montarOperacao(sess, telas, (cfg, tela) => tipo.aplicar(cfg, tela, op, c));
+      const montado = await montarOperacao(sess, telas, (cfg, tela) => tipo.aplicar(cfg, tela, op, c), tipo.marcar ? (cfg, tela) => tipo.marcar(cfg, tela, op, c) : null);
       if (montado.status) return sendJson(res, montado.status, montado.corpo);
       const conferido = await conferirLote(sess, montado.itens, { lidas: montado.lidas, meus: montado.meus });
       if (!conferido.prontos) {
@@ -1682,7 +1766,9 @@ module.exports = function (ctx) {
       }
       const r = await aplicarLote(sess.tenant_id, sess.user_id, conferido.prontos, descricao, tipo.desfazer ? tipo.desfazer(op) : {});
       if (r.status === 409 && tentativa < 2) continue;
-      if (r.status === 200 && op.id) r.corpo.aviso = op.id;
+      if (r.status === 200 && op.id && op.aviso) r.corpo.aviso = op.id;
+      // As TVs que a operação marcou (o quiz que caiu na principal): o painel diz quais.
+      if (r.status === 200 && tipo.marcar) r.corpo.marcadas = montado.marcadas;
       return sendJson(res, r.status, r.corpo);
     }
     return sendJson(res, 409, { error: 'A programação dessas TVs está mudando agora. Nada foi enviado; tente de novo em instantes.', code: 'config-mudou' });
@@ -1713,10 +1799,11 @@ module.exports = function (ctx) {
    * loja recusa o envio inteiro antes de a operação entrar nela (e nem o
    * nome dela sai na resposta), como no envio em lote.
    */
-  async function montarOperacao(sess, telas, aplicar) {
+  async function montarOperacao(sess, telas, aplicar, marcar) {
     const meus = sess.precisaAprovar ? await aprovacao.meusPendentesPorTela(db, sess) : null;
     const lidas = new Map();
     const itens = [];
+    const marcadas = [];
     for (let i = 0; i < telas.length; i++) {
       if (i && i % PEDACO === 0) await ceder();
       const device = await db.getDevice(telas[i].id);
@@ -1725,6 +1812,7 @@ module.exports = function (ctx) {
       if (!permissoes.podeTela(sess, device)) return { status: 403, corpo: { error: 'Uma das TVs não é da sua loja. Nada foi enviado.', code: 'loja' } };
       lidas.set(device.id, device);
       const lida = programacaoParaMudar(device, meus);
+      if (marcar && marcar(lida.cfg, telas[i])) marcadas.push(device.id);
       let cfg;
       try { cfg = aplicar(lida.cfg, telas[i]); } catch (e) {
         // Sem zona que caiba (o aviso): nada vai, e a resposta diz qual TV (a pessoa troca o layout dela ou tira do envio).
@@ -1732,7 +1820,7 @@ module.exports = function (ctx) {
       }
       itens.push({ id: device.id, config: cfg, versao: lida.versao });
     }
-    return { itens, lidas, meus };
+    return { itens, lidas, meus, marcadas };
   }
 
   // O que a operação faria em cada TV, sem gravar nada: { telas: [{ id, ... }] } ou { status, corpo }.

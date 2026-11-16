@@ -1,13 +1,15 @@
 /*
- * js/lote-tv.js — o que uma campanha, uma peça pronta ou uma publicação faz
- * na programação de UMA TV: em que zona entra, como troca o que já era dela,
+ * js/lote-tv.js — o que uma campanha, uma peça pronta, uma publicação, uma
+ * data da Agenda, um indicador, uma planilha, uma tela pronta ou um quiz faz
+ * na programação de UMA TV: em que zona entra, como troca o que já era dele,
  * como sai, e a hora e o dia de cada peça.
  *
  * Morava só no painel (web/src/lib/rodar.js, aplicarConteudo.js, quando.js,
- * publicar.js), que lia a programação de cada TV, aplicava e mandava todas de
- * volta num envio só. Na conta de RH (300 TVs, ~96 KB de programação cada)
- * eram 300 leituras e ~29 MB num pedido — recusado pelo teto de 2 MB acima de
- * ~19 TVs (teste de carga, 16/11). Agora o painel manda a OPERAÇÃO ("esta
+ * publicar.js, calendario.js, telasProntas.js, quizNaTv.js e as páginas de
+ * Indicadores e Planilhas), que lia a programação de cada TV, aplicava e
+ * mandava todas de volta num envio só. Na conta de RH (300 TVs, ~96 KB de
+ * programação cada) eram 300 leituras e ~29 MB num pedido — recusado pelo
+ * teto de 2 MB acima de ~19 TVs (teste de carga, 16/11). Agora o painel manda a OPERAÇÃO ("esta
  * campanha nestas TVs") e o servidor aplica em cada uma com estas mesmas
  * funções (server/routes/telas.js, POST /api/lote/operacao). O painel usa as
  * mesmas para a prévia e as telas de uma TV só: uma regra, dois lados.
@@ -20,12 +22,19 @@
  */
 (function (raiz, fabrica) {
   // O catálogo de layouts (MT_getLayout): no navegador, quem importa já trouxe; no Node, vem aqui.
-  if (typeof module === 'object' && module.exports && typeof require === 'function') require('./templates.js');
-  var api = fabrica(raiz);
+  var T = typeof module === 'object' && module.exports && typeof require === 'function' ? require('./templates.js') : null;
+  var api = fabrica(raiz, T);
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (raiz) raiz.MTLoteTv = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (raiz) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (raiz, T) {
   'use strict';
+
+  /*
+   * O layout pelo id: o do global (MT_getLayout — o painel, e os testes que
+   * trocam o catálogo) e, sem ele, o do js/templates.js lido aqui (no Node,
+   * com um `window` de mentira o catálogo vai para ele, e não para o global).
+   */
+  const layoutPorId = (id) => (raiz.MT_getLayout ? raiz.MT_getLayout(id) : (T && T.getLayout ? T.getLayout(id) : null));
 
   const copia = (x) => JSON.parse(JSON.stringify(x || {}));
 
@@ -199,7 +208,7 @@
 
   // As zonas do layout da TV, do catálogo (js/templates.js) — as mesmas do painel (screenConfig.js, zonesOf).
   function zonasDe(cfg) {
-    const l = raiz.MT_getLayout && raiz.MT_getLayout(cfg && cfg.settings && cfg.settings.layoutId);
+    const l = layoutPorId(cfg && cfg.settings && cfg.settings.layoutId);
     return (l && l.zones) || [];
   }
   // Zona de conteúdo primária (a playlist editável) — a mesma de web/src/lib/contentTypes.js.
@@ -394,10 +403,121 @@
     return novaCfg;
   }
 
+  /* ---------------- A Agenda (era web/src/lib/calendario.js) ---------------- */
+
+  // O período em que a data fica na TV: da antecedência até o dia (sem o relógio de ninguém: só a data guardada).
+  function periodoDoEvento(ev) {
+    const p = String(ev.data).split('-').map(Number);
+    const ini = new Date(p[0], p[1] - 1, p[2] - (Number(ev.antecedencia) || 0));
+    return { dataInicio: emISO(ini), dataFim: ev.data };
+  }
+
+  /*
+   * A programação da TV com as datas: cada uma na zona principal, com o
+   * período, o tipo e a prioridade, no lugar da versão anterior dela. As que
+   * não são mais desta TV (`fora`, ids) saem. Não modifica a recebida.
+   */
+  function aplicarCalendario(cfg, eventos, fora) {
+    const next = copia(cfg);
+    if (!next.zonas) next.zonas = {};
+    const z = zonasPorPapel(next).principal || 'principal';
+    const zona = next.zonas[z] && Array.isArray(next.zonas[z].items) ? next.zonas[z] : Object.assign({}, next.zonas[z] || {}, { items: [] });
+    const ids = new Set(eventos.map((e) => e.id).concat(fora || []));
+    const resto = zona.items.filter((it) => !(it && it._calendario && ids.has(it._calendario)));
+    const novos = eventos.filter((e) => e.item).map((e) => Object.assign({}, e.item, {
+      _calendario: e.id,
+      meta: { tipo: e.tipo, prioridade: e.prioridade },
+      agendamento: Object.assign({ ativo: true, dias: [] }, periodoDoEvento(e)),
+    }));
+    next.zonas[z] = Object.assign({}, zona, { items: novos.concat(resto) });
+    return next;
+  }
+
+  // Tira da TV a peça de uma data (apagar a data, ou tirar esta TV dela).
+  function tirarDoCalendario(cfg, id) {
+    const next = copia(cfg);
+    for (const k of Object.keys(next.zonas || {})) {
+      const zona = next.zonas[k];
+      if (zona && Array.isArray(zona.items)) zona.items = zona.items.filter((it) => !(it && it._calendario === id));
+    }
+    return next;
+  }
+
+  /* ---------------- Indicadores e planilhas na área principal ---------------- */
+
+  // Um item no fim da área principal, no lugar do "mesmo" que já estava (pôr de novo troca, não duplica).
+  function porNaPrincipal(cfg, item, mesmo) {
+    const next = copia(cfg);
+    next.zonas = next.zonas || {};
+    const z = zonasPorPapel(next).principal || 'principal';
+    const zona = next.zonas[z] && Array.isArray(next.zonas[z].items) ? next.zonas[z] : { items: [] };
+    next.zonas[z] = Object.assign({}, zona, { items: zona.items.filter((i) => !mesmo(i)).concat(item) });
+    return next;
+  }
+  // O cartão ao vivo de um indicador (D36): o mesmo indicador de novo troca o de antes.
+  const porIndicador = (cfg, item) => porNaPrincipal(cfg, item, (i) => !!i && i.type === 'kpi' && i.indicador === item.indicador);
+  // A tabela ou o cardápio de uma planilha (fase 11): a mesma planilha, no mesmo formato e seção, troca a de antes.
+  const porPlanilha = (cfg, item) => porNaPrincipal(cfg, item, (i) => !!i && i.planilha === item.planilha && i.type === item.type && (i.planilhaSecao || '') === (item.planilhaSecao || ''));
+
+  /* ---------------- A tela pronta (era web/src/lib/telasProntas.js) ---------------- */
+
+  // O grupo da tela (cabecalho, principal, lateral, rodape) de cada zona do layout — o mesmo de js/bancada.js.
+  const GRUPO_DA_ZONA = { cabecalho: 'cabecalho', principal: 'principal', video: 'principal', lateral: 'lateral', secundaria: 'lateral', info: 'lateral', rodape: 'rodape' };
+  const grupoDaZona = (zona) => GRUPO_DA_ZONA[zona.id] || (zona.type === 'header' ? 'cabecalho' : zona.type === 'ticker' ? 'rodape' : 'principal');
+
+  /*
+   * A TV com a tela pronta: o layout dela e as peças de cada grupo na zona
+   * certa. A zona mantém o que é dela (transição, notícias, velocidade); o
+   * conteúdo passa a ser o da tela.
+   */
+  function aplicarTelaPronta(cfg, montada) {
+    const next = copia(cfg);
+    next.settings = Object.assign({}, next.settings || {}, { layoutId: montada.layout });
+    const antes = next.zonas || {};
+    next.zonas = {};
+    const layout = layoutPorId(montada.layout);
+    for (const z of (layout && layout.zones) || []) {
+      // _pendentes é só do painel (o que ficou para a pessoa completar): não vai para a TV.
+      const pecas = ((montada.grupos || {})[grupoDaZona(z)] || []).map(({ _pendentes, ...p }) => Object.assign({ duracao: p.duracao || 20 }, p, { origem: Object.assign({}, p.origem || {}, { pedido: 'tela pronta', tela: montada.id }) })); // eslint-disable-line no-unused-vars
+      const anterior = antes[z.id] && typeof antes[z.id] === 'object' ? antes[z.id] : {};
+      const { items: _i, peca: _pe, pecas: _ps, messages: _m, ...resto } = anterior; // eslint-disable-line no-unused-vars
+      if (z.type === 'header') next.zonas[z.id] = Object.assign({}, resto, { header: true }, pecas.length ? { pecas, peca: pecas[0] } : {});
+      else if (z.type === 'ticker') next.zonas[z.id] = Object.assign({}, resto, pecas.length ? { pecas, peca: pecas[0] } : {}, { messages: (montada.mensagens || []).slice() });
+      else next.zonas[z.id] = Object.assign({}, resto, { items: pecas });
+    }
+    return next;
+  }
+
+  /* ---------------- O quiz do Criar (era web/src/lib/quizNaTv.js) ---------------- */
+
+  // O item da playlist: as perguntas já conferidas por quem pôs (a TV só mostra as conferidas).
+  function itemDoQuiz(quiz) {
+    const tempo = Number(quiz.tempo) || 10;
+    const revelar = Number(quiz.revelar) || 7;
+    const perguntas = (quiz.perguntas || []).map((p) => Object.assign({}, p, { revisada: true }));
+    return { type: 'quiz', titulo: quiz.titulo || 'Quiz', tempo, revelar, perguntas, duracao: Math.max(4, perguntas.length * (tempo + revelar)) };
+  }
+  // A zona onde o quiz entra nesta TV: a pedida, ou a principal se a TV não tem a pedida.
+  function zonaDoQuiz(cfg, zona) {
+    const z = zonasPorPapel(cfg);
+    const id = z[zona] || z.principal || z.lateral;
+    return { id, caiu: !!id && id !== z[zona] };
+  }
+  // A config nova da TV com o quiz, marcado com `_quiz`: o mesmo de novo troca o de antes. Não modifica a recebida.
+  function aplicarQuiz(cfg, quiz, zona, id) {
+    const zonaId = zonaDoQuiz(cfg, zona).id;
+    if (!zonaId) return cfg;
+    return aplicarConteudo(cfg, { [zonaId]: [itemDoQuiz(quiz)] }, { chave: '_quiz', valor: id }, 'trocar');
+  }
+
   return {
     CHAVES_ORIGEM, origemDoItem, aplicarConteudo, removerOrigem,
     FAIXAS, agendarPeca, cobrirODia, distribuirPorZona, diasAte, comQuando,
     zonasDe, zonaPrimaria, zonasPorPapel, LAYOUT_COMPLETO, layoutPara, zonasQueFaltam,
     aplicarCampanha, tirarCampanha, quandoNaCampanha, aplicarPeca, montarPublicacao,
+    periodoDoEvento, aplicarCalendario, tirarDoCalendario,
+    porNaPrincipal, porIndicador, porPlanilha,
+    GRUPO_DA_ZONA, grupoDaZona, aplicarTelaPronta,
+    itemDoQuiz, zonaDoQuiz, aplicarQuiz,
   };
 });

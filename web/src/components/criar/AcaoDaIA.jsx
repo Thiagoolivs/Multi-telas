@@ -5,8 +5,7 @@ import { Button } from '../ui/Button.jsx';
 import { Checkbox } from '../ui/Field.jsx';
 import { AvisoRapido } from '../tela/AvisoRapido.jsx';
 import { MudarAparencia } from '../tela/MudarAparencia.jsx';
-import { aplicarQuiz, zonaDoQuiz } from '../../lib/quizNaTv.js';
-import { gravarEmLote, avisarComDesfazer } from '../../lib/rodar.js';
+import { enviarOperacao, avisarComDesfazer } from '../../lib/rodar.js';
 import { aviso } from '../../lib/avisos.js';
 import { devices } from '../../api.js';
 import { cn } from '../../lib/cn.js';
@@ -122,13 +121,15 @@ export function PorQuizNaTv({ acao, id, telas: dadas, onFechar }) {
 
   async function por() {
     const alvos = telas.filter((t) => ids.includes(t.id));
-    const caiu = new Set();
     setEnviando(true);
     try {
-      const r = await gravarEmLote(alvos, (cfg, tv) => {
-        if (zonaDoQuiz(cfg, acao.zona).caiu) caiu.add(tv.name || 'TV'); else caiu.delete(tv.name || 'TV');
-        return aplicarQuiz(cfg, acao.quiz, acao.zona, id);
-      }, 'Quiz: ' + ((acao.quiz && acao.quiz.titulo) || 'quiz'));
+      /*
+       * O servidor põe o quiz em cada TV (js/lote-tv.js, aplicarQuiz; teste de
+       * carga, 16/11) e devolve as que não têm a zona pedida (`marcadas`): o
+       * quiz caiu na principal, e o aviso diz quais.
+       */
+      const r = await enviarOperacao({ tipo: 'quiz', quiz: acao.quiz, zona: acao.zona, id }, alvos);
+      const caiu = new Set(alvos.filter((t) => (r.marcadas || []).includes(t.id)).map((t) => t.name || 'TV'));
       const nomes = alvos.map((t) => '“' + (t.name || 'TV') + '”').join(', ');
       avisarComDesfazer('O quiz foi para ' + nomes + '.' + (caiu.size ? ' ' + [...caiu].join(', ') + ' não tem lateral: ficou na área principal.' : ''), r.lote);
       onFechar();

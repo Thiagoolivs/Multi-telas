@@ -15,11 +15,11 @@
  */
 (function (raiz, fabrica) {
   // O catálogo de layouts (MT_getLayout): no navegador, quem importa já trouxe; no Node, vem aqui.
-  if (typeof module === 'object' && module.exports && typeof require === 'function') require('./templates.js');
-  var api = fabrica(raiz);
+  var T = typeof module === 'object' && module.exports && typeof require === 'function' ? require('./templates.js') : null;
+  var api = fabrica(raiz, T);
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (raiz) raiz.MTAviso = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (raiz) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (raiz, T) {
   'use strict';
 
   // Quanto tempo o urgente sem data fica no ar.
@@ -49,7 +49,9 @@
    * (raiz.MT_getLayout): os testes trocam o catálogo.
    */
   function zonaDoAviso(cfg) {
-    var layout = raiz.MT_getLayout && raiz.MT_getLayout(cfg && cfg.settings && cfg.settings.layoutId);
+    // Sem o do global (no Node, com um `window` de mentira o catálogo vai para ele), o do js/templates.js lido aqui.
+    var id = cfg && cfg.settings && cfg.settings.layoutId;
+    var layout = raiz.MT_getLayout ? raiz.MT_getLayout(id) : (T && T.getLayout ? T.getLayout(id) : null);
     var listas = ((layout && layout.zones) || []).filter(function (z) { return z.type === 'playlist'; });
     var principal = listas.filter(function (z) { return /^(principal|video|z1)$/.test(z.id); })[0];
     if (principal) return principal.id;

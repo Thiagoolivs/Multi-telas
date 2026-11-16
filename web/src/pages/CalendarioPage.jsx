@@ -6,8 +6,7 @@ import { Badge } from '../components/ui/Badge.jsx';
 import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { calendario, devices, brand } from '../api.js';
 import { carregarModelos } from '../lib/modelosOuro.js';
-import { gravarEmLote } from '../lib/rodar.js';
-import { pecaDoEvento, aplicarCalendario, tirarDoCalendario, telasDoEvento, partesDaData, situacaoDaData, NOME_DO_TIPO } from '../lib/calendario.js';
+import { pecaDoEvento, porAgendaNasTelas, tirarDaAgenda, telasDoEvento, partesDaData, situacaoDaData, NOME_DO_TIPO } from '../lib/calendario.js';
 import { aviso, avisarPedidoDeAprovacao } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { cn } from '../lib/cn.js';
@@ -133,10 +132,8 @@ export function CalendarioPage({ onIr }) {
     try {
       const comPeca = lista.map((e) => ({ ...e, item: pecaDoEvento(e, modelos, marca) }));
       const salvos = ((await calendario.salvar(comPeca)) || {}).eventos || [];
-      // D26: todas as TVs de uma vez (tudo ou nada); cada uma com as datas dela.
-      const dela = (tv) => salvos.filter((e) => telasDoEvento(e, tvs).some((t) => t.id === tv.id));
-      const fora = (tv) => salvos.filter((e) => !dela(tv).includes(e) && (e.telas || []).includes(tv.id)).map((e) => e.id);
-      await gravarEmLote(tvs.filter((tv) => dela(tv).length || fora(tv).length), (cfg, tv) => aplicarCalendario(cfg, dela(tv), fora(tv)), 'Calendário');
+      // D26: todas as TVs de uma vez (tudo ou nada); cada uma com as datas dela — o servidor põe (lib/calendario.js).
+      await porAgendaNasTelas(salvos, tvs);
       /*
        * Com a aprovação ligada, o servidor não marca a data como posta: ela
        * espera junto com o pedido (202) e a lista diz "Esperando aprovação".
@@ -157,7 +154,7 @@ export function CalendarioPage({ onIr }) {
   async function apagar(ev) {
     if (!(await confirmar({ titulo: 'Tirar “' + ev.titulo + '”?', texto: 'Sai do calendário e das TVs em que estava.', botao: 'Tirar' }))) return;
     try {
-      await gravarEmLote((ev.telas || []).map((id) => tvs.find((t) => t.id === id)).filter(Boolean), (cfg) => tirarDoCalendario(cfg, ev.id), 'Tirar: ' + ev.titulo);
+      await tirarDaAgenda(ev, tvs);
       // Com a aprovação ligada, a data que está na TV fica "saindo" até o dono aprovar (o servidor responde 202).
       const r = await calendario.apagar(ev.id);
       if (r && r.esperandoAprovacao) avisarPedidoDeAprovacao();

@@ -22,6 +22,10 @@
  *                       (POST /api/lote/operacao: o plano, pôr, desfazer)
  *            programacao a página Programação: todas as programações de uma vez, ou só o
  *                       "grande" (?ate=12) e os cartões da primeira tela
+ *            outros     a Agenda, o indicador, a planilha, a tela pronta e o quiz como
+ *                       operação do servidor
+ *            aprovacao  o pedido de aprovação de um membro para 200 TVs: abrir o pedido
+ *                       (e, no código novo, o antes e o depois de uma TV)
  *
  * A conta é montada direto no banco (a TV nasce pelo POST /api/devices, de
  * IPs diferentes; o vínculo e a programação de RH, ~96 KB, vão por SQL): a
@@ -347,6 +351,68 @@ if (so.includes('programacao')) {
     (saida.programacao = saida.programacao || []).push(linha);
     console.log('programacao', JSON.stringify(linha));
   }
+}
+
+/* ---------------- A Agenda, o indicador, a planilha, a tela pronta e o quiz (§3.5) ---------------- */
+
+if (so.includes('outros')) {
+  const camp = campanhaDeTeste();
+  const p = montarProgramaRh({});
+  const c = await conta(Math.min(300, N));
+  const telas = c.ids.map((id) => ({ id, entrada: 0 }));
+  const casos = [
+    ['calendario', { tipo: 'calendario', eventos: [
+      { id: 'cal_a', data: '2099-11-20', antecedencia: 5, tipo: 'evento', prioridade: 'alta', item: camp.peca.item },
+      { id: 'cal_b', data: '2099-11-25', antecedencia: 2, tipo: 'aviso', prioridade: 'urgente', item: camp.entradas[0].zonas.principal[0].item },
+    ], entradas: [{ dela: [0, 1], fora: [] }] }, telas],
+    ['tirar-calendario', { tipo: 'tirar-calendario', id: 'cal_a', titulo: 'SIPAT' }, c.ids],
+    ['indicador', { tipo: 'indicador', item: { type: 'kpi', indicador: 'acidentes', rotulo: 'Dias sem acidente', duracao: 12 } }, c.ids],
+    ['planilha', { tipo: 'planilha', item: { type: 'precos', titulo: 'CANTINA', colunas: 'auto', duracao: 20, rodape: '', linhas: 'Café;5', planilha: 'pla_1' }, nome: 'Cantina' }, c.ids],
+    ['tela-pronta', { tipo: 'tela-pronta', tela: { id: 'rh-boas-vindas', nome: 'Boas-vindas', layout: 'corporate',
+      grupos: { principal: p.zonas.principal.items.slice(0, 3), lateral: p.zonas.lateral.items.slice(0, 1), cabecalho: [p.zonas.cabecalho.peca], rodape: [p.zonas.rodape.peca] }, mensagens: ['Bem-vindo'] } }, c.ids],
+    ['quiz', { tipo: 'quiz', zona: 'lateral', id: 'conv:1', quiz: { titulo: 'Quiz da segurança', tempo: 10, revelar: 7, perguntas: [{ pergunta: 'Onde fica o extintor?', alternativas: ['Na saída', 'No teto'], certa: 0, explicacao: '' }] } }, c.ids],
+  ];
+  saida.outros = [];
+  for (const [nome, operacao, alvos] of casos) {
+    const r = await comSonda(() => pedir('POST', '/api/lote/operacao', { cookie: c.cookie, corpo: { operacao, telas: alvos, hoje: hojeIso() } }));
+    const linha = { tipo: nome, tvs: alvos.length, status: r.r.status, erro: (r.r.json && r.r.json.error) || '', kbEnviados: +(r.r.enviados / 1e3).toFixed(1), ms: ms(r.r.ms), travaMs: r.travaMs, elMaxMs: r.elMaxMs };
+    if (r.r.json && r.r.json.lote) {
+      const [l] = await sql('SELECT telas FROM lotes WHERE id = ?', [r.r.json.lote]);
+      linha.kbDoDesfazerGuardado = +(String(l.telas).length / 1e3).toFixed(1);
+    }
+    saida.outros.push(linha);
+    console.log('outros', JSON.stringify(linha));
+  }
+}
+
+/* ---------------- O pedido de aprovação grande (§3.5) ---------------- */
+
+if (so.includes('aprovacao')) {
+  const camp = campanhaDeTeste();
+  const n = Math.min(200, N);
+  const c = await conta(n);
+  // Um membro com a aprovação ligada pede a peça nas 200 TVs; o dono abre o pedido.
+  const emailMembro = 'cgm' + contas + '-' + Date.now() + '@teste.local';
+  const conv = await pedir('POST', '/api/team/invites', { cookie: c.cookie, corpo: { email: emailMembro, role: 'member' } });
+  const m = await pedir('POST', '/api/auth/signup', { corpo: { email: emailMembro, password: 'senha-de-teste-123', name: 'Gerente', aceite: true, inviteCode: conv.json && conv.json.code }, ip: '10.72.' + contas + '.9', headers: { Origin: BASE.origin } });
+  const membro = (m.headers['set-cookie'] || []).map((x) => x.split(';')[0]).join('; ');
+  await pedir('PUT', '/api/aprovacoes/regra', { cookie: c.cookie, corpo: { ligada: true } });
+  const ped = await pedir('POST', '/api/lote/operacao', { cookie: membro, corpo: { operacao: { tipo: 'peca', peca: camp.peca }, telas: c.ids, hoje: hojeIso() } });
+  const fila = await pedir('GET', '/api/aprovacoes', { cookie: c.cookie });
+  const id = fila.json && fila.json.pendentes && fila.json.pendentes[0] && fila.json.pendentes[0].id;
+  const linha = { tvs: n, pedido: ped.status };
+  if (id) {
+    const abrir = await comSonda(() => pedir('GET', '/api/aprovacoes/' + id, { cookie: c.cookie }));
+    linha.abrir = { status: abrir.r.status, mb: mb(abrir.r.bytes), ms: ms(abrir.r.ms), travaMs: abrir.travaMs, elMaxMs: abrir.elMaxMs, sobDemanda: !!(abrir.r.json && abrir.r.json.telas && abrir.r.json.telas[0] && abrir.r.json.telas[0].sobDemanda) };
+    if (linha.abrir.sobDemanda) {
+      const uma = await comSonda(() => pedir('GET', '/api/aprovacoes/' + id + '/telas/' + c.ids[0], { cookie: c.cookie }));
+      const outra = await comSonda(() => pedir('GET', '/api/aprovacoes/' + id + '/telas/' + c.ids[1], { cookie: c.cookie }));
+      linha.umaTv = { mb: mb(uma.r.bytes), ms: ms(uma.r.ms), travaMs: uma.travaMs, elMaxMs: uma.elMaxMs };
+      linha.outraTv = { mb: mb(outra.r.bytes), ms: ms(outra.r.ms), travaMs: outra.travaMs, elMaxMs: outra.elMaxMs };
+    }
+  }
+  saida.aprovacao = linha;
+  console.log('aprovacao', JSON.stringify(linha));
 }
 
 console.log(JSON.stringify(saida));

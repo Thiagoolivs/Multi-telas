@@ -47,7 +47,8 @@ test('o Criar mostra o cartão do assistente e o quiz só vai com "conferi"', ()
   assert.match(C, /modo === 'dev'/, 'o teste local sem IA não avisa');
   const A = ler('web/src/components/criar/AcaoDaIA.jsx');
   assert.match(A, /disabled=\{!ids\.length \|\| !conferi \|\| enviando\}/, 'o quiz vai sem conferir');
-  assert.match(A, /gravarEmLote\(alvos, /);
+  // Teste de carga (16/11): o quiz vai como operação, que o servidor põe em cada TV (tudo ou nada, com Desfazer).
+  assert.match(A, /const r = await enviarOperacao\(\{ tipo: 'quiz', quiz: acao\.quiz, zona: acao\.zona, id \}, alvos\);/);
   assert.match(A, /avisarComDesfazer\(/);
   assert.match(A, /<AvisoRapido avisoInicial=\{a\}/);
   assert.match(A, /<MudarAparencia tv=\{acao\.tv\}/);

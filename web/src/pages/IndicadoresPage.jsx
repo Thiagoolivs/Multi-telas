@@ -10,7 +10,7 @@ import { useAsync } from '../lib/useAsync.js';
 import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { kpis, devices } from '../api.js';
-import { gravarEmLote, avisarComDesfazer, zonasPorPapel } from '../lib/rodar.js';
+import { enviarOperacao, avisarComDesfazer } from '../lib/rodar.js';
 import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
 import { usePerfil } from '../lib/perfil.js';
 
@@ -216,14 +216,8 @@ function PorNaTv({ indicador, onFechar }) {
     try {
       const escolhidas = telas.filter((t) => marcados.includes(t.id));
       const item = { type: 'kpi', indicador: indicador.chave, rotulo: indicador.nome, duracao: 12 };
-      const r = await gravarEmLote(escolhidas, (cfg) => {
-        const next = JSON.parse(JSON.stringify(cfg || {}));
-        next.zonas = next.zonas || {};
-        const z = zonasPorPapel(next).principal || 'principal';
-        const zona = next.zonas[z] && Array.isArray(next.zonas[z].items) ? next.zonas[z] : { items: [] };
-        next.zonas[z] = Object.assign({}, zona, { items: zona.items.filter((i) => !(i && i.type === 'kpi' && i.indicador === indicador.chave)).concat(item) });
-        return next;
-      }, 'Indicador: ' + indicador.nome);
+      // Na área principal, no lugar do mesmo indicador (js/lote-tv.js, porIndicador) — o servidor põe em cada TV (teste de carga, 16/11).
+      const r = await enviarOperacao({ tipo: 'indicador', item }, escolhidas);
       avisarComDesfazer(indicador.nome + ' na TV' + (escolhidas.length === 1 ? '.' : 's (' + escolhidas.length + ').'), r.lote);
       onFechar();
     } catch (e) { aviso.erro('kpis', e.message || 'Não deu para pôr na TV.'); }
