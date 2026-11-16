@@ -586,6 +586,17 @@
         else problemas.push(`data-repete="${v.slice(0, 20)}" não existe (use marca)`);
         continue;
       }
+      /*
+       * `data-com-qr="link"`: o elemento só faz sentido com o QR daquele
+       * campo ("aponte a câmera", a moldura do QR). Sem o link, ele some
+       * junto com o QR. Na raiz, é a peça inteira: sem o link, ela não vai
+       * ao ar (ver qrsDaArvore).
+       */
+      if (nome === 'data-com-qr') {
+        if (NOME_CAMPO.test(v)) saida.push([nome, v]);
+        else problemas.push(`data-com-qr="${v.slice(0, 30)}": use o nome do campo do QR`);
+        continue;
+      }
       if (nome === 'alt' && no.nome === 'img') { saida.push([nome, v.slice(0, 160)]); continue; }
       if (nome === 'src' || nome === 'srcset' || nome === 'href') {
         problemas.push(`${nome} não é permitido: foto entra por data-campo-img e o renderizador resolve o arquivo`);
@@ -680,7 +691,67 @@
       saida = '<section class="mt-peca">' + saida + '</section>';
     }
     if (!campos.length) avisos.push('nenhum data-campo: o cliente não vai conseguir editar o texto');
-    return { html: saida, campos };
+    return { html: saida, campos, precisaDeLink: qrsDaArvore(arv).filter((q) => q.essencial).map((q) => q.nome) };
+  }
+
+  /*
+   * O QR SEM LINK (reteste 3, 14/11). O QR vazio escondia o pai direto dele
+   * (`:has()` no CSS da sombra). Na `cena-qr` o pai é o cartão inteiro, e a
+   * peça ia ao ar só com a foto; no `qr-foto`, o convite "Conte para a
+   * gente" ficava sem nada para apontar. Agora a peça diz o que depende do
+   * QR (`data-com-qr`), e:
+   *   - o elemento marcado some com o QR (a instrução, a moldura);
+   *   - a RAIZ marcada é a peça que só existe por causa do QR: sem o link,
+   *     ela não vai ao ar (vaiAoAr, logo abaixo, na volta da TV).
+   * A peça sem marca (a da IA, as antigas) segue a regra de antes — some o
+   * pai direto do QR —, menos quando esse pai é a peça ou leva o título:
+   * aí sumiria meia peça, e ela não vai ao ar.
+   * Nunca se inventa um link: o QR abre o que a pessoa escreveu (ou o
+   * contato da Marca, que o painel põe quando a peça vem pronta).
+   */
+  const TITULOS = new Set(['h1', 'h2']);
+  function qrsDaArvore(arv) {
+    const attr = (no, n) => ((no.attrs || []).find((a) => a[0] === n) || [])[1];
+    const elemento = (no) => no.texto == null && !no.some;
+    const blocos = arv.filhos.filter(elemento);
+    const raiz = blocos.length === 1 ? blocos[0] : arv;
+    const daRaiz = attr(raiz, 'data-com-qr') || '';
+    const marcados = new Set();
+    const qrs = [];
+    (function andar(no, pai) {
+      if (!elemento(no)) return;
+      const com = attr(no, 'data-com-qr');
+      if (com && no !== raiz) marcados.add(com);
+      const qr = no.nome === 'img' ? attr(no, 'data-campo-qr') : '';
+      if (qr && !qrs.some((q) => q.nome === qr)) qrs.push({ nome: qr, pai });
+      no.filhos.forEach((f) => andar(f, no));
+    })(arv, null);
+    const temTitulo = (no) => no.filhos.some((f) => elemento(f) && (TITULOS.has(f.nome) || attr(f, 'data-campo') === 'titulo' || temTitulo(f)));
+    return qrs.map((q) => ({
+      nome: q.nome,
+      essencial: daRaiz === q.nome || (!marcados.has(q.nome) && (!q.pai || q.pai === raiz || temTitulo(q.pai))),
+    }));
+  }
+  // Os campos de QR sem os quais a peça não vai ao ar (do HTML que já passou pela porta).
+  function precisaDeLink(html) {
+    return qrsDaArvore(arvore(tokenizar(String(html || '').slice(0, LIMITES.html)))).filter((q) => q.essencial).map((q) => q.nome);
+  }
+  /*
+   * A peça vai ao ar? Não, quando falta o link de um QR de que ela depende
+   * (vazio, ou escondido pela pessoa no editor). A volta da TV pergunta a
+   * cada troca: a resposta fica guardada no próprio item (o HTML não muda).
+   */
+  const JA_VISTOS = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function vaiAoAr(item) {
+    if (!item || item.type !== 'peca-html') return true;
+    let visto = JA_VISTOS && JA_VISTOS.get(item);
+    if (!visto || visto.html !== item.html) {
+      visto = { html: item.html, nomes: precisaDeLink(item.html) };
+      if (JA_VISTOS) JA_VISTOS.set(item, visto);
+    }
+    const campos = item.campos && typeof item.campos === 'object' ? item.campos : {};
+    const ocultos = Array.isArray(item.ocultos) ? item.ocultos : [];
+    return visto.nomes.every((n) => String(campos[n] == null ? '' : campos[n]).trim() !== '' && ocultos.indexOf(n) < 0);
   }
 
   function textoDe(no) {
@@ -715,7 +786,7 @@
     const css = higienizarCss(e.css, problemas);
     const p = problemas.slice(0, LIMITES.problemas);
     if (problemas.length > LIMITES.problemas) p.push(`… e mais ${problemas.length - LIMITES.problemas} problema(s)`);
-    return { ok: problemas.length === 0, html: h.html, css, campos: h.campos, problemas: p, avisos };
+    return { ok: problemas.length === 0, html: h.html, css, campos: h.campos, precisaDeLink: h.precisaDeLink, problemas: p, avisos };
   }
 
   /*
@@ -750,7 +821,7 @@
       if (lembradas.size > lembrarAte) lembradas.delete(lembradas.keys().next().value);
     }
     // Cópias: quem recebe pode mexer na lista sem estragar a lembrada.
-    return { ok: r.ok, html: r.html, css: r.css, campos: r.campos.map((c) => Object.assign({}, c)), problemas: r.problemas.slice(), avisos: r.avisos.slice() };
+    return { ok: r.ok, html: r.html, css: r.css, campos: r.campos.map((c) => Object.assign({}, c)), precisaDeLink: r.precisaDeLink ? r.precisaDeLink.slice() : r.precisaDeLink, problemas: r.problemas.slice(), avisos: r.avisos.slice() };
   }
 
   /* ======================= O item ======================= */
@@ -1121,6 +1192,8 @@
   return {
     LIMITES, PAPEIS, FORMATOS, VIVOS, PAPEIS_FOTO,
     higienizar, validarItem, ehMidia, doArquivo, conferirConfig, fotosDoItem, lembrarConferidas,
+    // O QR sem link (reteste 3): de que QR a peça depende, e se ela vai ao ar.
+    precisaDeLink, vaiAoAr,
     lerFoco, fotoDoCampo, lerEspaco,
     // FOTO VIVA: o vídeo curto num espaço de foto.
     ehVideo, posterDoVideo, videosDoItem,

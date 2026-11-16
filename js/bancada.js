@@ -531,12 +531,13 @@
     LAYOUTS_DA_TELA.forEach((id) => opcao($('layout'), id, MT_getLayout(id).name));
     opcao($('tamanho'), 'caber', 'Caber na janela');
     opcao($('tamanho'), 'real', 'Real (1:1)');
-    // Fase 3: onde a TV fica decide a letra mínima em TODA zona (js/player.js, LOCAIS). Sem local, só a zona grande tem piso.
+    // Fase 3: com o local, a letra mínima vale em TODA zona (js/player.js, LOCAIS). Sem local, só a zona grande tem piso.
+    // Reteste 3: o mínimo é 4,5% em todo local (era 3,5% na recepção e 3% no escritório).
     opcao($('local'), '', 'Sem local (só a zona grande)');
     opcao($('local'), 'balcao', 'Balcão (4,5%)');
-    opcao($('local'), 'recepcao', 'Recepção (3,5%)');
-    opcao($('local'), 'escritorio', 'Escritório (3%)');
-    const LOCAIS = { balcao: 0.045, recepcao: 0.035, escritorio: 0.03 };
+    opcao($('local'), 'recepcao', 'Recepção (4,5%)');
+    opcao($('local'), 'escritorio', 'Escritório (4,5%)');
+    const LOCAIS = { balcao: 0.045, recepcao: 0.045, escritorio: 0.045 };
     const porLocal = () => {
       const f = LOCAIS[$('local').value];
       if (f) document.documentElement.style.setProperty('--mt-piso-tv', String(f));

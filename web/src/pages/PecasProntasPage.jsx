@@ -7,7 +7,7 @@ import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { Palco } from '../components/content/VerTelaAgora.jsx';
 import { devices, brand } from '../api.js';
-import { carregarModelos, itemDoModelo, ordenarPorPerfil, daFrente, separarPorRamo } from '../lib/modelosOuro.js';
+import { carregarModelos, itemDoModelo, ordenarPorPerfil, daFrente, separarPorRamo, faltaLinkParaOQr } from '../lib/modelosOuro.js';
 import { carregarTelasProntas, estadoDaPrevia, emPe, marcaDaConta } from '../lib/telasProntas.js';
 import { telasDaConta, montar, SemTelasProntas, PersonalizarTela } from './TelasProntasPage.jsx';
 import { usePerfil } from '../lib/perfil.js';
@@ -102,9 +102,11 @@ export function PecasProntasPage({ onIr, filtroInicial, telaAlvo }) {
    */
   const grupos = useMemo(() => {
     if (!modelos || !marca) return { meus: [], outros: [] };
-    const daMinhaFrente = ordenarPorPerfil(daFrente(modelos, perfil.id), perfil.id);
+    // Reteste 3: a peça que só existe pelo QR não aparece para a conta sem site nem WhatsApp na Marca (a TV não a poria no ar).
+    const usaveis = modelos.filter((m) => !faltaLinkParaOQr(m, marca));
+    const daMinhaFrente = ordenarPorPerfil(daFrente(usaveis, perfil.id), perfil.id);
     const { meus, outros } = separarPorRamo(daMinhaFrente, marca.ramo, perfil.id);
-    return { meus, outros: outros.concat(ordenarPorPerfil(modelos.filter((m) => !daMinhaFrente.includes(m)), perfil.id)) };
+    return { meus, outros: outros.concat(ordenarPorPerfil(usaveis.filter((m) => !daMinhaFrente.includes(m)), perfil.id)) };
   }, [modelos, marca, perfil.id]);
   // As telas inteiras, com a mesma regra: as do negócio da conta primeiro (TelasProntasPage.jsx, telasDaConta).
   const telasProntas = useMemo(() => {

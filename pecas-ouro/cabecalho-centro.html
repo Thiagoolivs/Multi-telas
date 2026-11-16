@@ -16,7 +16,8 @@
 .clima { font: 500 max(var(--mt-piso, 0cqw), 22cqh)/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 .data { font: 600 max(var(--mt-piso, 0cqw), 14cqh)/1 var(--mt-fonte-texto); letter-spacing: 2.4cqh; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .marca { display: flex; flex-direction: column; align-items: center; gap: 5cqh; min-width: 0; max-width: 56cqw; }
-.logo { height: 60cqh; width: auto; max-width: 30cqw; object-fit: contain; }
+/* Reteste 3: a logo maior, legível a 4 m (a TV já corta o vazio em volta dela: js/peca-render.js, logoAparada). */
+.logo { height: 76cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
 .nome { max-width: 100%; font: italic 400 calc(48cqh * var(--mt-escala-titulo, 1))/.95 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -49,6 +50,12 @@
    * a letra do piso, ainda o maior texto da faixa).
    */
   .marca { gap: clamp(5cqh, calc(5cqh + (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh) * .2), 6.5cqh); }
+  /*
+   * Reteste 3: com a logo, a linha de baixo sai. Na letra do balcão as duas
+   * empilhadas não cabiam na faixa (o piso cedia a 69%), e a logo é o que
+   * diz de quem é a TV.
+   */
+  .logo:not([data-sem-foto]) ~ .sub { display: none; }
   .nome { line-height: 1; font-size: min(calc(48cqh * var(--mt-escala-titulo, 1)), calc(78cqh - max(var(--mt-piso, 0cqw), 11cqh))); }
   .sub { line-height: 1; letter-spacing: max(.08em, calc(5.5cqh - (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh) * .25)); }
 }

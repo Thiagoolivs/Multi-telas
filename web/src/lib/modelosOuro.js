@@ -33,6 +33,36 @@ export function carregarModelos() {
 const FORMATO_DO_PAPEL = { destaque: '16/9', lateral: '9/16', cabecalho: '16/9', rodape: '16/9' };
 
 /*
+ * O LINK DO QR É UM CONTATO DE VERDADE DA CONTA (reteste 3, 14/11): o site
+ * da Marca ou o "WhatsApp ou site" de Onde fica (wa.me/…, padaria.com.br),
+ * com o https:// que o celular precisa para abrir. O @ sozinho não é
+ * endereço (de que rede?) e não entra. Sem nenhum dos dois, fica vazio: a
+ * TV tira o QR e o que aponta para ele, e a peça que só existe pelo QR não
+ * vai ao ar (js/peca-html.js, vaiAoAr). Nunca um link inventado.
+ * `c` é a marca no formato de telasProntas.js, marcaDaConta (site, contato).
+ */
+export function linkDaConta(c) {
+  for (const v of [c && c.site, c && c.contato]) {
+    const t = String(v || '').trim();
+    if (/^https?:\/\/[^\s<>"']+$/i.test(t)) return t;
+    if (/^([\w-]+\.)+[a-z]{2,}(\/[^\s<>"']*)?$/i.test(t)) return 'https://' + t;
+  }
+  return '';
+}
+
+/*
+ * A peça que só existe pelo QR (`data-com-qr` na raiz: o convite para
+ * avaliar, o cardápio no celular) e que a conta não tem com o que preencher
+ * fica fora dos Prontos: posta assim, a TV não a poria no ar. O QR do Wi-Fi
+ * e qualquer outro que não seja o `link` não têm de onde vir.
+ */
+export function faltaLinkParaOQr(m, marca) {
+  const P = globalThis.MTPecaHtml;
+  const precisa = P && P.precisaDeLink && m && m.arq ? P.precisaDeLink(m.arq.html) : [];
+  return precisa.some((n) => n !== 'link' || !linkDaConta(marca));
+}
+
+/*
  * A peça do modelo, pronta para desenhar e para ir à TV: no CLIMA da marca
  * (lote de 06/11: Escuro elegante, Claro limpo ou Cor da marca forte —
  * `marca.clima`; a marca de antes dos climas fica no modo "Cor da marca",
@@ -50,6 +80,9 @@ export function itemDoModelo(m, marca, frente) {
    */
   const daFrente = (frente && m.textos && m.textos[frente]) || {};
   const campos = { ...daFrente, ...(k.nome && /data-campo="marca"/.test(m.arq.html) ? { marca: k.nome } : {}) };
+  // Reteste 3: o QR do modelo abre o contato de verdade da conta (o site ou o WhatsApp da Marca), nunca o do exemplo.
+  const link = linkDaConta(k);
+  if (link && !campos.link && /data-campo-qr="link"/.test(m.arq.html)) campos.link = link;
   // O papel de cada espaço de imagem vai junto: a TV desenha sem o manifesto (js/peca-html.js, ESPAÇOS DE IMAGEM).
   const espacos = espacosDoModelo(m);
   // Reteste 3: o texto de outro negócio leva a foto daquele negócio, não a do ramo da conta (fotosDoExemplo).

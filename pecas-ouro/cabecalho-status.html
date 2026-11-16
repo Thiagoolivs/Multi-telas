@@ -18,7 +18,8 @@
 .aberto { font: 700 max(var(--mt-piso, 0cqw), 17cqh)/1.1 var(--mt-fonte-texto); letter-spacing: 5.1cqh; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ate { font: 500 max(var(--mt-piso, 0cqw), 19cqh)/1.1 var(--mt-fonte-texto); color: var(--mt-texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .marca { display: flex; flex-direction: column; align-items: center; gap: 8cqh; min-width: 0; max-width: 52cqw; }
-.logo { height: 58cqh; width: auto; max-width: 30cqw; object-fit: contain; }
+/* Reteste 3: a logo maior, legível a 4 m (a TV já corta o vazio em volta dela: js/peca-render.js, logoAparada). */
+.logo { height: 76cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
 .nome { max-width: 100%; font: 400 max(var(--mt-piso, 0cqw), 40cqh)/.9 var(--mt-fonte-titulo); letter-spacing: 4.8cqh; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -43,10 +44,16 @@
 @container (aspect-ratio < 9) {
   .mt-peca { gap: 7cqh; grid-template-columns: auto minmax(0, 1fr) auto; }
   .desde, .clima, .sep, .data, .ate { display: none; }
-  .status { gap: 6cqh; max-width: 31cqw; }
+  /*
+   * Reteste 3 (14/11): com a letra de 4,5% também na Saúde, "ATENDENDO" não
+   * cabia inteiro em 31% da faixa e o status saía truncado (a tela do
+   * dentista em pé). A coluna do status vai a 36% — a marca, no meio, ainda
+   * cabe em duas linhas — e o espaçado aperta.
+   */
+  .status { gap: 6cqh; max-width: 36cqw; }
   .ponto { width: 10cqh; height: 10cqh; box-shadow: 0 0 0 3.5cqh var(--mt-fundo-2), 0 0 0 4.5cqh var(--mt-destaque); }
   .estado { gap: 6cqh; }
-  .aberto { font-size: max(var(--mt-piso, 0cqw), 15cqh); letter-spacing: 1.4cqh; line-height: 1.04; white-space: normal; text-overflow: clip;
+  .aberto { font-size: max(var(--mt-piso, 0cqw), 15cqh); letter-spacing: .8cqh; line-height: 1.04; white-space: normal; text-overflow: clip;
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .marca { max-width: none; }
   .nome { font-size: max(var(--mt-piso, 0cqw), 30cqh); letter-spacing: 1.6cqh; line-height: 1.04; white-space: normal; text-overflow: clip; text-align: center;
@@ -64,6 +71,8 @@
 @container (aspect-ratio >= 9) {
   .estado { gap: max(0cqh, calc(7cqh - (max(var(--mt-piso, 0cqw), 17cqh) - 17cqh))); }
   .marca { gap: max(0cqh, calc(8cqh - (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh))); }
+  /* Reteste 3: com a logo, o "desde" sai — os dois empilhados não cabiam na faixa na letra do balcão (o piso cedia a 88%). */
+  .logo:not([data-sem-foto]) ~ .desde { display: none; }
   .tempo { gap: max(0cqh, calc(4cqh - (max(var(--mt-piso, 0cqw), 15cqh) - 15cqh))); }
   /* Reteste 2: 30cqh de entrelinha para a letra de 37cqh cortava o acento e grudava as duas linhas; 40cqh é a linha inteira. */
   .aberto, .ate { line-height: min(1.08em, 40cqh); }

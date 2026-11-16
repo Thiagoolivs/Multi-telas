@@ -123,7 +123,9 @@ test('o painel filtra pela frente e põe o exemplo dela; o botão mostra os outr
   assert.match(src, /const daFrente = \(frente && m\.textos && m\.textos\[frente\]\) \|\| \{\};/);
   const p = ler('web/src/pages/PecasProntasPage.jsx');
   // Fase 10: pela frente e pelo ramo (separarPorRamo); os de outra frente e de outro negócio vão para o botão.
-  assert.match(p, /const daMinhaFrente = ordenarPorPerfil\(daFrente\(modelos, perfil\.id\), perfil\.id\);/);
+  // Reteste 3: antes, sai a peça que só existe pelo QR quando a conta não tem com o que preenchê-lo (faltaLinkParaOQr).
+  assert.match(p, /const usaveis = modelos\.filter\(\(m\) => !faltaLinkParaOQr\(m, marca\)\);/);
+  assert.match(p, /const daMinhaFrente = ordenarPorPerfil\(daFrente\(usaveis, perfil\.id\), perfil\.id\);/);
   assert.match(p, /separarPorRamo\(daMinhaFrente, marca\.ramo, perfil\.id\)/);
   assert.match(p, /itemDoModelo\(m, marca, perfil\.id\)/);
   assert.match(p, /'Ver também os de outros negócios'/);

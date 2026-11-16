@@ -87,7 +87,8 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.92 var(--mt-fonte-titulo); tex
   h1 { font-size: max(var(--mt-piso, 0cqw), 8cqw); margin-top: 2cqw; }
   .apoio { display: none; }
   .itens { bottom: 13cqh; }
-  .itens li { grid-template-columns: auto auto 1fr auto; column-gap: 1.6cqw; padding: 1.5cqw 0 1.4cqw; }
+  /* Reteste 3: na TV quadrada de verdade (1056×1056, a fresta do palco) os seis itens passavam 3% da altura: as linhas apertam. */
+  .itens li { grid-template-columns: auto auto 1fr auto; column-gap: 1.6cqw; padding: 1.2cqw 0 1.1cqw; }
   .nome { font-size: max(var(--mt-piso, 0cqw), 3.6cqw); }
   .medida { grid-column: auto; order: 1; margin-top: 0; font-size: max(var(--mt-piso, 0cqw), 1.9cqw); font-weight: 400; letter-spacing: 0; text-transform: none; line-height: 1.1; text-wrap: balance; }
   .pontos, .valor { order: 2; }

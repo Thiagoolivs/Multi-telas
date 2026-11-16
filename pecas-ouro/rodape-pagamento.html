@@ -8,24 +8,40 @@
 <style>
 .mt-peca { display: flex; align-items: stretch; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
-.pagar { flex: none; display: flex; align-items: center; gap: 9cqh; padding: 0 7cqh 0 3cqw; background: var(--mt-fundo-2); border-right: 1.2cqh solid var(--mt-linha); }
-.rotulo { font: 600 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
-.formas { display: flex; align-items: center; gap: 5cqh; }
-.formas span { display: flex; align-items: center; height: 48cqh; padding: 0 9cqh; border-radius: 24cqh; border: 1.4cqh solid var(--mt-destaque);
-  font: 600 max(var(--mt-piso, 0cqw), 19cqh)/1 var(--mt-fonte-texto); letter-spacing: .06em; white-space: nowrap; }
+/*
+ * Reteste 3 (14/11): o bloco do pagamento era `flex: none` e, com a letra do
+ * balcão, tomava ¾ da faixa na TV deitada ("PAGAMENTO" espaçado e as quatro
+ * formas) e a faixa inteira na quadrada (lá a letra cedia a 72%, 3,2% da
+ * TV). Os avisos ficavam com uma fresta. Agora:
+ *   - o bloco tem teto (metade da faixa), e os avisos ficam com a outra
+ *     metade;
+ *   - o rótulo ("Aceitamos") sai: na letra da TV ele custava o espaço de
+ *     duas formas, e Pix, Crédito e Débito se explicam sozinhos. O campo
+ *     fica (as telas prontas o preenchem);
+ *   - as formas mostram o que cabe numa linha: a que não cabe desce para a
+ *     linha de baixo, que a caixa esconde — a regra "o que não cabe sai" do
+ *     js/peca-render.js, a mesma dos contatos do rodape-faixa. A ordem é a
+ *     da pessoa: a primeira forma é a que fica. As que ficam vão no meio do
+ *     bloco (a sobra da que saiu se divide dos dois lados).
+ */
+.pagar { flex: 0 1 auto; min-width: 0; max-width: 50%; display: flex; align-items: center; padding: 0 4cqh 0 3cqw; background: var(--mt-fundo-2); border-right: 1.2cqh solid var(--mt-linha); }
+.rotulo { display: none; }
+.formas { flex: 1 1 auto; min-width: 0; align-self: stretch; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center; column-gap: 4cqh; overflow: hidden; }
+/* Cada forma tem a altura da faixa: a segunda linha da lista começa onde a caixa termina. O contorno é desenhado por trás do texto. */
+.formas span { position: relative; height: 100%; display: flex; align-items: center; padding: 0 .22em;
+  font: 600 max(var(--mt-piso, 0cqw), 19cqh)/1 var(--mt-fonte-texto); white-space: nowrap; }
+.formas span::before { content: ''; position: absolute; left: 0; right: 0; top: 14cqh; bottom: 14cqh; border-radius: 36cqh; border: 1.4cqh solid var(--mt-destaque); }
 .formas span:empty { display: none; }
-.trilho { position: relative; flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center; padding-left: 6cqh; }
+.trilho { position: relative; flex: 1 1 0; min-width: 0; overflow: hidden; display: flex; align-items: center; padding-left: 6cqh; }
 .trilho [data-vivo] { font: 500 max(var(--mt-piso, 0cqw), 34cqh)/1 var(--mt-fonte-texto); letter-spacing: .02em; }
 /* As mensagens somem nas pontas em vez de serem cortadas a seco. */
 .trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 8cqw; z-index: 1; }
 .trilho::before { left: 0; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
 .trilho::after { right: 0; background: linear-gradient(270deg, var(--mt-fundo), var(--mt-fundo-0)); }
-/* Faixa em pé: o rótulo sai — as formas de pagamento se explicam sozinhas. */
-@container (aspect-ratio < 9) {
-  .rotulo { display: none; }
-  .pagar { padding-left: 3cqw; }
-  .formas { gap: 4cqh; }
-  .formas span { height: 42cqh; padding: 0 7cqh; font-size: max(var(--mt-piso, 0cqw), 16cqh); }
+/* Faixa curta (em pé, quadrada, a do layout com lateral): o desenho um pouco menor; na TV, as duas já estão na letra do piso. */
+@container (aspect-ratio < 12) {
+  .formas span { font-size: max(var(--mt-piso, 0cqw), 16cqh); }
+  .formas span::before { top: 16cqh; bottom: 16cqh; }
   .trilho [data-vivo] { font-size: max(var(--mt-piso, 0cqw), 30cqh); }
 }
 </style>

@@ -63,8 +63,21 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.95 var(--mt-fonte-titulo); tex
   .marca-nome, .cabeca, .itens, .cta { left: 7cqw; }
   .cabeca, .itens { right: 7cqw; }
   .kicker { letter-spacing: .16em; }
-  .apoio { line-height: 1.35; }
-  .itens { bottom: 12.5cqh; }
+  /*
+   * Reteste 3 (14/11): na TV quadrada de verdade a zona tem 1056×1056 (a
+   * fresta do palco), 2% a menos que a bancada, e o apoio encostava na lista
+   * (a letra cedia a 97%). O "R$" na letra da TV fica quase do tamanho do
+   * número, e subir 1em do próprio tamanho abria cada linha da lista: ele
+   * encosta no topo da linha (como no cardapio-categorias). O título fica um
+   * pouco menor (8,2% da largura, ainda o maior texto depois do preço) e os
+   * respiros encurtam; nada sai.
+   */
+  .valor small { vertical-align: top; }
+  .cabeca { top: 11cqh; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 8.2cqw); margin: 2cqw 0 1.4cqw; }
+  .apoio { line-height: 1.25; }
+  .itens { bottom: 11cqh; }
+  .cta { bottom: 4.4cqh; }
   .itens li { grid-template-columns: 5cqw 1fr auto; gap: 2cqw; padding: .8cqw 0; }
   .num { letter-spacing: .06em; }
   .det { margin-top: .6cqw; line-height: 1.15; }
