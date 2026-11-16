@@ -10,7 +10,8 @@
   background: var(--mt-fundo); border-bottom: 1.2cqh solid var(--mt-linha); }
 /* Fundo liso, e não degradê: o esfumado das pontas do trilho é da cor do fundo, e num degradê ele vira uma faixa escura. */
 .marca { display: flex; align-items: center; gap: 4cqh; flex: none; }
-.logo { height: 56cqh; width: auto; max-width: 28cqw; object-fit: contain; }
+/* Reteste 3: a logo maior, legível a 4 m (a TV já corta o vazio em volta dela: js/peca-render.js, logoAparada). */
+.logo { height: 72cqh; width: auto; max-width: 28cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
 .nome { font: 700 max(var(--mt-piso, 0cqw), 21cqh)/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; white-space: nowrap; }

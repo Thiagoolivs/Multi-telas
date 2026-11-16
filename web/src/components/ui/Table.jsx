@@ -1,11 +1,31 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/cn.js';
 
 // Tabela densa de operação: cabeçalho fino sticky, linhas com hover, células
-// alinhadas. Envolva em um contêiner com overflow-x-auto para responsividade.
-export function Table({ className, children }) {
+// alinhadas. A própria caixa rola de lado quando a tabela não cabe.
+/*
+ * A tabela que não cabe rola de lado — e quem usa teclado precisa alcançar
+ * essa rolagem (reteste 3: `scrollable-region-focusable` do axe na
+ * Plataforma). Quando ela rola de verdade, a caixa entra no Tab, com nome
+ * (`rotulo`); quando cabe, não vira uma parada a mais no Tab.
+ */
+export function Table({ className, children, rotulo = 'Tabela' }) {
+  const caixa = useRef(null);
+  const [rola, setRola] = useState(false);
+  useLayoutEffect(() => {
+    const el = caixa.current;
+    if (!el) return undefined;
+    const medir = () => setRola(el.scrollWidth > el.clientWidth + 1);
+    medir();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className="w-full overflow-x-auto">
+    <div ref={caixa} className="w-full overflow-x-auto"
+      {...(rola ? { tabIndex: 0, role: 'region', 'aria-label': rotulo + ' (role para o lado para ver tudo)' } : {})}>
       <table className={cn('w-full border-collapse text-sm', className)}>{children}</table>
     </div>
   );

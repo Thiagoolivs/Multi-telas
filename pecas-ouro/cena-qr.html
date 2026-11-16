@@ -60,7 +60,7 @@ h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
   .instrucao { line-height: 1.15; }
 }
 </style>
-<section class="mt-peca cena-qr">
+<section class="mt-peca cena-qr" data-com-qr="link">
   <img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns">
   <div class="cartao" data-entrada="varrer" data-origem="baixo" data-ordem="1">
     <div class="texto">
@@ -68,6 +68,6 @@ h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
       <h1 data-campo="titulo" data-entrada="revelar" data-ordem="6">A carta inteira, com fotos</h1>
     </div>
     <img class="qr" data-campo-qr="link" alt="QR para abrir o cardápio" data-entrada="aparecer" data-ordem="9">
-    <p class="instrucao" data-entrada="aparecer" data-ordem="10"><span data-campo="instrucao">Aponte a câmera para o código</span><b data-campo="nota">e peça direto ao garçom</b></p>
+    <p class="instrucao" data-com-qr="link" data-entrada="aparecer" data-ordem="10"><span data-campo="instrucao">Aponte a câmera para o código</span><b data-campo="nota">e peça direto ao garçom</b></p>
   </div>
 </section>

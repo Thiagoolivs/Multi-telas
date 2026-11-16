@@ -7,7 +7,9 @@
  * A tela que o dono ainda não aprovou ('proposta') não aparece aqui.
  */
 import '../../../js/templates.js';
-import { carregarModelos, itemDoModelo, naEpoca } from './modelosOuro.js';
+// Pôr a tela pronta numa TV mora em js/lote-tv.js desde o teste de carga (16/11): o servidor a põe em muitas TVs com a mesma regra.
+import '../../../js/lote-tv.js';
+import { carregarModelos, itemDoModelo, naEpoca, linkDaConta } from './modelosOuro.js';
 import { carregarManifesto } from './pacoteOuro.js';
 import { getLayout as layoutDoPainel } from './screenConfig.js';
 
@@ -55,9 +57,8 @@ export function paraOCliente(t) {
 
 export const emPe = (layoutId) => /^portrait/.test(layoutId || '');
 
-// O grupo da tela (cabecalho, principal, lateral, rodape) de cada zona do layout — o mesmo de js/bancada.js.
-const GRUPO_DA_ZONA = { cabecalho: 'cabecalho', principal: 'principal', video: 'principal', lateral: 'lateral', secundaria: 'lateral', info: 'lateral', rodape: 'rodape' };
-export const grupoDaZona = (zona) => GRUPO_DA_ZONA[zona.id] || (zona.type === 'header' ? 'cabecalho' : zona.type === 'ticker' ? 'rodape' : 'principal');
+// O grupo da tela (cabecalho, principal, lateral, rodape) de cada zona do layout — o mesmo de js/bancada.js (a regra em js/lote-tv.js).
+export const grupoDaZona = (zona) => globalThis.MTLoteTv.grupoDaZona(zona);
 
 let cache = null;
 // O manifesto e as peças abertas, uma vez por sessão.
@@ -115,11 +116,14 @@ export function nomesDeExemplo(marcas) {
 const EH_CONTATO = /@[\w.]{2,}|https?:\/\/|\bwww\.|\b[\w-]+\.(com|net|org)(\.br)?\b|\(?\b\d{2}\)?\s?\d{4,5}-\d{4}\b/i;
 const EH_ENDERECO = /^\s*(rua|r\.|av\.|avenida|alameda|travessa|rodovia|praça|praca|estrada)\s/i;
 
+// O QR do Wi-Fi não é link: nunca leva o contato da conta (e o da empresa de exemplo é a rede dela).
+const qrDeWifi = (def, v) => (def && def.nome === 'wifi') || /^WIFI:/i.test(String(v || ''));
+
 export function limparDoExemplo(valor, def, conta, exemplos) {
   const v = String(valor == null ? '' : valor);
   if (!v || !exemplos) return v;
   const c = conta || {};
-  if (def && def.tipo === 'qr') return EH_CONTATO.test(v) ? (c.site || '') : v;
+  if (def && def.tipo === 'qr') return qrDeWifi(def, v) ? '' : EH_CONTATO.test(v) ? linkDaConta(c) : v;
   if (EH_CONTATO.test(v)) return /https?:\/\/|\bwww\.|\.(com|net|org)\b/i.test(v) && !/@/.test(v) ? (c.site || '') : '';
   if (EH_ENDERECO.test(v)) return c.endereco || '';
   let saida = v;
@@ -142,6 +146,12 @@ export function itemDaTela(modelo, entrada, modo, papel, marca, exemplos) {
   for (const d of defs) {
     if (d.tipo === 'img' || d.nome === 'marca' || DO_EXEMPLO.includes(d.nome)) continue;
     const antes = d.nome in campos ? campos[d.nome] : d.exemplo;
+    // O QR que a tela deixou vazio leva o contato da conta; sem contato, a pessoa completa (e até lá a TV não o mostra).
+    if (d.tipo === 'qr' && !String(antes || '').trim()) {
+      campos[d.nome] = qrDeWifi(d, '') ? '' : linkDaConta(marca);
+      if (!campos[d.nome]) pendentes.push(d.nome);
+      continue;
+    }
     const limpo = limparDoExemplo(antes, d, marca, exemplos);
     if (limpo === antes) continue;
     campos[d.nome] = limpo;
@@ -176,9 +186,12 @@ export function montarTela(tela, modelos, marca, exemplos) {
 export function estadoDaPrevia(montada) {
   const layout = getLayout(montada.layout);
   const zonas = {};
+  // A prévia mostra o que a TV mostraria: a peça que só existe pelo QR, sem o link, a TV pula (js/peca-html.js, vaiAoAr).
+  const P = globalThis.MTPecaHtml;
+  const vaiAoAr = (p) => !P || !P.vaiAoAr || P.vaiAoAr(p);
   for (const z of layout.zones) {
     const g = grupoDaZona(z);
-    const pecas = montada.grupos[g] || [];
+    const pecas = (montada.grupos[g] || []).filter(vaiAoAr);
     if (!pecas.length) continue;
     zonas[z.id] = z.type === 'header' || z.type === 'ticker'
       ? { peca: pecas[0], mensagens: z.type === 'ticker' ? montada.mensagens : [] }
@@ -192,23 +205,7 @@ export function estadoDaPrevia(montada) {
  * dele, as peças dela (no lugar do que havia). O resto da programação —
  * horário, som, tema, nome — fica. Não modifica a recebida.
  */
-export function aplicarTelaPronta(cfg, montada) {
-  const next = JSON.parse(JSON.stringify(cfg || {}));
-  next.settings = { ...(next.settings || {}), layoutId: montada.layout };
-  const antes = next.zonas || {};
-  next.zonas = {};
-  for (const z of getLayout(montada.layout).zones) {
-    // _pendentes é só do painel (o que ficou para a pessoa completar): não vai para a TV.
-    const pecas = (montada.grupos[grupoDaZona(z)] || []).map(({ _pendentes, ...p }) => ({ duracao: p.duracao || 20, ...p, origem: { ...(p.origem || {}), pedido: 'tela pronta', tela: montada.id } })); // eslint-disable-line no-unused-vars
-    // A zona mantém o que é dela (transição, notícias, velocidade); o conteúdo passa a ser o da tela.
-    const anterior = antes[z.id] && typeof antes[z.id] === 'object' ? antes[z.id] : {};
-    const { items: _i, peca: _pe, pecas: _ps, messages: _m, ...resto } = anterior; // eslint-disable-line no-unused-vars
-    if (z.type === 'header') next.zonas[z.id] = { ...resto, header: true, ...(pecas.length ? { pecas, peca: pecas[0] } : {}) };
-    else if (z.type === 'ticker') next.zonas[z.id] = { ...resto, ...(pecas.length ? { pecas, peca: pecas[0] } : {}), messages: montada.mensagens.slice() };
-    else next.zonas[z.id] = { ...resto, items: pecas };
-  }
-  return next;
-}
+export const aplicarTelaPronta = (cfg, montada) => globalThis.MTLoteTv.aplicarTelaPronta(cfg, montada);
 
 /* A marca da conta no formato que as telas prontas usam (a partir do que brand.get devolve). */
 export function marcaDaConta(r) {
@@ -217,6 +214,8 @@ export function marcaDaConta(r) {
   // O site e o endereço da Marca entram onde a tela de exemplo tinha os dela.
   return { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', clima: k.clima || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '',
     site: k.site || '', endereco: [local.endereco, local.bairro].filter(Boolean).join(' · '),
+    // O "WhatsApp ou site" de Onde fica: o outro contato que pode ir no QR (linkDaConta).
+    contato: local.link || '',
     // O ramo que a Marca deduziu (js/paletas.js, detectarRamo): põe o pacote do negócio da conta primeiro.
     ramo: (r && r.ramo) || '' };
 }

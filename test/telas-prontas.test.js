@@ -144,9 +144,10 @@ test('pôr na TV: o layout da tela, as peças dela no lugar das antigas, e o que
 
 test('a galeria: grava com versão, confere na zona, só põe em TV do mesmo jeito (deitada/em pé)', () => {
   const p = fs.readFileSync(path.join(RAIZ, 'web/src/pages/TelasProntasPage.jsx'), 'utf8');
-  // D26: todas as TVs num envio só (tudo ou nada), com versão e Desfazer.
-  assert.match(p, /\(cfg\) => aplicarTelaPronta\(cfg, escolhida\), 'Tela pronta: ' \+ escolhida\.nome\);/);
-  assert.match(p, /const r = await gravarEmLote\(/);
+  // D26: todas as TVs num envio só (tudo ou nada), com versão e Desfazer — desde o teste de carga (16/11), a operação que o servidor aplica em cada TV.
+  assert.match(p, /const r = await enviarOperacao\(\{ tipo: 'tela-pronta', tela \}, alvos\.map\(\(tv\) => \(\{ id: tv \}\)\)\);/);
+  assert.match(fs.readFileSync(path.join(RAIZ, 'server/routes/telas.js'), 'utf8'), /aplicar: \(cfg, tela, op\) => loteTv\.aplicarTelaPronta\(cfg, op\.tela\),/);
+  assert.doesNotMatch(p, /gravarEmLote\(/, 'a tela pronta voltou a ler e mandar a programação de cada TV');
   assert.match(p, /const naoCabe = pe != null && pe !== emPe\(escolhida\.layout\);/);
   assert.match(p, /lugar=\{zonas\[editando\.grupo\]\}/);
   const e = fs.readFileSync(path.join(RAIZ, 'web/src/components/content/EditarPeca.jsx'), 'utf8');
@@ -196,7 +197,8 @@ test('o que era da empresa de exemplo vira o da conta quando a conta tem (site, 
   const L = await lib();
   const ex = L.nomesDeExemplo(M.marcas);
   const conta = { nome: 'Padaria Real', site: 'padariareal.com.br', endereco: 'Rua Nova, 10' };
-  assert.equal(L.limparDoExemplo('https://wa.me/5511977770000', { tipo: 'qr' }, conta, ex), 'padariareal.com.br');
+  // O QR leva o site da conta, com o https:// que o celular precisa para abrir (reteste 3).
+  assert.equal(L.limparDoExemplo('https://wa.me/5511977770000', { tipo: 'qr' }, conta, ex), 'https://padariareal.com.br');
   assert.equal(L.limparDoExemplo('(11) 97777-0000', { tipo: 'texto' }, conta, ex), '');
   assert.equal(L.limparDoExemplo('@oticacentral', { tipo: 'texto' }, conta, ex), '');
   assert.equal(L.limparDoExemplo('Rua das Flores, 120 · Centro', { tipo: 'texto' }, conta, ex), 'Rua Nova, 10');

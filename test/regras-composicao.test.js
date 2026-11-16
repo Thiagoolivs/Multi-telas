@@ -221,5 +221,15 @@ test('o painel mostra (e manda ao refazer) o que as regras acharam; a bancada co
 });
 
 test('QR sem link some com a moldura (não fica um quadrado vazio na peça)', () => {
-  assert.ok(ler('js', 'peca-render.js').includes(".mt-peca :has(> img[data-campo-qr][data-sem-foto]):not(.mt-peca){display:none!important}"));
+  /*
+   * Reteste 3: era um `:has()` no CSS da sombra, que derrubava o cartão
+   * inteiro da cena-qr e que a TV antiga nem lia. Agora é o desenhista: some
+   * o QR e o que a peça marcou com data-com-qr; sem marca, o pai direto (a
+   * moldura), menos quando ele é a peça ou leva o título.
+   */
+  const r = ler('js', 'peca-render.js');
+  assert.ok(!r.includes(':has(> img[data-campo-qr]'), 'o :has() do CSS saiu');
+  assert.match(r, /function qrSemLink\(sombra, peca, img\) \{/);
+  assert.match(r, /if \(pai && pai !== peca && !pai\.querySelector\('h1,h2,\[data-campo="titulo"\]'\)\) pai\.setAttribute\('data-oculto', ''\);/);
+  assert.match(r, /if \(qr && peca\) qrSemLink\(sombra, peca, el\);/);
 });

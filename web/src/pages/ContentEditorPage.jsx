@@ -7,6 +7,7 @@ import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { QuandoMostrar } from '../components/content/QuandoMostrar.jsx';
 import { temAgenda, resumoAgenda } from '../lib/agenda.js';
 import { emitir, aviso } from '../lib/avisos.js';
+import { usePedeAprovacao } from '../lib/aprovacao.js';
 import { confirmar } from '../lib/confirmar.js';
 import { ItemForm } from '../components/content/ItemForm.jsx';
 import { EditarPeca } from '../components/content/EditarPeca.jsx';
@@ -90,6 +91,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   const [conflito, setConflito] = useState(false);
   // Fase 13: o pedido desta pessoa que espera aprovação para esta TV (a mudança nova vai junto com ele).
   const [meuPedido, setMeuPedido] = useState('');
+  // O "Pôr na TV" desta pessoa vira pedido? (lib/aprovacao.js) Com um pedido dela esperando aqui, já se sabe que sim.
+  const vaiPedir = usePedeAprovacao() || !!meuPedido;
   const [tentativa, setTentativa] = useState(0);
 
   const [cfg, setCfg] = useState(null);
@@ -920,7 +923,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
               ) : conflito ? (
                 <span className="text-ink">Esta TV mudou em outro lugar: escolha acima o que fazer.</span>
               ) : dirty ? (
-                <><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden /><span className="text-ink">Rascunho · ainda não está na TV</span></>
+                <><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden /><span className="text-ink">{vaiPedir ? 'Rascunho · vai para o dono aprovar' : 'Rascunho · ainda não está na TV'}</span></>
               ) : (
                 <><Check size={15} className="shrink-0 text-emerald-500" />
                   <span className="text-ink-2">{meuPedido ? 'Esperando aprovação · a próxima mudança vai junto' : publishedAt ? (desfeito ? 'A TV voltou ao que estava' : 'Na TV desde ' + hora(publishedAt)) : 'No ar · nada novo para pôr'}</span></>
@@ -933,8 +936,9 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                     onClick={async () => { if (await confirmar({ titulo: 'Descartar o rascunho?', texto: 'A tela volta a ser o que está na TV agora.', botao: 'Descartar', perigo: true })) descartarRascunho(); }}>
                     Descartar
                   </Button>
+                  {/* Reteste 3: com a aprovação ligada, o toque do membro vira pedido; o botão diz isso antes. */}
                   <Button variant="primary" icon={Check} className="whitespace-nowrap" disabled={publishing || conflito} onClick={() => publish()}>
-                    {publishing ? 'Pondo na TV…' : 'Pôr na TV'}
+                    {publishing ? (vaiPedir ? 'Pedindo aprovação…' : 'Pondo na TV…') : (vaiPedir ? 'Pedir aprovação' : 'Pôr na TV')}
                   </Button>
                 </>
               ) : publishedAt && anterior.current ? (

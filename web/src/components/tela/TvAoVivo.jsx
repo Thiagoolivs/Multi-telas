@@ -3,6 +3,7 @@ import { Clock } from 'lucide-react';
 import '../../../../js/templates.js';
 import { paginaDaTv, configDaPrevia, tamanhoDaTv } from '../../lib/tvAoVivo.js';
 import { perfilAtual } from '../../lib/perfil.js';
+import { contagensDasPartes } from '../../lib/tela.js';
 import { cn } from '../../lib/cn.js';
 
 /*
@@ -31,7 +32,13 @@ const VERSAO = (() => {
   return String(Date.now());
 })();
 
-export function TvAoVivo({ cfg, estado, foco, alturaMaxima, leve = false, onParte, parteAtiva, className, rotulo }) {
+/*
+ * `contagem`: a linha "Meio: peça 2 de 6" embaixo da TV; a miniatura do
+ * cartão (sem espaço embaixo) passa false. `apagada` (a TV fora do ar) deixa
+ * só a imagem cinza — a linha de baixo e o `selo` ("Última imagem · …")
+ * continuam legíveis.
+ */
+export function TvAoVivo({ cfg, estado, foco, alturaMaxima, leve = false, onParte, parteAtiva, className, rotulo, contagem = true, apagada = false, selo = '' }) {
   const caixa = useRef(null);
   const quadro = useRef(null);
   const [largura, setLargura] = useState(0);
@@ -94,58 +101,61 @@ export function TvAoVivo({ cfg, estado, foco, alturaMaxima, leve = false, onPart
   const escala = largura ? Math.min(largura / W, maxAltura / H) : 0;
   const contou = (estado && estado.zonas) || {};
   const antigo = Object.values(contou).some((z) => z && z.antigo);
+  const contagens = contagensDasPartes(partes, layout, cfg, foco, contou);
 
   return (
     <div ref={caixa} className={cn('w-full', className)}>
       {escala > 0 && (
-        <div className="relative mx-auto overflow-hidden rounded-lg bg-[#05070d] shadow-md ring-1 ring-black/20"
-          style={{ width: W * escala, height: H * escala }} role="img" aria-label={rotulo || 'A TV, como ela está agora'}>
-          {visivel && (
-            <iframe ref={quadro} title={rotulo || 'A TV'} srcDoc={pagina} tabIndex={-1} aria-hidden="true"
-              onLoad={() => setPronto(true)}
-              style={{ position: 'absolute', left: 0, top: 0, width: W, height: H, border: 0, transform: 'scale(' + escala + ')',
-                transformOrigin: '0 0', pointerEvents: 'none', opacity: pronto ? 1 : 0, transition: 'opacity .3s' }} />
-          )}
-          {/* As partes da TV: o contorno aparece ao passar o mouse, e o toque escolhe a parte. */}
-          {onParte && partes.map((p) => (
-            <button key={p.id} type="button" onClick={() => onParte(p.id)} aria-label={'Escolher esta parte da TV'}
-              className={cn('absolute rounded-md outline-none transition focus-visible:ring-2 focus-visible:ring-accent',
-                parteAtiva === p.id ? 'ring-2 ring-accent ring-offset-0' : 'hover:ring-2 hover:ring-white/80')}
-              style={{ left: p.x * escala, top: p.y * escala, width: p.w * escala, height: p.h * escala }} />
-          ))}
-          {/* Quantas peças giram na parte, como "2 de 6". */}
-          {partes.map((p) => {
-            const f = foco && foco.zona === p.id ? foco : null;
-            const z = contou[p.id];
-            const total = f ? ((cfg.zonas[p.id] || {}).items || []).length : z && z.total;
-            const posicao = f ? f.indice + 1 : z && z.posicao;
-            return total > 1 ? (
-              <span key={'n' + p.id} className="tnum pointer-events-none absolute rounded bg-black/65 px-1.5 text-2xs font-medium text-white"
-                style={{ left: (p.x + p.w) * escala - 6, top: (p.y + p.h) * escala - 6, transform: 'translate(-100%, -100%)' }}>
-                {posicao} de {total}
-              </span>
-            ) : null;
-          })}
-          {estado && estado.foraDoHorario && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black text-white">
-              {estado.foraDoHorario === 'relogio' && <Clock size={28} className="opacity-70" />}
-              <span className="text-xs opacity-80">
-                {estado.foraDoHorario === 'relogio' ? 'Fora do horário: a TV mostra só o relógio' : 'Fora do horário: a TV está apagada'}
-              </span>
-            </div>
-          )}
-          {antigo && (
-            <div className="absolute inset-x-0 bottom-0 bg-black/75 px-3 py-1.5 text-center text-xs text-white">
-              A TV está com uma programação antiga. Toque em “Recarregar a TV”.
-            </div>
-          )}
-          {falhou && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4 text-center text-xs text-white">
-              Não deu para desenhar a TV aqui. Ela continua mostrando o que você pôs.
-            </div>
-          )}
+        <div className="relative mx-auto" style={{ width: W * escala }}>
+          <div className={cn('relative overflow-hidden rounded-lg bg-[#05070d] shadow-md ring-1 ring-black/20', apagada && 'opacity-50 grayscale')}
+            style={{ width: W * escala, height: H * escala }} role="img" aria-label={rotulo || 'A TV, como ela está agora'}>
+            {visivel && (
+              <iframe ref={quadro} title={rotulo || 'A TV'} srcDoc={pagina} tabIndex={-1} aria-hidden="true"
+                onLoad={() => setPronto(true)}
+                style={{ position: 'absolute', left: 0, top: 0, width: W, height: H, border: 0, transform: 'scale(' + escala + ')',
+                  transformOrigin: '0 0', pointerEvents: 'none', opacity: pronto ? 1 : 0, transition: 'opacity .3s' }} />
+            )}
+            {/* As partes da TV: o contorno aparece ao passar o mouse, e o toque escolhe a parte. */}
+            {onParte && partes.map((p) => (
+              <button key={p.id} type="button" onClick={() => onParte(p.id)} aria-label={'Escolher esta parte da TV'}
+                className={cn('absolute rounded-md outline-none transition focus-visible:ring-2 focus-visible:ring-accent',
+                  parteAtiva === p.id ? 'ring-2 ring-accent ring-offset-0' : 'hover:ring-2 hover:ring-white/80')}
+                style={{ left: p.x * escala, top: p.y * escala, width: p.w * escala, height: p.h * escala }} />
+            ))}
+            {estado && estado.foraDoHorario && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black text-white">
+                {estado.foraDoHorario === 'relogio' && <Clock size={28} className="opacity-70" />}
+                <span className="text-xs opacity-80">
+                  {estado.foraDoHorario === 'relogio' ? 'Fora do horário: a TV mostra só o relógio' : 'Fora do horário: a TV está apagada'}
+                </span>
+              </div>
+            )}
+            {antigo && (
+              <div className="absolute inset-x-0 bottom-0 bg-black/75 px-3 py-1.5 text-center text-xs text-white">
+                A TV está com uma programação antiga. Toque em “Recarregar a TV”.
+              </div>
+            )}
+            {falhou && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4 text-center text-xs text-white">
+                Não deu para desenhar a TV aqui. Ela continua mostrando o que você pôs.
+              </div>
+            )}
+          </div>
+          {/* De quando é a imagem (MiniaturaDaTela): fora do cinza da TV apagada, para ler sempre. */}
+          {selo && <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">{selo}</span>}
         </div>
+      )}
+      {/*
+        Quantas peças giram em cada parte ("Meio: peça 2 de 6"), EMBAIXO da
+        TV (reteste 3): os selos ficavam por cima da imagem, em toda prévia,
+        e cobriam justo o canto da peça. Fora dela, com o nome da parte.
+      */}
+      {escala > 0 && contagem && contagens.length > 0 && (
+        <p className="tnum mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-center text-2xs text-ink-3">
+          {contagens.map((c) => <span key={c.id}>{c.nome}: peça {c.posicao} de {c.total}</span>)}
+        </p>
       )}
     </div>
   );
 }
+

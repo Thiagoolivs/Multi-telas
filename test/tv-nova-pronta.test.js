@@ -45,8 +45,10 @@ test('telaParaComecar: só a da frente da conta, na orientação da TV; sem ela,
   assert.equal(T.tvEmPe({ info: null }), null);
   assert.equal(T.tvEmPe(undefined), null);
   assert.equal(T.telaParaComecar({ telas: [], modelos: new Map() }, {}, 'saude', null), null);
+  // Reteste 3: o "WhatsApp ou site" de Onde fica vem junto (contato), o outro endereço que pode ir no QR.
   assert.deepEqual(T.marcaDaConta({ empresa: 'Padaria Sol', kit: { nome: 'Marca principal', site: 'sol.com.br', local: { endereco: 'Rua A, 1', bairro: 'Centro' } } }),
-    { cores: [], fonteTitulo: '', fonteApoio: '', clima: '', nome: 'Padaria Sol', site: 'sol.com.br', endereco: 'Rua A, 1 · Centro', ramo: '' });
+    { cores: [], fonteTitulo: '', fonteApoio: '', clima: '', nome: 'Padaria Sol', site: 'sol.com.br', endereco: 'Rua A, 1 · Centro', contato: '', ramo: '' });
+  assert.equal(T.marcaDaConta({ kit: { local: { link: 'wa.me/5511999990000' } } }).contato, 'wa.me/5511999990000');
 });
 
 test('o diálogo de parear põe a tela pronta quando a TV não tem conteúdo, e conta qual', () => {

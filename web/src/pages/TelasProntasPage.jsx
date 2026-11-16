@@ -7,12 +7,12 @@ import { EmptyState } from '../components/ui/Feedback.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { Palco } from '../components/content/VerTelaAgora.jsx';
 import { MARCAS_DO_RAMO } from '../lib/modelosOuro.js';
-import { gravarEmLote, avisarComDesfazer } from '../lib/rodar.js';
+import { enviarOperacao, avisarComDesfazer } from '../lib/rodar.js';
 import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 import {
-  montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe, tvEmPe, ordemDasTelas,
+  montarTela, estadoDaPrevia, medirZonas, perfilDaTela, emPe, tvEmPe, ordemDasTelas,
 } from '../lib/telasProntas.js';
 
 // O editor da peça só quando se edita (reteste 2): o Prontos usa esta página e não precisa dele para mostrar a grade.
@@ -91,9 +91,13 @@ export function PersonalizarTela({ inicial, dados, tvs, telaAlvo, onVoltar, volt
   async function enviar() {
     setEnviando(true);
     try {
-      // D26: todas as TVs de uma vez (tudo ou nada), com Desfazer.
-      const r = await gravarEmLote(alvos.map((id) => tvs.find((d) => d.id === id) || { id, name: 'Tela' }),
-        (cfg) => aplicarTelaPronta(cfg, escolhida), 'Tela pronta: ' + escolhida.nome);
+      /*
+       * D26: todas as TVs de uma vez (tudo ou nada), com Desfazer. O servidor
+       * põe a tela em cada TV (js/lote-tv.js, aplicarTelaPronta; teste de
+       * carga, 16/11): vai a tela uma vez só, e não a programação de cada TV.
+       */
+      const tela = { id: escolhida.id, nome: escolhida.nome, layout: escolhida.layout, grupos: escolhida.grupos, mensagens: escolhida.mensagens };
+      const r = await enviarOperacao({ tipo: 'tela-pronta', tela }, alvos.map((tv) => ({ id: tv })));
       avisarComDesfazer('“' + escolhida.nome + '” na TV: ' + alvos.length + (alvos.length === 1 ? ' tela.' : ' telas.'), r.lote);
       setPorNaTv(false);
     } catch (e) { aviso.erro('tela-pronta', e.message || 'Não deu para pôr na TV.'); }

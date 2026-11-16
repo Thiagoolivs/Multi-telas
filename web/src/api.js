@@ -137,6 +137,8 @@ export const aprovacoes = {
   listar: () => api('GET', '/api/aprovacoes'),
   contagem: () => api('GET', '/api/aprovacoes/contagem'),
   ver: (id) => api('GET', '/api/aprovacoes/' + encodeURIComponent(id)),
+  // O antes e o depois de uma TV de um pedido grande (o pedido vem só com a lista; teste de carga, 16/11).
+  tela: (id, telaId) => api('GET', '/api/aprovacoes/' + encodeURIComponent(id) + '/telas/' + encodeURIComponent(telaId)).then((r) => (r && r.tela) || null),
   aprovar: (id, porCima) => api('POST', '/api/aprovacoes/' + encodeURIComponent(id) + '/aprovar' + (porCima ? '?porCima=1' : '')),
   recusar: (id, motivo) => api('POST', '/api/aprovacoes/' + encodeURIComponent(id) + '/recusar', { motivo }),
   desistir: (id) => api('DELETE', '/api/aprovacoes/' + encodeURIComponent(id)),
@@ -189,8 +191,13 @@ export const deviceConfig = {
     const r = await api('GET', '/api/devices/' + id + '/config', undefined, { comCabecalhos: true });
     return { config: r.data, versao: Number(r.headers.get('X-Config-Versao')) || 0, meuPedido: r.headers.get('X-Meu-Pedido') || '' };
   },
-  // A programação de todas as TVs da conta num pedido só: { [id]: { config, versao } } (a Programação, reteste da fase 10).
-  todas: () => api('GET', '/api/devices/configs').then((r) => (r && r.configs) || {}),
+  /*
+   * A programação de todas as TVs da conta num pedido só (a Programação,
+   * reteste da fase 10) — se forem até `ate` (teste de carga, 16/11: a conta
+   * de 323 TVs eram ~31 MB). { configs: { [id]: { config, versao } }, grande }:
+   * `grande`, a conta passou de `ate` e cada cartão pede a sua (doPainel).
+   */
+  todas: (ate) => api('GET', '/api/devices/configs' + (ate ? '?ate=' + ate : '')).then((r) => ({ configs: (r && r.configs) || {}, grande: !!(r && r.grande) })),
   /*
    * A programação de UMA TV como o painel desenha (a miniatura, o "Ver
    * agora"), juntada com as outras pedidas no mesmo instante: 25 TVs, um
@@ -298,6 +305,20 @@ async function rodar(rota, payload, tipo, onEtapa, sinal) {
 // O envio em lote (D26): a mesma mudança em várias TVs, gravada pelo servidor de uma vez, e o desfazer.
 export const lote = {
   enviar: (itens, descricao) => api('POST', '/api/lote', { itens, descricao }),
+  /*
+   * O aviso rápido para muitas TVs (teste de carga, 16/11): "este aviso nestas
+   * TVs", e o servidor põe em cada uma — um pedido de poucos KB, em vez de ler
+   * a programação de cada TV e mandar todas de volta (~96 KB por TV de RH).
+   * `hoje`: o dia de quem manda (a data do aviso começa nele).
+   */
+  aviso: (telas, item, aviso, hoje) => api('POST', '/api/lote/aviso', { telas, item, aviso, hoje }),
+  /*
+   * A campanha, a peça pronta e a publicação para muitas TVs (o mesmo
+   * desenho do aviso): { operacao: { tipo, ... }, telas: [id | { id, entrada }],
+   * hoje, simular }. `simular`: só o que aconteceria em cada TV (o plano da
+   * campanha), sem gravar.
+   */
+  operacao: (corpo) => api('POST', '/api/lote/operacao', corpo),
   desfazer: (id) => api('POST', '/api/lote/' + encodeURIComponent(id) + '/desfazer'),
   // Os últimos envios da conta (o servidor guarda 30 dias), para desfazer depois que o aviso some.
   listar: () => api('GET', '/api/lote'),
@@ -780,6 +801,35 @@ let leituraJunta = null;
  * e pela loja de quem pede.
  */
 let configJunta = null;
+/*
+ * De 25 em 25, e no máximo 2 pedidos no ar (teste de carga, 16/11). Na conta
+ * de RH a programação de cada TV tem ~96 KB: 100 de uma vez eram ~10 MB numa
+ * resposta e ~170 ms de servidor travado. A lista de Telas não traz mais a
+ * programação da conta grande, e as miniaturas que aparecem na tela pedem a
+ * delas por aqui: quem rola as 300 TVs depressa forma uma fila curta, em vez
+ * de 12 pedidos pesados de uma vez.
+ */
+const CONFIGS_POR_PEDIDO = 25;
+const CONFIGS_NO_AR = 2;
+const filaDeConfigs = [];
+let configsNoAr = 0;
+function andarFilaDeConfigs() {
+  while (configsNoAr < CONFIGS_NO_AR && filaDeConfigs.length) {
+    const { ids, atual } = filaDeConfigs.shift();
+    configsNoAr++;
+    api('GET', '/api/devices/configs?ids=' + ids.map(encodeURIComponent).join(','))
+      .then((r) => {
+        const configs = (r && r.configs) || {};
+        for (const k of ids) {
+          const fila = atual.pedidos.get(k);
+          if (configs[k]) fila.forEach((f) => f.ok(configs[k].config || null));
+          else { const e = new Error('sem permissão'); e.status = 403; fila.forEach((f) => f.falha(e)); }
+        }
+      })
+      .catch((e) => { for (const k of ids) atual.pedidos.get(k).forEach((f) => f.falha(e)); })
+      .finally(() => { configsNoAr--; andarFilaDeConfigs(); });
+  }
+}
 function lerConfigEmLote(id) {
   if (!configJunta) {
     const atual = { pedidos: new Map() };
@@ -787,19 +837,8 @@ function lerConfigEmLote(id) {
     setTimeout(() => {
       configJunta = null;
       const todos = [...atual.pedidos.keys()];
-      for (let i = 0; i < todos.length; i += 100) {
-        const ids = todos.slice(i, i + 100);
-        api('GET', '/api/devices/configs?ids=' + ids.map(encodeURIComponent).join(','))
-          .then((r) => {
-            const configs = (r && r.configs) || {};
-            for (const k of ids) {
-              const fila = atual.pedidos.get(k);
-              if (configs[k]) fila.forEach((f) => f.ok(configs[k].config || null));
-              else { const e = new Error('sem permissão'); e.status = 403; fila.forEach((f) => f.falha(e)); }
-            }
-          })
-          .catch((e) => { for (const k of ids) atual.pedidos.get(k).forEach((f) => f.falha(e)); });
-      }
+      for (let i = 0; i < todos.length; i += CONFIGS_POR_PEDIDO) filaDeConfigs.push({ ids: todos.slice(i, i + CONFIGS_POR_PEDIDO), atual });
+      andarFilaDeConfigs();
     }, 30);
   }
   return new Promise((ok, falha) => {

@@ -35,7 +35,9 @@ test('a porta guarda os elementos escondidos (só campos de texto/QR que a peça
 test('o desenhista esconde o elemento e o enfeite que só existe por causa dele, igual na TV e no painel', () => {
   const r = ler('js/peca-render.js');
   assert.match(r, /'\.mt-peca \[data-oculto\]\{display:none!important\}'/);
-  assert.match(r, /\(it\.ocultos \|\| \[\]\)\.forEach\(\(n\) => \{\s*sombra\.querySelectorAll\('\[data-campo="' \+ n \+ '"\],\[data-campo-qr="' \+ n \+ '"\]'\)\.forEach\(\(el\) => esconder\(el, peca\)\);/);
+  assert.match(r, /\(it\.ocultos \|\| \[\]\)\.forEach\(\(n\) => \{\s*sombra\.querySelectorAll\('\[data-campo="' \+ n \+ '"\]'\)\.forEach\(\(el\) => esconder\(el, peca\)\);/);
+  // O QR escondido leva junto o que aponta para ele, como o QR sem link (reteste 3).
+  assert.match(r, /sombra\.querySelectorAll\('img\[data-campo-qr="' \+ n \+ '"\]'\)\.forEach\(\(el\) => qrSemLink\(sombra, peca, el\)\);/);
   // O traço antes da chamada ("— FUNCIONAMENTO") é um <i aria-hidden> irmão: sobe para o pai que só tem o elemento e enfeites.
   assert.match(r, /const so = Array\.prototype\.every\.call\(pai\.children, \(c\) => c === alvo \|\| c\.getAttribute\('aria-hidden'\) === 'true'\);/);
   // A TV antiga não conhece spread de objeto: os arquivos que ela carrega não usam.

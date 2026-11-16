@@ -80,8 +80,10 @@ export function TeamPage({ me, onLeft, abrirConvite }) {
   }
 
   function papel(m) {
+    // Reteste 3: o select não tinha nome (axe, crítico); o leitor de tela dizia só "Membro", sem de quem.
     return isOwner && !m.isMe ? (
-      <Select value={m.role} disabled={busyId === m.id} onChange={(e) => changeRole(m, e.target.value)} className="h-8 w-32">
+      <Select value={m.role} disabled={busyId === m.id} onChange={(e) => changeRole(m, e.target.value)} className="h-8 w-32"
+        aria-label={'Papel de ' + (m.name || m.email)}>
         <option value="owner">Dono</option>
         <option value="admin">Admin</option>
         <option value="member">Membro</option>
@@ -121,7 +123,7 @@ export function TeamPage({ me, onLeft, abrirConvite }) {
         {loading && <SkeletonRows rows={3} cols={3} />}
         {error && <ErrorState description="Não foi possível carregar a equipe." onRetry={reload} />}
         {!loading && !error && members.length > 0 && (
-          <Table>
+          <Table rotulo="Membros">
             <THead>
               <TH>Pessoa</TH>
               <TH className={SO_LARGA}>Papel</TH>
@@ -160,7 +162,7 @@ export function TeamPage({ me, onLeft, abrirConvite }) {
       {canManage && invites.length > 0 && (
         <Panel className="mt-4">
           <PanelHeader title="Convites pendentes" description={`${invites.length} aguardando`} />
-          <Table>
+          <Table rotulo="Convites pendentes">
             <THead>
               <TH>E-mail</TH>
               <TH className={SO_LARGA}>Papel</TH>

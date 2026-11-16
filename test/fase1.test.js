@@ -35,7 +35,8 @@ test('o "Adicionar" por frente: sem os tipos que saíram, o raro em "Avançado"'
     for (const fica of ['announce', 'image', 'video', 'qrcode', 'social', 'mural', 'weatherpro', 'birthdayauto', 'kpi']) assert.ok(T.catalogoDaFrente(f).principais.includes(fica), f + ' perdeu ' + fica);
   }
   assert.ok(todos('comercio').includes('promo') && todos('comercio').includes('precos') && !todos('comercio').includes('quiz'));
-  assert.ok(todos('saude').includes('promo') && !todos('saude').includes('quiz'));
+  // Reteste 3: a Saúde não anuncia preço nem oferta (CFM/CFO): sem Promoção e sem Tabela de preços no "Adicionar".
+  assert.ok(!todos('saude').includes('promo') && !todos('saude').includes('precos') && !todos('saude').includes('quiz'));
   assert.ok(todos('empresa').includes('quiz') && !todos('empresa').includes('promo') && !todos('empresa').includes('precos'));
   // O tipo que saiu continua existindo: a TV que usa segue mostrando e o editor segue abrindo.
   for (const t of ['text', 'poster', 'quote', 'web', 'screen']) assert.ok(T.CONTENT_TYPES[t], t + ' sumiu do editor');

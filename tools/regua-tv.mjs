@@ -38,8 +38,8 @@ const { getLayout } = createRequire(import.meta.url)('../js/templates.js');
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PISO = 4.5; // % do lado menor da TV, no balcão (4 m)
 const CONTRASTE = 4.5; // texto contra o que está atrás dele (REFERENCIAS, contraste)
-// Fase 3: a letra mínima depende de onde a TV fica, e a frente dá o padrão (js/player.js, LOCAIS).
-const PISO_DA_FRENTE = { comercio: 4.5, saude: 3.5, empresa: 3 };
+// Fase 3: a letra mínima vem de onde a TV fica, e a frente dá o padrão (js/player.js, LOCAIS). Reteste 3: 4,5% em toda frente (eram 3,5% na Saúde e 3% na Empresas).
+const PISO_DA_FRENTE = { comercio: 4.5, saude: 4.5, empresa: 4.5 };
 // REGUA_PORTA: a porta do servidor de teste (a máquina que só pode usar uma porta escolhe qual).
 const PORTA = Number(process.env.REGUA_PORTA) || 7700 + Math.floor(Math.random() * 200);
 const BASE = 'http://127.0.0.1:' + PORTA;

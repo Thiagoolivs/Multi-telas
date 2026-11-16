@@ -22,7 +22,7 @@ import { MiniaturaDaTela } from '../components/tela/MiniaturaDaTela.jsx';
 import { esquecerParear } from '../lib/parearPendente.js';
 import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
-import { CamposDoHorario } from '../components/tela/HorarioDaTela.jsx';
+import { CamposDoHorario, horarioParaEditar } from '../components/tela/HorarioDaTela.jsx';
 import { EnderecoDaTv } from '../components/tela/EnderecoDaTv.jsx';
 import '../../../js/aparelho.js';
 import { usePerfil, perfilAtual } from '../lib/perfil.js';
@@ -227,9 +227,16 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
       </div>
       <div className="space-y-2.5 p-3">
         <div className="min-w-0">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-base font-semibold text-ink">{d.name || 'Tela sem nome'}</span>
-            {d.grupo && <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-xs text-ink-3">{d.grupo}</span>}
+          {/*
+            Reteste 3: com o selo do grupo `shrink-0` ao lado, "TV 23 · Corredor"
+            virava "TV 2…" — e com 25 TVs o cartão não dizia qual era. O nome
+            nunca corta (quebra a linha se for comprido); o grupo desce para a
+            linha de baixo quando não cabe, e só ele corta, com o nome inteiro
+            no title.
+          */}
+          <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+            <span className="min-w-0 break-words text-base font-semibold text-ink">{d.name || 'Tela sem nome'}</span>
+            {d.grupo && <span className="max-w-full truncate rounded-full bg-surface-2 px-2 py-0.5 text-xs text-ink-3" title={'Grupo ' + d.grupo}>{d.grupo}</span>}
           </div>
           <div className="truncate text-xs text-ink-3">
             {recarregando === 'ok' ? 'Recarregando a TV…' : recarregando === 'reiniciando' ? 'Reiniciando o app da TV (até 1 minuto)…'
@@ -588,7 +595,7 @@ function ExpedienteDialog({ target, onClose, onDone }) {
   const [error, setError] = useState('');
   React.useEffect(() => {
     setError('');
-    setExp(target ? { alerta: true, dias: [1, 2, 3, 4, 5, 6], inicio: '07:00', fim: '22:00', foraDoHorario: 'ligada', ...(target.expediente || {}) } : null);
+    setExp(target ? horarioParaEditar(target) : null);
   }, [target]);
   if (!exp) return null;
 

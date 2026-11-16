@@ -51,7 +51,14 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 5.8cqw)/.95 var(--mt-fonte-titulo); tex
   .marca-nome { left: 7cqw; top: 3.6cqh; font-size: max(var(--mt-piso, 0cqw), 2.2cqw); letter-spacing: .24em; }
   .cabeca { right: 7cqw; top: 8.2cqh; }
   h1 { font-size: max(var(--mt-piso, 0cqw), 10cqw); }
-  .nota { font-size: max(var(--mt-piso, 0cqw), 2cqw); }
+  /*
+   * Reteste 3 (14/11): na TV em pé de verdade a zona tem 1038×1878 (a fresta
+   * do palco), 4% mais estreita para a letra do balcão do que o 1080×1920 da
+   * bancada: a nota em caixa alta e espaçada quebrava em duas linhas e
+   * descia por cima da primeira categoria (a letra cedia a 97%). O espaçado
+   * sai e ela volta a uma linha.
+   */
+  .nota { font-size: max(var(--mt-piso, 0cqw), 2cqw); letter-spacing: .02em; }
   .grupos { left: 7cqw; right: 7cqw; top: 18.6cqh; bottom: 3cqh; grid-template-columns: 1fr; grid-auto-rows: min-content; row-gap: 1cqh; }
   .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 4.2cqw); padding: .8cqw 2.2cqw .7cqw; }
   .grupo ul { margin-top: .6cqw; }

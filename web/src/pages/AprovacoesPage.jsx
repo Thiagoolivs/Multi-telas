@@ -11,6 +11,7 @@ import { relativeTime } from '../lib/format.js';
 import { itemSummary } from '../lib/contentTypes.js';
 import { precisaDeNomes } from '../lib/nomesDasMidias.js';
 import { useNomesDasMidias } from '../lib/useNomesDasMidias.js';
+import { usePerto } from '../lib/usePerto.js';
 import { aviso } from '../lib/avisos.js';
 import { perguntar, confirmar } from '../lib/confirmar.js';
 import { aprovacoes } from '../api.js';
@@ -145,7 +146,8 @@ function Detalhe({ id, onFechar, onDecidido }) {
   const { data, loading, error, reload } = useAsync(() => aprovacoes.ver(id), [id]);
   const [ocupado, setOcupado] = useState(false);
   const [conflito, setConflito] = useState('');
-  const nomesDasMidias = useNomesDasMidias(((data && data.telas) || []).some((t) => precisaDeNomes(t.antes) || precisaDeNomes(t.depois)));
+  // O pedido grande vem sem o antes e o depois (cada TV pede o dela): os nomes das Mídias vêm de uma vez, por garantia.
+  const nomesDasMidias = useNomesDasMidias(((data && data.telas) || []).some((t) => t.sobDemanda || precisaDeNomes(t.antes) || precisaDeNomes(t.depois)));
 
   async function aprovar(porCima) {
     if (porCima && !(await confirmar({
@@ -187,21 +189,9 @@ function Detalhe({ id, onFechar, onDecidido }) {
   const mudou = telas.some((t) => t.mudouDepois);
   return (
     <div className="mt-3 space-y-4">
-      {telas.map((t) => (
-        <section key={t.id} aria-label={'TV ' + t.nome}>
-          <h3 className="text-sm font-semibold text-ink">{t.nome}{t.grupo ? <span className="font-normal text-ink-3"> · {t.grupo}</span> : null}</h3>
-          {!t.existe && <p className="mt-1 text-sm text-danger">Esta TV saiu da conta.</p>}
-          {t.mudouDepois && (
-            <p className="mt-1 flex items-start gap-1.5 text-sm text-warn"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />Esta TV mudou depois do pedido.</p>
-          )}
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:gap-4">
-            {t.antes ? <ATv cfg={t.antes} rotulo="Antes (agora na TV)" /> : <SemPrevia rotulo="Antes (agora na TV)" texto="A TV ainda não tinha nada." />}
-            {t.depois ? <ATv cfg={t.depois} rotulo="Depois (se aprovar)" /> : <SemPrevia rotulo="Depois (se aprovar)" texto="Sem prévia." />}
-            <ListaDoQuePassa nomes={oQuePassa(t.antes, nomesDasMidias)} />
-            <ListaDoQuePassa nomes={oQuePassa(t.depois, nomesDasMidias)} antes={oQuePassa(t.antes, nomesDasMidias)} />
-          </div>
-        </section>
-      ))}
+      {telas.map((t) => (t.sobDemanda
+        ? <TelaSobDemanda key={t.id} pedidoId={id} t={t} nomesDasMidias={nomesDasMidias} />
+        : <TelaDoPedido key={t.id} t={t} nomesDasMidias={nomesDasMidias} />))}
       {conflito && <p role="alert" className="rounded-md border border-warn-soft bg-warn-soft px-3 py-2 text-sm text-ink">{conflito}</p>}
       <div className="flex flex-wrap items-center gap-2">
         {conflito || mudou
@@ -212,6 +202,49 @@ function Detalhe({ id, onFechar, onDecidido }) {
       </div>
     </div>
   );
+}
+
+/* Uma TV do pedido: o antes e o depois, com o que passa em cada um. `carregando`: o antes e o depois ainda vêm. */
+function TelaDoPedido({ t, nomesDasMidias, refDaSecao, carregando, falhou }) {
+  return (
+    <section ref={refDaSecao} aria-label={'TV ' + t.nome}>
+      <h3 className="text-sm font-semibold text-ink">{t.nome}{t.grupo ? <span className="font-normal text-ink-3"> · {t.grupo}</span> : null}</h3>
+      {!t.existe && <p className="mt-1 text-sm text-danger">Esta TV saiu da conta.</p>}
+      {t.mudouDepois && (
+        <p className="mt-1 flex items-start gap-1.5 text-sm text-warn"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />Esta TV mudou depois do pedido.</p>
+      )}
+      {carregando || falhou ? (
+        <div className="mt-2 flex h-32 items-center justify-center rounded-lg border border-dashed border-line text-sm text-ink-3">
+          {falhou ? 'Não deu para abrir o antes e o depois desta TV.' : <Spinner size={16} />}
+        </div>
+      ) : (
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:gap-4">
+          {t.antes ? <ATv cfg={t.antes} rotulo="Antes (agora na TV)" /> : <SemPrevia rotulo="Antes (agora na TV)" texto="A TV ainda não tinha nada." />}
+          {t.depois ? <ATv cfg={t.depois} rotulo="Depois (se aprovar)" /> : <SemPrevia rotulo="Depois (se aprovar)" texto="Sem prévia." />}
+          <ListaDoQuePassa nomes={oQuePassa(t.antes, nomesDasMidias)} />
+          <ListaDoQuePassa nomes={oQuePassa(t.depois, nomesDasMidias)} antes={oQuePassa(t.antes, nomesDasMidias)} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+/*
+ * O PEDIDO GRANDE, TV POR TV (teste de carga, 16/11): o pedido para 200 TVs
+ * trazia o antes e o depois de todas (36 MB). Agora vem a lista, e cada TV
+ * pede o antes e o depois dela quando aparece na tela.
+ */
+function TelaSobDemanda({ pedidoId, t, nomesDasMidias }) {
+  const [ref, perto] = usePerto(true);
+  const [lida, setLida] = useState(null);
+  const [falhou, setFalhou] = useState(false);
+  useEffect(() => {
+    if (!perto) return undefined;
+    let vivo = true;
+    aprovacoes.tela(pedidoId, t.id).then((x) => { if (vivo) setLida(x); }, () => { if (vivo) setFalhou(true); });
+    return () => { vivo = false; };
+  }, [perto, pedidoId, t.id]);
+  return <TelaDoPedido t={lida ? { ...t, ...lida } : t} nomesDasMidias={nomesDasMidias} refDaSecao={ref} carregando={!lida && !falhou} falhou={falhou} />;
 }
 
 function ListaDoQuePassa({ nomes, antes }) {

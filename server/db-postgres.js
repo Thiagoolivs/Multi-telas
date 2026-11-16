@@ -1004,16 +1004,30 @@ const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: 
 
 /* ---------------- Envio em lote (D26) ---------------- */
 const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
-const mapLote = (r, comAntes) => (r ? {
+/*
+ * `telas` guarda a lista das TVs do envio; desde o teste de carga (16/11), o
+ * "antes" de cada TV pode vir em PARTES — as zonas e o resto, cada pedaço
+ * guardado uma vez para o envio inteiro ({ telas, partes }): as 300 TVs de
+ * uma conta de RH têm as mesmas peças, e o antes inteiro de cada uma eram
+ * ~29 MB numa linha (ver server/routes/telas.js, aplicarLote). A lista
+ * (`comAntes` falso) sai sem nenhum dos dois.
+ */
+const mapLote = (r, comAntes) => (r ? Object.assign({
   id: r.id, descricao: r.descricao || '', createdAt: Number(r.created_at), desfeitoEm: r.desfeito_em ? Number(r.desfeito_em) : null,
-  telas: (() => { try { const t = JSON.parse(r.telas || '[]'); return comAntes ? t : t.map(({ antes, ...x }) => x); } catch (e) { return []; } })(), // eslint-disable-line no-unused-vars
-} : null);
+}, telasDoLote(r.telas, comAntes)) : null);
+function telasDoLote(txt, comAntes) {
+  let t;
+  try { t = JSON.parse(txt || '[]'); } catch (e) { return { telas: [] }; }
+  const telas = Array.isArray(t) ? t : (t && Array.isArray(t.telas) ? t.telas : []);
+  if (comAntes) return Object.assign({ telas }, !Array.isArray(t) && t && t.partes ? { partes: t.partes } : {});
+  return { telas: telas.map(({ antes, antesPartes, ...x }) => x) }; // eslint-disable-line no-unused-vars
+}
 async function salvarLote(tenantId, lote) {
   const id = 'lot_' + rid(12);
   const agora = Date.now();
   await pool.query('DELETE FROM lotes WHERE tenant_id = $1 AND created_at < $2', [tenantId, agora - TRINTA_DIAS]);
   await pool.query('INSERT INTO lotes (id, tenant_id, descricao, telas, created_at, desfeito_em) VALUES ($1,$2,$3,$4,$5,NULL)',
-    [id, tenantId, String(lote.descricao || '').slice(0, 120), JSON.stringify(lote.telas || []), agora]);
+    [id, tenantId, String(lote.descricao || '').slice(0, 120), JSON.stringify(lote.partes ? { telas: lote.telas || [], partes: lote.partes } : (lote.telas || [])), agora]);
   return id;
 }
 async function loteDaConta(id, tenantId) {

@@ -463,6 +463,46 @@ function podeParear(tenant, telasEmUso, agora) {
 }
 
 /*
+ * A TV QUE NÃO ENTROU NA CONTA DIZ POR QUÊ (reteste 3, item 7). O 402 do
+ * pareamento ia só para o painel; a TV ficava no código, sem explicação, e
+ * quem estava na frente dela (quase sempre quem instala, não quem paga)
+ * achava que o código não pegou e tentava de novo. Agora a TV recebe o
+ * motivo pelo tempo real e diz, na própria tela do código, o que falta e
+ * onde se resolve. O código continua na tela: resolvido o plano, é só
+ * digitar o mesmo de novo.
+ *
+ * Devolve { titulo, texto } (o que a TV mostra), ou null se pode parear.
+ * `opcoes.reconectar`: há TV parada na conta que pode ser esta (o painel
+ * oferece o Reconectar).
+ */
+const ONDE_SE_RESOLVE = 'no painel do MultiTelas (app.multitelas.net.br), em Plano';
+function recusaNaTv(veredito, tenant, opcoes) {
+  if (!veredito || veredito.ok) return null;
+  const o = opcoes || {};
+  const depois = ' Depois, é só digitar este código de novo.';
+  if (veredito.motivo === 'atraso') {
+    return { titulo: 'Esta TV ainda não entrou na conta', texto: 'Há uma fatura em atraso. As TVs que já estão na conta continuam no ar; para ligar uma nova, o dono da conta regulariza o pagamento ' + ONDE_SE_RESOLVE + '.' + depois };
+  }
+  if (veredito.motivo === 'teste_vencido') {
+    return { titulo: 'O teste grátis desta conta terminou', texto: 'Para ligar esta TV, o dono da conta escolhe um plano ' + ONDE_SE_RESOLVE + '.' + depois };
+  }
+  const limite = Math.max(1, Number(veredito.limite) || 1);
+  const tvs = limite + (limite === 1 ? ' TV' : ' TVs');
+  const gratis = !isPaid((tenant && tenant.plan) || 'free');
+  const reconectar = o.reconectar ? ' Se esta TV já era da conta e voltou com um código, use Reconectar no painel: ela volta sem ocupar outra vaga.' : '';
+  if (gratis) {
+    return {
+      titulo: 'O plano grátis tem ' + tvs,
+      texto: 'Esta conta já está usando ' + (limite === 1 ? 'a TV do plano grátis' : 'as ' + tvs + ' do plano grátis') + '. Para ligar mais TVs, o dono da conta escolhe um plano ' + ONDE_SE_RESOLVE + '.' + depois + reconectar,
+    };
+  }
+  return {
+    titulo: 'O plano desta conta tem ' + tvs,
+    texto: (limite === 1 ? 'Ela já está em uso.' : 'Todas já estão em uso.') + ' Para ligar esta, o dono da conta aumenta o plano ' + ONDE_SE_RESOLVE + ', ou remove uma TV que não usa mais.' + depois + reconectar,
+  };
+}
+
+/*
  * O selo no canto da TV — o TEXTO dele, ou '' sem selo.
  *
  * Teste acabado sem assinatura: "MultiTelas · versão gratuita". Decisão do
@@ -555,7 +595,7 @@ module.exports = {
   PLANS, ORDER, CONTRATOS, FAIXAS_ANUAL, PISO_NEGOCIADO_CENTS, TELAS_NEGOCIADAS, MESES_DO_CONTRATO, MULTA, assinavel,
   PRECO_DA_FRENTE_CENTS, FRENTE_PADRAO, FRENTES, frenteDe, precoMensalCents, planoDaFrente, pisoNegociadoCents, apartirDeCents,
   TETO_IA, CRIACOES_DO_TESTE, ATRASO, SELO,
-  DIAS_DE_TESTE, fimDoTeste, diasDeTesteRestantes, testeAtivo, podeParear,
+  DIAS_DE_TESTE, fimDoTeste, diasDeTesteRestantes, testeAtivo, podeParear, recusaNaTv,
   CARENCIA_ATRASO_DIAS, situacaoAtraso, bloqueioPorAtraso, textoDoSelo, exibeSelo,
   CANCELANDO, cancelamentoVenceu, PAUSA, telasNoAr,
   plan, catalog, faixasAnual, contratoDe, screenLimit, isPaid, temRecurso,

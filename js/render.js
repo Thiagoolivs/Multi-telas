@@ -911,6 +911,16 @@
   }
 
   /*
+   * A peça que só existe por causa do QR (reteste 3, 14/11) e está sem o
+   * link não entra na volta (js/player.js): a `cena-qr` ia ao ar só com a
+   * foto. A regra mora na porta das peças (js/peca-html.js, vaiAoAr).
+   */
+  function vaiAoAr(item) {
+    const P = global.MTPecaHtml;
+    return !P || typeof P.vaiAoAr !== 'function' || P.vaiAoAr(item);
+  }
+
+  /*
    * O cartão automático tem quem mostrar (reteste 2, 09/11)? Semana sem
    * aniversário, ele não entra na volta (js/player.js) — antes ia ao ar
    * "🎂 Em breve, novos aniversários", recado que não diz nada a quem passa.
@@ -2355,5 +2365,5 @@
   function registrar(tipo, fn) {
     if (typeof fn === 'function' && !conhece(tipo)) RENDERERS[tipo] = fn;
   }
-  global.MTRender = { renderItem, conhece, registrar, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca, hostDaPeca, temAniversario };
+  global.MTRender = { renderItem, conhece, registrar, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca, hostDaPeca, temAniversario, vaiAoAr };
 })(window);

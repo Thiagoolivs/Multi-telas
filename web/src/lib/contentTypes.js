@@ -329,12 +329,15 @@ export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'quiz', 'pr
  *     para quem não é técnico.
  *   - YouTube, Apresentação, Entrada HDMI/USB e o editor livre vão para
  *     "Avançado": uso raro, e quebram a régua da TV.
- *   - Promoção e Tabela de preços só no Comércio e na Saúde; o Quiz só na
- *     Empresas.
+ *   - Promoção e Tabela de preços só no Comércio; o Quiz só na Empresas.
+ *     A Saúde tinha as duas, e o exemplo dela era um check-up com desconto
+ *     ("390,00 → 290,00"). Saúde não anuncia preço nem oferta (CFM
+ *     2.336/2023, CFO 196/2019; a mesma regra das peças prontas): desde o
+ *     reteste 3 elas saem do "Adicionar" da Saúde.
  */
 export const SAI_DO_CATALOGO = ['text', 'poster', 'quote', 'web', 'screen'];
 export const AVANCADOS = ['composicao', 'youtube', 'pptx', 'livesource'];
-const SO_NA_FRENTE = { promo: ['comercio', 'saude'], precos: ['comercio', 'saude'], quiz: ['empresa'] };
+const SO_NA_FRENTE = { promo: ['comercio'], precos: ['comercio'], quiz: ['empresa'] };
 export function tipoNaFrente(tipo, frente) {
   if (SAI_DO_CATALOGO.includes(tipo)) return false;
   const so = SO_NA_FRENTE[tipo];
@@ -364,13 +367,12 @@ const EXEMPLOS = {
     saude: { titulo: 'Horário especial no feriado', corpo: 'Atendemos das 8h às 12h.' },
     empresa: { titulo: 'Refeitório fecha às 13h30 na sexta', corpo: 'Por causa da manutenção da cozinha.' },
   },
+  // Só no Comércio (SO_NA_FRENTE). O preço com "R$": a TV mostra o texto como veio, e "34,90" sozinho não diz que é preço.
   promo: {
-    comercio: { selo: 'OFERTA', titulo: 'Bolo de cenoura com chocolate', precoDe: '42,00', precoPor: '34,90', cta: 'Inteiro, 1 kg' },
-    saude: { selo: 'CONDIÇÃO ESPECIAL', titulo: 'Check-up completo', precoDe: '390,00', precoPor: '290,00', cta: 'Agende pelo WhatsApp' },
+    comercio: { selo: 'OFERTA', titulo: 'Bolo de cenoura com chocolate', precoDe: 'R$ 42,00', precoPor: 'R$ 34,90', cta: 'Inteiro, 1 kg' },
   },
   precos: {
     comercio: { titulo: 'CAFÉ DA MANHÃ', linhas: 'Café expresso ; 6,00\nCafé com leite ; 7,50\nPão de queijo ; 4,50\nMisto quente ; 12,00', rodape: 'Aceitamos Pix e cartão' },
-    saude: { titulo: 'EXAMES', linhas: 'Hemograma ; 25,00\nGlicemia ; 15,00\nColesterol total ; 20,00', rodape: 'Convênios: consulte a recepção' },
   },
   quiz: {
     empresa: { titulo: 'Quiz da semana', perguntas: [{ pergunta: 'Qual EPI protege contra ruído?', alternativas: ['Luva', 'Protetor auricular', 'Capacete', 'Óculos'], certa: 1 }] },

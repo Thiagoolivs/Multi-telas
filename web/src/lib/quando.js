@@ -8,7 +8,8 @@
  *   ate (data)    → sai sozinha no dia seguinte à data;
  *   hora (faixa)  → todo dia, só de manhã, no almoço, à tarde ou no fim do dia.
  */
-import { agendarPeca, FAIXAS } from './aplicarConteudo.js';
+import { FAIXAS } from './aplicarConteudo.js';
+import '../../../js/lote-tv.js';
 
 export const QUANDOS = [
   ['sempre', 'Sempre'],
@@ -20,23 +21,15 @@ export const FAIXAS_DO_DIA = ['manha', 'almoco', 'tarde', 'saida'].map((id) => [
 
 const dia = (iso) => { const [a, m, d] = String(iso).split('-').map(Number); return new Date(a, (m || 1) - 1, d || 1); };
 
-// Quantos dias, contando hoje, até a data (no mínimo 1).
-export function diasAte(iso, hoje = new Date()) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso || ''))) return 0;
-  const zero = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  return Math.max(1, Math.round((dia(iso) - zero) / 864e5) + 1);
-}
+/*
+ * Quantos dias, contando hoje, até a data (no mínimo 1), e a escolha na
+ * peça: a regra mora em js/lote-tv.js desde o teste de carga (16/11) — o
+ * servidor aplica o "Quando" da campanha em cada TV com a mesma.
+ */
+export const diasAte = (iso, hoje = new Date()) => globalThis.MTLoteTv.diasAte(iso, hoje);
 
-export function comQuando(item, { quando, ate, faixa } = {}) {
-  if (quando === 'hoje') return agendarPeca(item, 'dia', 1);
-  if (quando === 'ate') { const n = diasAte(ate); return n ? agendarPeca(item, 'dia', n) : item; }
-  if (quando === 'hora') {
-    // `escolhido`: foi a pessoa que pôs nesta hora; o cobrirODia (fase 5) não estica pelo resto do dia.
-    const com = agendarPeca(item, FAIXAS[faixa] ? faixa : 'manha', 0);
-    return { ...com, agendamento: { ...com.agendamento, escolhido: true } };
-  }
-  return item;
-}
+// `escolhido` (na hora do dia): foi a pessoa que pôs nesta hora; o cobrirODia (fase 5) não estica pelo resto do dia.
+export const comQuando = (item, escolha) => globalThis.MTLoteTv.comQuando(item, escolha || {});
 
 // A frase do botão e do aviso: "Pôr na TV: até sábado".
 export function frasesDoQuando({ quando, ate, faixa } = {}) {

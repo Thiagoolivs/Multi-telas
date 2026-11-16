@@ -313,6 +313,10 @@
       if (r && typeof r.pausada === 'boolean') {
         document.dispatchEvent(new CustomEvent('mt:pausada', { detail: r.pausada ? (r.pausadaTexto || 'Esta TV está pausada: reative o plano em app.multitelas.net.br') : '' }));
       }
+      // O motivo de a conta não ter recebido esta TV (o mesmo do tempo real, evento 'recusada'), para a TV com o tempo real caído.
+      if (r && r.recusada && typeof r.recusada === 'object') {
+        document.dispatchEvent(new CustomEvent('mt:pareamento-recusado', { detail: r.recusada }));
+      }
       return (r && r.configEm) || 0;
     } catch (e) {
       // A conta não reconhece mais esta TV: o player volta ao pareamento (js/player.js, mt:sem-conta).
@@ -379,6 +383,16 @@
         let dados = {};
         try { dados = JSON.parse(ev.data || '{}'); } catch (e) {}
         if (onPareada) onPareada(dados);
+      });
+      /*
+       * A conta não pôde receber esta TV (o plano grátis tem 1 TV, o teste
+       * acabou, fatura em atraso — reteste 3, item 7). A TV segue no código,
+       * e o player diz por quê na mesma tela (js/player.js, showRecusada).
+       */
+      es.addEventListener('recusada', (ev) => {
+        let dados = {};
+        try { dados = JSON.parse(ev.data || '{}'); } catch (e) {}
+        document.dispatchEvent(new CustomEvent('mt:pareamento-recusado', { detail: dados }));
       });
       es.addEventListener('config', async (ev) => {
         let meta = {};

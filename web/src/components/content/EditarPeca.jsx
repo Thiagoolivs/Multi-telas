@@ -147,6 +147,8 @@ const corValida = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
 
 export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   const [definicao, setDefinicao] = useState(null);
+  // Os QR sem os quais a peça não vai ao ar (reteste 3: js/peca-html.js, vaiAoAr).
+  const [precisaDeLink, setPrecisaDeLink] = useState([]);
   // O texto dos campos escondidos volta de `guardados` (ver `atual`): esconder e mostrar de novo não perde nada.
   const [campos, setCampos] = useState(() => ({ ...(item.campos || {}), ...(item.guardados || {}) }));
   // O "Trocar foto" aberto: { campo, papel, formato } (o formato é o espaço medido na peça).
@@ -188,7 +190,9 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   // Os campos que o desenho declara: lidos pela MESMA porta da TV.
   useEffect(() => {
     carregarDesenhista().then(() => {
-      setDefinicao(window.MTPecaHtml.higienizar({ html: desenho.html, css: desenho.css }).campos);
+      const h = window.MTPecaHtml.higienizar({ html: desenho.html, css: desenho.css });
+      setDefinicao(h.campos);
+      setPrecisaDeLink(h.precisaDeLink || []);
       const F = window.MTFontes;
       if (F) setFamilias(Object.keys(F.FAMILIAS).map((id) => ({ id, nome: F.FAMILIAS[id].rotulo, papel: F.FAMILIAS[id].papel })));
     });
@@ -396,7 +400,8 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
               const max = c.tipo === 'qr' ? 300 : limite(String(inicial || '').length > String(c.exemplo || '').length ? inicial : c.exemplo);
               const escondido = ocultos.includes(c.nome);
               return (
-                <Field key={c.nome} label={rotulo(c.nome) + (escondido ? ' (escondido)' : '')} hint={c.tipo === 'qr' ? 'O endereço que o QR abre.' : String(valor || '').length + ' de ' + max}>
+                <Field key={c.nome} label={rotulo(c.nome) + (escondido ? ' (escondido)' : '')}
+                  hint={c.tipo === 'qr' ? (precisaDeLink.includes(c.nome) && (escondido || !String(valor || '').trim()) ? 'Sem o endereço, esta peça não vai ao ar: ela só existe por causa do QR.' : 'O endereço que o QR abre.') : String(valor || '').length + ' de ' + max}>
                   <Input value={valor || ''} maxLength={max} disabled={escondido} onChange={(e) => setCampos((x) => ({ ...x, [c.nome]: e.target.value }))} />
                 </Field>
               );

@@ -196,8 +196,6 @@
     + ':where(.mt-peca) :where(img){display:block}'
     + '.mt-peca,.mt-peca *{font-variant-numeric:lining-nums!important}'
     + '.mt-peca img[data-sem-foto]{visibility:hidden}'
-    // QR sem link: some a moldura dele também, não só a imagem — sobrava um quadrado vazio na lateral (visto no teste do dono, 24/10).
-    + '.mt-peca :has(> img[data-campo-qr][data-sem-foto]):not(.mt-peca){display:none!important}'
     + '.mt-peca [data-vivo="mensagens"]{display:inline-block;white-space:nowrap}'
     + '.mt-peca[data-marca-na-tela] [data-repete="marca"]{display:none!important}'
     // Rodapé numa tela que já tem relógio no cabeçalho: o segundo relógio some (D12).
@@ -281,6 +279,8 @@
    *   hostsMidia   hosts aceitos para foto além de /media/ (ver peca-html.js)
    *   logo         { url, clara, escura } da marca: preenche data-campo-img="logo"
    *   semRelogio   true no rodapé de tela com relógio no cabeçalho: some o data-vivo="relogio"
+   *   jaNoCabecalho ['relogio', 'data', 'clima']: o que o cabeçalho da tela já mostra e o
+   *                rodapé não repete (some, e o bloco que ficar vazio também)
    *   clima        () => Promise<string>, ex.: "27°"
    *   mensagens    frases do rodapé (e as chamadas do cabeçalho)
    *   contagem     "AAAA-MM-DDTHH:MM", o alvo de data-vivo="contagem"
@@ -697,6 +697,74 @@
   }
 
   /*
+   * A LOGO SEM A MARGEM VAZIA (reteste 3, 14/11). A logo que a pessoa sobe
+   * costuma vir com muito vazio em volta (a do teste: 600×300, com o desenho
+   * em metade da altura), e o cabeçalho dá a ela a ALTURA da faixa: o "Sol"
+   * ficava com uns 15 px numa TV de 1080 linhas, ilegível a 4 m. A Marca
+   * propõe o corte (web/src/lib/logo.js, aparar), mas só com o "Usar a nova"
+   * — a logo que entrou sem passar por ali chega inteira à TV.
+   *
+   * Aqui a TV corta o vazio transparente em volta, só para desenhar: lê os
+   * pixels uma vez por endereço, e o cabeçalho e as peças usam a versão
+   * aparada. O arquivo da conta não muda. Lê pela NOSSA origem (/media/…, que
+   * o servidor serve de qualquer armazenamento): o canvas só lê pixel da
+   * mesma origem. Logo de fundo cheio (sem transparência na borda), ou com
+   * pouca margem, fica como está. Qualquer falha também: a logo inteira.
+   */
+  const LOGOS = {};
+  const LADO_DA_LOGO = 800;
+  function logoAparada(url, pronta) {
+    const doc = typeof document !== 'undefined' ? document : null;
+    if (!url || !doc || typeof Image === 'undefined') return '';
+    const r = LOGOS[url];
+    if (r && !r.espera) return r.src;
+    if (r) { r.espera.push(pronta); return ''; }
+    const reg = LOGOS[url] = { src: '', espera: [pronta] };
+    const fim = (src) => {
+      reg.src = src || '';
+      const esperando = reg.espera;
+      reg.espera = null;
+      if (reg.src) esperando.forEach((f) => { try { if (f) f(reg.src); } catch (e) { /* a peça já saiu */ } });
+    };
+    const s = String(url);
+    const i = s.indexOf('/media/');
+    const daOrigem = s.charAt(0) === '/' ? s : (i >= 0 ? s.slice(i) : '');
+    if (!daOrigem) { fim(''); return ''; }
+    const img = new Image();
+    img.onload = () => { let src = ''; try { src = semMargem(img, doc); } catch (e) { src = ''; } fim(src); };
+    img.onerror = () => fim('');
+    img.src = daOrigem;
+    return '';
+  }
+  function semMargem(img, doc) {
+    // SVG sem tamanho próprio vem com 0 (ou 300×150): desenha numa caixa de 2:1, que é a forma comum de logo.
+    const w0 = img.naturalWidth || LADO_DA_LOGO, h0 = img.naturalHeight || LADO_DA_LOGO / 2;
+    const k = LADO_DA_LOGO / Math.max(w0, h0);
+    const w = Math.max(1, Math.round(w0 * k)), h = Math.max(1, Math.round(h0 * k));
+    const cv = doc.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const g = cv.getContext('2d');
+    if (!g) return '';
+    g.drawImage(img, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h).data;
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4 + 3] > 16) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+    }
+    if (x1 < 0) return '';
+    // Margem pequena (menos de 6% da largura e da altura, somados os dois lados): não compensa trocar a imagem.
+    if ((w - (x1 - x0 + 1)) / w < 0.06 && (h - (y1 - y0 + 1)) / h < 0.06) return '';
+    const m = Math.round(Math.max(x1 - x0, y1 - y0) * 0.02);
+    x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(w - 1, x1 + m); y1 = Math.min(h - 1, y1 + m);
+    const out = doc.createElement('canvas');
+    out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+    out.getContext('2d').drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+    return out.toDataURL('image/png');
+  }
+
+  /*
    * O lugar de logo da peça (D8). Peça sem logo própria usa a da marca; e a
    * logo da marca vai na versão que lê no fundo DA PEÇA: a branca no fundo
    * escuro, a escura no claro (D7). Logo de outra marca, gravada na peça,
@@ -737,6 +805,42 @@
       alvo = pai;
     }
     alvo.setAttribute('data-oculto', '');
+  }
+
+  /*
+   * O RODAPÉ NÃO REPETE O CABEÇALHO (reteste 3, 14/11; js/player.js,
+   * jaNoCabecalho). A hora, a data e o clima que o cabeçalho já mostra somem
+   * do rodapé, e o pai que fica sem nada visível some junto: no
+   * rodape-relogio, o bloco colorido da hora não sobra vazio na faixa.
+   */
+  function semRepetirOCabecalho(peca, vivos) {
+    const vazio = (pai) => Array.prototype.every.call(pai.childNodes, (c) => (c.nodeType === 3 ? !c.textContent.trim()
+      : c.nodeType !== 1 || c.hasAttribute('data-oculto') || c.getAttribute('aria-hidden') === 'true'));
+    vivos.forEach((v) => {
+      peca.querySelectorAll('[data-vivo="' + v + '"]').forEach((el) => {
+        el.setAttribute('data-oculto', '');
+        for (let pai = el.parentElement; pai && pai !== peca && vazio(pai); pai = pai.parentElement) pai.setAttribute('data-oculto', '');
+      });
+    });
+  }
+
+  /*
+   * O QR SEM LINK (reteste 3, 14/11; a regra mora em js/peca-html.js,
+   * qrsDaArvore). Some o QR e o que a peça marcou como dependente dele
+   * (`data-com-qr`: a instrução "aponte a câmera", a moldura). Na peça sem
+   * marca (a da IA, as antigas), some o pai direto do QR — a moldura —,
+   * a não ser que ele seja a peça ou leve o título: aí some só o QR, e a
+   * volta da TV nem põe a peça no ar (MTPecaHtml.vaiAoAr). Antes era um
+   * `:has()` no CSS, que derrubava o cartão inteiro da `cena-qr` e que a TV
+   * antiga (Chromium < 105) nem lia.
+   */
+  function qrSemLink(sombra, peca, img) {
+    const campo = img.getAttribute('data-campo-qr');
+    img.setAttribute('data-oculto', '');
+    const marcados = Array.prototype.filter.call(sombra.querySelectorAll('[data-com-qr]'), (el) => el !== peca && el.getAttribute('data-com-qr') === campo);
+    if (marcados.length) { marcados.forEach((el) => el.setAttribute('data-oculto', '')); return; }
+    const pai = img.parentElement;
+    if (pai && pai !== peca && !pai.querySelector('h1,h2,[data-campo="titulo"]')) pai.setAttribute('data-oculto', '');
   }
 
   /*
@@ -2087,6 +2191,7 @@
     // A tela já mostra a marca (no cabeçalho): a peça não repete.
     if (o.marcaNaTela && peca) peca.setAttribute('data-marca-na-tela', '');
     if (o.semRelogio && peca) peca.setAttribute('data-sem-relogio', '');
+    if (peca && Array.isArray(o.jaNoCabecalho) && o.jaNoCabecalho.length) semRepetirOCabecalho(peca, o.jaNoCabecalho);
 
     // Campos: TEXTO, sempre. O que o cliente digita nunca vira tag.
     sombra.querySelectorAll('[data-campo]').forEach((el) => {
@@ -2095,7 +2200,9 @@
     });
     // Os nomes já vieram conferidos pela porta (só campos que a peça declara).
     (it.ocultos || []).forEach((n) => {
-      sombra.querySelectorAll('[data-campo="' + n + '"],[data-campo-qr="' + n + '"]').forEach((el) => esconder(el, peca));
+      sombra.querySelectorAll('[data-campo="' + n + '"]').forEach((el) => esconder(el, peca));
+      // O QR escondido leva junto o que aponta para ele, como o QR sem link.
+      sombra.querySelectorAll('img[data-campo-qr="' + n + '"]').forEach((el) => qrSemLink(sombra, peca, el));
     });
     if (peca) esconderPrecoIncompleto(sombra, peca);
     const videos = [];
@@ -2103,6 +2210,12 @@
       const qr = el.hasAttribute('data-campo-qr');
       const campo = el.getAttribute(qr ? 'data-campo-qr' : 'data-campo-img');
       let valor = campo === 'logo' && !qr ? logoDaPeca(it.campos.logo, o.logo, tokens) : it.campos[campo];
+      // A logo sem a margem vazia (logoAparada): a que já foi aparada entra direto; a outra troca quando ficar pronta, e a peça se mede de novo.
+      if (campo === 'logo' && !qr && valor && !o.rascunho) {
+        const daLogo = valor;
+        const aparada = logoAparada(daLogo, (src) => { if (el.isConnected !== false && el.getAttribute('src') === daLogo) { el.src = src; enquadrar(host, palcoEl); } });
+        if (aparada) valor = aparada;
+      }
       let esp = (it.espacos || {})[campo] || {};
       // O espaço de foto vazio leva a foto padrão do papel e do ramo (fotoPadrao): nada de meia peça vazia.
       const padrao = !qr && campo !== 'logo' && !o.rascunho && !valor ? fotoPadrao(esp.papel, o.ramo, o.frente) : null;
@@ -2114,8 +2227,8 @@
       const foto = !qr && campo !== 'logo' && !o.rascunho && !!valor ? { el, esp } : null;
       // FOTO VIVA (ver videoNoLugar): o poster no modo leve; o vídeo no resto.
       const poster = foto ? P.posterDoVideo(valor, foto.esp, o.hostsMidia) : '';
-      // Foto que não carrega some, em vez do ícone de imagem quebrada na parede.
-      el.onerror = () => { el.setAttribute('data-sem-foto', ''); if (foto) encaixarFoto(el, foto.esp); };
+      // Foto que não carrega some, em vez do ícone de imagem quebrada na parede (o QR, com o que aponta para ele).
+      el.onerror = () => { el.setAttribute('data-sem-foto', ''); if (foto) encaixarFoto(el, foto.esp); if (qr && peca) qrSemLink(sombra, peca, el); };
       if (o.rascunho && !qr) el.src = silhueta(tokens);
       else if (poster && o.leve) { el.setAttribute('data-foto-viva', 'poster'); el.src = poster; }
       else if (poster) {
@@ -2126,7 +2239,10 @@
       } else if (valor) {
         // O QR é desenhado pelo nosso servidor a partir do texto: nada vem de fora.
         el.src = qr ? '/api/qr.svg?d=' + encodeURIComponent(valor) : valor;
-      } else el.setAttribute('data-sem-foto', '');
+      } else {
+        el.setAttribute('data-sem-foto', '');
+        if (qr && peca) qrSemLink(sombra, peca, el);
+      }
       if (foto) {
         fotos.push(foto);
         if (!poster || o.leve) el.addEventListener('load', () => encaixarFoto(el, foto.esp));
@@ -2241,6 +2357,8 @@
     DO_PLAYER, TEMPO, CINEMA, movimentoDe, animacaoDoElemento, contarTexto, contarPartes, origemDaFoto,
     // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).
     encaixeDaFoto, miniaturaDaFoto, encaixarFoto, AMPLIACAO_MAXIMA,
+    // A logo sem a margem vazia (reteste 3): o cabeçalho padrão do player usa a mesma.
+    logoAparada,
     // FOTO VIVA: o CSS da peça que vale também para o <video> do espaço, e a troca do <img> pelo <video>.
     cssComVideo, videoNoLugar,
     BASE_SEM_CQ, cssSemCq, cssCompletoSemCq, condicaoCq, temContainerQueries, referencia,

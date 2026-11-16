@@ -59,11 +59,14 @@ test('erro que não é conflito não é repetido; e os envios a várias TVs pass
   await assert.rejects(R.gravarEmLote([{ id: 'dev_a' }], (c) => c), /peça recusada/);
   assert.equal(a.pedidos.filter((p) => p.metodo === 'POST').length, 1);
   const rodarJs = ler('web/src/lib/rodar.js');
+  // Teste de carga (16/11): a campanha, a pausa, a peça pronta e a publicação vão como OPERAÇÃO, que o servidor aplica no lote (test/conta-grande.test.js).
   for (const f of ['rodarCampanha', 'pausarCampanha', 'porPecaNasTelas']) {
     const corpo = rodarJs.slice(rodarJs.indexOf('export async function ' + f + '('), rodarJs.indexOf('\n}\n', rodarJs.indexOf('export async function ' + f + '(')));
-    assert.match(corpo, /gravarEmLote\(/, f + ' ainda grava TV por TV');
+    assert.match(corpo, /enviarOperacao\(/, f + ' ainda grava TV por TV');
+    assert.doesNotMatch(corpo, /gravarEmLote\(|deviceConfig\./, f + ' voltou a ler a programação de cada TV');
   }
-  assert.match(ler('web/src/lib/publicar.js'), /return gravarEmLote\(devs, \(cfg\) => montar\(cfg\), titulo \|\| 'Pôr na TV'\);/);
+  assert.match(rodarJs, /const r = await loteApi\.operacao\(\{ operacao, telas: lista\.map/);
+  assert.match(ler('web/src/lib/publicar.js'), /return enviarOperacao\(\{ tipo: 'publicar', pecas, titulo: titulo \|\| 'Pôr na TV', dias, substituir: !!substituir \}/);
   assert.match(ler('web/src/pages/TelasProntasPage.jsx'), /avisarComDesfazer\(/);
   // Fase 7: as Peças prontas (e o Criar) põem na TV pelo diálogo único, que avisa com Desfazer.
   assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /avisarComDesfazer\(/);

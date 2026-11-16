@@ -9,7 +9,7 @@ import { nomeDoLayout, comoSeDivide } from '../../lib/nomesDosLayouts.js';
 import { useAsync } from '../../lib/useAsync.js';
 import { brand, devices } from '../../api.js';
 import { SoundPanel } from './SoundPanel.jsx';
-import { CamposDoHorario, HORARIO_PADRAO } from '../tela/HorarioDaTela.jsx';
+import { CamposDoHorario, horarioParaEditar } from '../tela/HorarioDaTela.jsx';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
 import { FUNDOS_TV, corDoFundo } from '../../lib/fundoDaTV.js';
@@ -143,11 +143,12 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
     set({ layoutId: id });
   }
 
-  const [exp, setExp] = React.useState(() => ({ ...HORARIO_PADRAO, ...((device && device.expediente) || {}) }));
+  const [exp, setExp] = React.useState(() => horarioParaEditar(device));
   const [salvandoHorario, setSalvandoHorario] = React.useState(false);
   async function salvarHorario() {
     setSalvandoHorario(true);
-    try { await devices.expediente(deviceId, exp); aviso.ok('Horário salvo.'); }
+    // Salvo, a TV passa a ter horário: sai o recado de "ainda não tem horário salvo".
+    try { await devices.expediente(deviceId, exp); aviso.ok('Horário salvo.'); setExp(({ semHorario, ...resto }) => resto); } // eslint-disable-line no-unused-vars
     catch (e) { aviso.erro('horario', e.message || 'Não deu para salvar o horário.'); }
     finally { setSalvandoHorario(false); }
   }
@@ -166,9 +167,8 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
     && !Object.keys(ov).some((k) => ov[k] !== undefined && ov[k] !== null && ov[k] !== '' && String(ov[k]).toLowerCase() !== HERDADO[k]);
   const usaMarca = theme.preset === 'marca' || (temCores && marcaNasTvs && semEscolha);
   const margem = Number(s.margemSegura || 0);
-  // Fase 3: onde a TV fica decide a letra mínima (js/player.js, LOCAIS). Sem escolha, vale a frente.
+  // Fase 3: onde a TV fica decide o tamanho da volta (js/rodizio.js); a letra mínima é 4,5% em todo lugar desde o reteste 3 (js/player.js, LOCAIS). Sem escolha, vale a frente.
   const localDaFrente = LOCAL_DA_FRENTE[perfil.id] || 'balcao';
-  const local = s.local || localDaFrente;
   const temLateral = layout.zones.some((z) => z.formato === 'retrato' && (layout.orientation || 'landscape') === 'landscape');
 
   return (
@@ -187,7 +187,7 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
       {aba === 'aparencia' && (
         <div className="space-y-5">
           <div>
-            <Field label="Onde fica a TV?" hint="Decide o tamanho mínimo da letra: quanto mais longe quem lê, maior a letra.">
+            <Field label="Onde fica a TV?" hint="Decide quanto tempo dura a volta: na sala de espera ela pode ser mais longa que no balcão. A letra é sempre a que se lê a 4 m.">
               <Select value={s.local || ''} onChange={(e) => set({ local: e.target.value })}>
                 <option value="">Padrão {perfil.lugarDe}: {LOCAIS_NOME[localDaFrente]}</option>
                 {Object.keys(LOCAIS_NOME).map((k) => <option key={k} value={k}>{LOCAIS_NOME[k]}</option>)}
@@ -195,9 +195,9 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
             </Field>
             <div className="mb-2 mt-4 text-sm font-semibold text-ink">Como a TV se divide</div>
             <p className="mb-2 text-xs text-ink-3">Agora: {comoSeDivide(layout.id)}</p>
-            {local === 'balcao' && temLateral && (
+            {temLateral && (
               <p className="mb-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-xs text-ink">
-                No balcão a letra precisa ser grande, e a lateral é estreita: nela cabe pouco (um preço, um número, um QR). Cardápio inteiro fica melhor em <b>{nomeDoLayout('full')}</b> ou <b>{nomeDoLayout('duo')}</b>.
+                A letra da TV é grande, para ler de longe, e a lateral é estreita: nela cabe pouco (um preço, um número, um QR). Cardápio inteiro fica melhor em <b>{nomeDoLayout('full')}</b> ou <b>{nomeDoLayout('duo')}</b>.
               </p>
             )}
             {trocaPendente && (

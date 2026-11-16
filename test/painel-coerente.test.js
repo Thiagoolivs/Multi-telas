@@ -267,9 +267,15 @@ test('item 42: Meus Designs publica faixa na faixa, pelo mesmo caminho das Peça
   api.deviceConfig.get = async () => JSON.parse(JSON.stringify(salva));
   api.deviceConfig.ler = async () => ({ config: JSON.parse(JSON.stringify(salva)), versao: 1 });
   api.deviceConfig.save = async (_id, c) => { salva = c; return { ok: true, updatedAt: 2 }; };
-  // D26: várias TVs vão num envio só (POST /api/lote); aqui, a única TV do envio.
-  const enviarAntes = api.lote.enviar;
-  api.lote.enviar = async (itens) => { salva = itens[0].config; return { ok: true, lote: 'lot_teste' }; };
+  /*
+   * D26: várias TVs vão num envio só. Desde o teste de carga (16/11) vai a
+   * OPERAÇÃO (POST /api/lote/operacao) e o servidor monta cada TV com a mesma
+   * regra (js/lote-tv.js, montarPublicacao): aqui, a única TV do envio.
+   */
+  const L = require('../js/lote-tv.js');
+  const enviarAntes = api.lote.operacao;
+  const enviados = [];
+  api.lote.operacao = async (corpo) => { enviados.push(corpo); salva = L.montarPublicacao(salva, corpo.operacao); return { ok: true, lote: 'lot_teste' }; };
   try {
     const pecas = [
       { formato: '16/9', item: { type: 'peca-html', html: 'cartaz' } },
@@ -283,7 +289,12 @@ test('item 42: Meus Designs publica faixa na faixa, pelo mesmo caminho das Peça
     await P.publicarPecas({ alvos: ['tv1'], pecas, titulo: 'Pão', telas: [{ id: 'tv1', name: 'TV' }] });
     assert.equal(salva.zonas.cabecalho.pecas.length, 1);
     assert.equal(salva.zonas.principal.items.length, 1);
-  } finally { Object.assign(api.deviceConfig, antes); api.lote.enviar = enviarAntes; }
+    // Um pedido por publicação, com a operação e as TVs — nenhuma programação lida nem mandada.
+    assert.equal(enviados.length, 2);
+    assert.equal(enviados[0].operacao.tipo, 'publicar');
+    assert.deepEqual(enviados[0].telas, ['tv1']);
+    assert.ok(!('itens' in enviados[0]), 'a programação da TV foi junto');
+  } finally { Object.assign(api.deviceConfig, antes); api.lote.operacao = enviarAntes; }
 });
 
 test('item 43: as cópias antigas das campanhas do Criar saem de Meus Designs (escondidas, não apagadas)', () => {
