@@ -174,6 +174,29 @@ test('a letra mínima é 4,5% em todo local, e a zona pequena se recompõe antes
   assert.match(p, /e\.style\.fontSize = Math\.max\(piso \* 1\.25, atual \* Math\.max\(0\.85, Math\.sqrt\(esc\)\)\)\.toFixed\(1\) \+ 'px';/);
   assert.ok(p.indexOf('piso * 1.25') < p.indexOf("miolo.style.transform = 'scale('"), 'antes da escala');
   assert.match(ler('css', 'player.css'), /\.mt-ann\.mt-compacto \.ann-body \{ line-height: 1\.32; \}/);
+  /*
+   * Com o piso em jogo a caixa toda nunca encolhe abaixo dele (a tabela de
+   * preços em pé do CI caía a 4,45% e 4,49%, conforme a zona tinha uns
+   * pixels a mais ou a menos): 7. a sobra que cabe no respiro fica; 8. o
+   * segundo aperto; 9. o que está acima do piso desce até ele; 10. a tabela
+   * vai em páginas; 11. a escala, se houver, para quando a menor letra chega
+   * ao piso.
+   */
+  const comPiso = p.slice(p.indexOf('if (esc < 1 && piso) {'), p.indexOf("miolo.style.transform = 'scale(' + Math.max(0.35"));
+  assert.ok(comPiso.length > 0, 'o caminho com piso vem antes da escala antiga');
+  assert.match(comPiso, /if \(cabeNoRespiro\(slide, miolo, caixa\(\)\)\) return;\s+slide\.classList\.add\('mt-compacto-mais'\);/);
+  assert.match(comPiso, /e\.style\.fontSize = Math\.max\(piso, atual \* Math\.max\(0\.9, Math\.sqrt\(esc\)\)\)\.toFixed\(1\) \+ 'px';/);
+  assert.match(comPiso, /if \(precos && esc < 1 && !slide\.hasAttribute\('data-mt-paginas'\) && paginarPrecos\(slide, miolo, precos, \(\) => caixa\(\)\[0\]\)\) esc = sobra\(\);/);
+  assert.match(comPiso, /const ate = menor < Infinity \? piso \/ menor : 1;\s+if \(ate < 1\) \{/);
+  assert.match(comPiso, /miolo\.style\.transform = 'scale\(' \+ Math\.max\(ate, esc \* 0\.97\)\.toFixed\(3\) \+ '\)';\s+\}\s+return;/, 'nunca abaixo do piso, e a escala antiga não roda');
+  assert.match(p, /slide\.classList\.remove\('mt-compacto', 'mt-compacto-mais'\);/, 'a medida nova começa do desenho');
+  assert.match(p, /return alto <= folgaV && largo <= folgaH \/ 2;/);
+  assert.match(ler('css', 'player.css'), /\.mt-precos\.mt-compacto-mais \{ padding: 2\.4cqh 4cqw; \}/);
+  // A fonte que chega depois do fonts.ready: as caixas na tela se medem de novo, com UM ouvinte para todas.
+  assert.match(p, /medirQuandoAFonteChegar\(slide, medir\);/);
+  assert.match(p, /if \(ouvindoAsFontes \|\| !fontes \|\| typeof fontes\.addEventListener !== 'function'\) return;\s+ouvindoAsFontes = true;\s+fontes\.addEventListener\('loadingdone', function \(\) \{/);
+  assert.equal((p.match(/addEventListener\('loadingdone'/g) || []).length, 1, 'um ouvinte só no player');
+  assert.match(p, /if \(!naTela\(caixasNaTela\[i\]\.slide\)\) caixasNaTela\.splice\(i, 1\);/, 'o slide que saiu da tela sai da lista');
   // A bancada e a régua medem com o mesmo piso.
   assert.match(ler('js', 'bancada.js'), /const LOCAIS = \{ balcao: 0\.045, recepcao: 0\.045, escritorio: 0\.045 \};/);
   assert.match(ler('tools', 'regua-tv.mjs'), /const PISO_DA_FRENTE = \{ comercio: 4\.5, saude: 4\.5, empresa: 4\.5 \};/);
@@ -218,6 +241,8 @@ test('a logo do cabeçalho: sem a margem vazia e maior, no cabeçalho padrão e 
   // Com a logo, a linha empilhada embaixo dela sai na faixa deitada: as duas na letra do balcão não cabiam (o piso cedia a 69% e 88%).
   assert.match(ler('pecas-ouro', 'cabecalho-centro.html'), /\.logo:not\(\[data-sem-foto\]\) ~ \.sub \{ display: none; \}/);
   assert.match(ler('pecas-ouro', 'cabecalho-status.html'), /\.logo:not\(\[data-sem-foto\]\) ~ \.desde \{ display: none; \}/);
+  // Com a letra de 4,5% também na Saúde, "ATENDENDO AGORA" na faixa em pé precisa de 36% da largura (a tela do dentista truncava).
+  assert.match(ler('pecas-ouro', 'cabecalho-status.html'), /\.status \{ gap: 6cqh; max-width: 36cqw; \}/);
   for (const id of ['centro', 'status', 'classico', 'minimo', 'chamada', 'chamadas']) {
     const h = P.higienizar(daPeca('cabecalho-' + id));
     assert.equal(h.ok, true, id + ': ' + h.problemas.join(' | '));

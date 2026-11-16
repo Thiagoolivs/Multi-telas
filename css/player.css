@@ -1626,6 +1626,19 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-ann.mt-compacto .ann-inner { gap: 1.8cqh; padding: 2.5cqw; }
 /* Reteste 3: sem espaço, a entrelinha folgada do corpo (1,5) também aperta antes de a letra encolher. */
 .mt-ann.mt-compacto .ann-body { line-height: 1.32; }
+/*
+ * O segundo aperto (reteste 3, 16/11; js/player.js, caberNaCaixa, passo 8):
+ * com o piso em jogo a caixa não encolhe abaixo dele, então antes o respiro
+ * e as entrelinhas apertam mais um pouco.
+ */
+.mt-precos.mt-compacto-mais { padding: 2.4cqh 4cqw; }
+.mt-compacto-mais .mt-precos-titulo { margin-bottom: .6cqh; line-height: 1; }
+.mt-compacto-mais .mt-precos-linha { padding: .04em 0; }
+.mt-compacto-mais .mt-precos-secao { padding: .2em 0 0; }
+.mt-compacto-mais .mt-precos-rodape { margin-top: .6cqh; }
+.mt-ann.mt-compacto-mais .ann-inner { gap: 1.2cqh; padding: 1.8cqw; }
+.mt-ann.mt-compacto-mais .ann-body { line-height: 1.22; }
+.mt-compacto-mais .mt-text-body { line-height: 1.22; }
 .mt-compacto .mt-text-title { margin-bottom: .2em; }
 @container (orientation: portrait) {
   .mt-precos-lista { column-count: var(--cols-pe, 1); font-size: max(var(--mt-piso, 0px), var(--corpo-pe)); }

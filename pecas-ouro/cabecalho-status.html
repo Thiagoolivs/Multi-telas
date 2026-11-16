@@ -44,10 +44,16 @@
 @container (aspect-ratio < 9) {
   .mt-peca { gap: 7cqh; grid-template-columns: auto minmax(0, 1fr) auto; }
   .desde, .clima, .sep, .data, .ate { display: none; }
-  .status { gap: 6cqh; max-width: 31cqw; }
+  /*
+   * Reteste 3 (14/11): com a letra de 4,5% também na Saúde, "ATENDENDO" não
+   * cabia inteiro em 31% da faixa e o status saía truncado (a tela do
+   * dentista em pé). A coluna do status vai a 36% — a marca, no meio, ainda
+   * cabe em duas linhas — e o espaçado aperta.
+   */
+  .status { gap: 6cqh; max-width: 36cqw; }
   .ponto { width: 10cqh; height: 10cqh; box-shadow: 0 0 0 3.5cqh var(--mt-fundo-2), 0 0 0 4.5cqh var(--mt-destaque); }
   .estado { gap: 6cqh; }
-  .aberto { font-size: max(var(--mt-piso, 0cqw), 15cqh); letter-spacing: 1.4cqh; line-height: 1.04; white-space: normal; text-overflow: clip;
+  .aberto { font-size: max(var(--mt-piso, 0cqw), 15cqh); letter-spacing: .8cqh; line-height: 1.04; white-space: normal; text-overflow: clip;
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .marca { max-width: none; }
   .nome { font-size: max(var(--mt-piso, 0cqw), 30cqh); letter-spacing: 1.6cqh; line-height: 1.04; white-space: normal; text-overflow: clip; text-align: center;

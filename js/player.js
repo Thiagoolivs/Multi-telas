@@ -180,7 +180,7 @@
     const medir = function () {
       // Volta ao desenho original: a fonte pode ter chegado e mudado tudo.
       miolo.style.transform = '';
-      slide.classList.remove('mt-compacto');
+      slide.classList.remove('mt-compacto', 'mt-compacto-mais');
       if (lista) lista.style.columnCount = '';
       if (precos) desfazerPaginas(slide, miolo, precos);
       miolo.querySelectorAll('[data-mt-cabe]').forEach((e) => { e.style.fontSize = ''; e.removeAttribute('data-mt-cabe'); });
@@ -263,6 +263,52 @@
           esc = sobra();
         }
       }
+      /*
+       * COM O PISO EM JOGO, A CAIXA TODA NUNCA ENCOLHE ABAIXO DELE (reteste 3,
+       * 16/11, a régua do CI). A tabela de preços em pé passava a caixa por
+       * poucos pixels depois de todos os passos — a zona muda uns pixels de
+       * uma TV para outra, e a fonte pode chegar depois da medida —, e o
+       * `scale` da caixa toda levava a letra do piso de 4,6% para 4,45% ou
+       * 4,49%, numa passada sim e na outra não. Agora, nesta ordem:
+       *   7. o que passa só um pouco e cabe no respiro da própria caixa (o
+       *      padding do slide, no máximo metade dele de cada lado) fica como
+       *      está: nada é cortado, nada encosta na borda da zona;
+       *   8. o respiro aperta mais (mt-compacto-mais);
+       *   9. o que está ACIMA do piso (a lista a 4,6%, o preço, o título)
+       *      desce, até o piso e nunca abaixo dele;
+       *  10. a tabela de preços vai em páginas, de novo, com o aperto novo;
+       *  11. e, se ainda passar, a caixa encolhe só até a menor letra dela
+       *      chegar ao piso — se ela já está no piso, não encolhe.
+       */
+      if (esc < 1 && piso) {
+        if (cabeNoRespiro(slide, miolo, caixa())) return;
+        slide.classList.add('mt-compacto-mais');
+        esc = sobra();
+        const acimaDoPiso = () => Array.prototype.filter.call(miolo.querySelectorAll('*'), (e) =>
+          Array.prototype.some.call(e.childNodes, (n) => n.nodeType === 3 && n.textContent.trim()) &&
+          e.getClientRects().length && parseFloat(getComputedStyle(e).fontSize) > piso + 0.5);
+        for (let i = 0; i < 8 && esc < 1 && !cabeNoRespiro(slide, miolo, caixa()); i++) {
+          const acima = acimaDoPiso();
+          if (!acima.length) break;
+          acima.forEach((e) => {
+            const atual = parseFloat(getComputedStyle(e).fontSize);
+            e.style.fontSize = Math.max(piso, atual * Math.max(0.9, Math.sqrt(esc))).toFixed(1) + 'px';
+            e.setAttribute('data-mt-cabe', '');
+          });
+          esc = sobra();
+        }
+        if (precos && esc < 1 && !slide.hasAttribute('data-mt-paginas') && paginarPrecos(slide, miolo, precos, () => caixa()[0])) esc = sobra();
+        if (esc >= 1 || cabeNoRespiro(slide, miolo, caixa())) return;
+        const menor = Array.prototype.reduce.call(miolo.querySelectorAll('*'), (m, e) =>
+          (Array.prototype.some.call(e.childNodes, (n) => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length
+            ? Math.min(m, parseFloat(getComputedStyle(e).fontSize)) : m), Infinity);
+        const ate = menor < Infinity ? piso / menor : 1;
+        if (ate < 1) {
+          miolo.style.transformOrigin = 'center center';
+          miolo.style.transform = 'scale(' + Math.max(ate, esc * 0.97).toFixed(3) + ')';
+        }
+        return;
+      }
       if (esc < 1) {
         miolo.style.transformOrigin = 'center center';
         miolo.style.transform = 'scale(' + Math.max(0.35, esc * 0.97).toFixed(3) + ')';
@@ -270,6 +316,49 @@
     };
     afterPaint(medir);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir).catch(function () {});
+    medirQuandoAFonteChegar(slide, medir);
+  }
+
+  /*
+   * O miolo passa a caixa só no respiro dela (passo 7 de caberNaCaixa)? Na
+   * altura o miolo é centrado, então o que passa se divide entre o alto e o
+   * pé; na largura ele pode passar só para a direita. Em cada lado, até
+   * metade do padding.
+   */
+  function cabeNoRespiro(slide, miolo, c) {
+    const cs = getComputedStyle(slide);
+    const alto = miolo.scrollHeight - 1 - c[0], largo = miolo.scrollWidth - 1 - c[1];
+    const folgaV = Math.min(parseFloat(cs.paddingTop) || 0, parseFloat(cs.paddingBottom) || 0);
+    const folgaH = Math.min(parseFloat(cs.paddingLeft) || 0, parseFloat(cs.paddingRight) || 0);
+    return alto <= folgaV && largo <= folgaH / 2;
+  }
+
+  /*
+   * A FONTE QUE CHEGA DEPOIS (reteste 3, 16/11). O `document.fonts.ready`
+   * pode resolver antes de começar a baixar um peso que a caixa só usa
+   * depois (o 800 do título), e a medida fica feita com a fonte de reserva,
+   * de outra largura: a régua do CI ora passava, ora não, no mesmo commit.
+   * Um ouvinte só, para todas as caixas (o teste de resistência conta os
+   * ouvintes da TV): a cada fonte que termina de chegar, as caixas que ainda
+   * estão na tela se medem de novo. A que saiu da tela sai da lista na
+   * próxima vez que alguém olha para ela — nada fica preso a um slide velho.
+   */
+  const caixasNaTela = [];
+  let ouvindoAsFontes = false;
+  function medirQuandoAFonteChegar(slide, medir) {
+    const naTela = (el) => document.documentElement.contains(el);
+    for (let i = caixasNaTela.length - 1; i >= 0; i--) if (!naTela(caixasNaTela[i].slide)) caixasNaTela.splice(i, 1);
+    caixasNaTela.push({ slide, medir });
+    const fontes = document.fonts;
+    if (ouvindoAsFontes || !fontes || typeof fontes.addEventListener !== 'function') return;
+    ouvindoAsFontes = true;
+    fontes.addEventListener('loadingdone', function () {
+      for (let i = caixasNaTela.length - 1; i >= 0; i--) {
+        const c = caixasNaTela[i];
+        if (!naTela(c.slide)) caixasNaTela.splice(i, 1);
+        else afterPaint(c.medir);
+      }
+    });
   }
 
   /*
