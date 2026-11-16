@@ -13,7 +13,13 @@
  * apagar o evento tira só a dela — "programado e editável".
  */
 import { itemDoModelo } from './modelosOuro.js';
-import { zonasPorPapel } from './rodar.js';
+/*
+ * O período, pôr e tirar as datas da TV moram em js/lote-tv.js desde o teste
+ * de carga (16/11): o servidor põe a Agenda em muitas TVs com a mesma regra
+ * (POST /api/lote/operacao, tipos 'calendario' e 'tirar-calendario').
+ */
+import '../../../js/lote-tv.js';
+import { enviarOperacao } from './rodar.js';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const SEMANA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
@@ -28,12 +34,7 @@ export function partesDaData(iso) {
 }
 
 // De quando a quando passa: N dias antes até o dia (o mesmo de server/calendario.js).
-export function periodoDoEvento(ev) {
-  const [a, m, d] = ev.data.split('-').map(Number);
-  const ini = new Date(a, m - 1, d - (Number(ev.antecedencia) || 0));
-  const iso = (x) => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
-  return { dataInicio: iso(ini), dataFim: ev.data };
-}
+export const periodoDoEvento = (ev) => globalThis.MTLoteTv.periodoDoEvento(ev);
 
 /*
  * A campanha de mês inteiro (js/datas-frente.js): o evento é o último dia do
@@ -155,28 +156,40 @@ export function telasDoEvento(ev, telas) {
  * período, o tipo e a prioridade, no lugar da versão anterior dele. Os que
  * não são mais desta TV (`fora`) saem. Não modifica a recebida.
  */
-export function aplicarCalendario(cfg, eventos, fora = []) {
-  const next = JSON.parse(JSON.stringify(cfg || {}));
-  if (!next.zonas) next.zonas = {};
-  const z = zonasPorPapel(next).principal || 'principal';
-  const zona = next.zonas[z] && Array.isArray(next.zonas[z].items) ? next.zonas[z] : { ...(next.zonas[z] || {}), items: [] };
-  const ids = new Set(eventos.map((e) => e.id).concat(fora));
-  const resto = zona.items.filter((it) => !(it && it._calendario && ids.has(it._calendario)));
-  const novos = eventos.filter((e) => e.item).map((e) => ({
-    ...e.item,
-    _calendario: e.id,
-    meta: { tipo: e.tipo, prioridade: e.prioridade },
-    agendamento: { ativo: true, dias: [], ...periodoDoEvento(e) },
-  }));
-  next.zonas[z] = { ...zona, items: novos.concat(resto) };
-  return next;
-}
+export const aplicarCalendario = (cfg, eventos, fora = []) => globalThis.MTLoteTv.aplicarCalendario(cfg, eventos, fora);
 
 // Tira da TV a peça de um evento (apagar o evento, ou tirar esta TV dele).
-export function tirarDoCalendario(cfg, id) {
-  const next = JSON.parse(JSON.stringify(cfg || {}));
-  for (const zona of Object.values(next.zonas || {})) {
-    if (zona && Array.isArray(zona.items)) zona.items = zona.items.filter((it) => !(it && it._calendario === id));
+export const tirarDoCalendario = (cfg, id) => globalThis.MTLoteTv.tirarDoCalendario(cfg, id);
+
+/*
+ * AS DATAS NAS TVS, PELO SERVIDOR (teste de carga, 16/11). O painel lia a
+ * programação de cada TV, punha as datas e mandava todas de volta: numa conta
+ * de RH, acima de ~19 TVs o envio passava de 2 MB e era recusado. Agora vai a
+ * operação 'calendario': as datas (com a peça) uma vez só, e cada TV aponta
+ * para o que é dela — as datas que recebe e as que saem dela (`entradas`,
+ * uma por combinação). Tudo ou nada, com Desfazer e a aprovação.
+ */
+export function porAgendaNasTelas(salvos, tvs) {
+  const dela = (tv) => salvos.filter((e) => telasDoEvento(e, tvs).some((t) => t.id === tv.id));
+  const fora = (tv) => salvos.filter((e) => !dela(tv).includes(e) && (e.telas || []).includes(tv.id)).map((e) => e.id);
+  const eventos = salvos.map((e) => ({ id: e.id, tipo: e.tipo, prioridade: e.prioridade, data: e.data, antecedencia: e.antecedencia || 0, item: e.item || null }));
+  const chaves = [];
+  const entradas = [];
+  const telas = [];
+  for (const tv of tvs || []) {
+    const d = dela(tv).map((e) => salvos.indexOf(e));
+    const f = fora(tv);
+    if (!d.length && !f.length) continue;
+    const k = JSON.stringify([d, f]);
+    let i = chaves.indexOf(k);
+    if (i < 0) { i = chaves.length; chaves.push(k); entradas.push({ dela: d, fora: f }); }
+    telas.push({ id: tv.id, entrada: i });
   }
-  return next;
+  return enviarOperacao({ tipo: 'calendario', eventos, entradas }, telas);
+}
+
+// Apagar uma data: a peça dela sai das TVs em que estava (a operação 'tirar-calendario').
+export function tirarDaAgenda(ev, tvs) {
+  const telas = (ev.telas || []).map((id) => (tvs || []).find((t) => t.id === id)).filter(Boolean).map((t) => ({ id: t.id }));
+  return enviarOperacao({ tipo: 'tirar-calendario', id: ev.id, titulo: ev.titulo || '' }, telas);
 }

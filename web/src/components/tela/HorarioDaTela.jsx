@@ -1,6 +1,7 @@
 import React from 'react';
 import { Field, Input } from '../ui/Field.jsx';
 import { usePerfil } from '../../lib/perfil.js';
+import { HORARIO_PADRAO, FORA_DO_HORARIO } from '../../lib/horarioDaTela.js';
 
 /*
  * O HORÁRIO DA TV (expediente): os dias e as horas em que a loja está
@@ -10,7 +11,8 @@ import { usePerfil } from '../../lib/perfil.js';
  */
 const DIAS = [['D', 0, 'domingo'], ['S', 1, 'segunda'], ['T', 2, 'terça'], ['Q', 3, 'quarta'], ['Q', 4, 'quinta'], ['S', 5, 'sexta'], ['S', 6, 'sábado']];
 
-export const HORARIO_PADRAO = { alerta: true, dias: [1, 2, 3, 4, 5, 6], inicio: '07:00', fim: '22:00', foraDoHorario: 'ligada' };
+// O padrão do formulário (o relógio fora do horário) e o que cada escolha faz moram em lib/horarioDaTela.js.
+export { HORARIO_PADRAO, horarioParaEditar } from '../../lib/horarioDaTela.js';
 
 export function CamposDoHorario({ exp, setExp }) {
   const perfil = usePerfil();
@@ -46,15 +48,23 @@ export function CamposDoHorario({ exp, setExp }) {
 
       <div>
         <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Fora do horário, a TV</div>
-        <div className="mt-1.5 grid gap-1.5">
-          {[['ligada', 'Continua mostrando a programação'], ['relogio', 'Mostra só o relógio'], ['preta', 'Fica preta (menos desgaste e menos luz)']].map(([v, rotulo]) => (
-            <label key={v} className="flex items-center gap-2 text-sm text-ink">
-              <input type="radio" name="foraDoHorario" checked={(exp.foraDoHorario || 'ligada') === v} onChange={() => setExp({ ...exp, foraDoHorario: v })} />
-              {rotulo}
+        {exp.semHorario && (
+          <p className="mt-1 text-xs text-ink-2">
+            Esta TV ainda não tem horário salvo: por enquanto ela mostra a programação o tempo todo. Ao salvar, vale o que estiver marcado aqui.
+          </p>
+        )}
+        <div className="mt-1.5 grid gap-2">
+          {FORA_DO_HORARIO.map(([v, rotulo, porque]) => (
+            <label key={v} className="flex items-start gap-2 text-sm text-ink">
+              <input type="radio" name="foraDoHorario" className="mt-1" checked={(exp.foraDoHorario || HORARIO_PADRAO.foraDoHorario) === v} onChange={() => setExp({ ...exp, foraDoHorario: v })} />
+              <span className="min-w-0">
+                <span className="block">{rotulo}</span>
+                <span className="block text-xs text-ink-3">{porque(perfil.lugar)}</span>
+              </span>
             </label>
           ))}
         </div>
-        <p className="mt-1 text-xs text-ink-3">Vale na hora: a TV muda sozinha quando a {perfil.lugar} abre e fecha.</p>
+        <p className="mt-1.5 text-xs text-ink-3">Vale na hora: a TV muda sozinha quando a {perfil.lugar} abre e fecha.</p>
       </div>
 
       <div>

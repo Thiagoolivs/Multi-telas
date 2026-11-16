@@ -11,38 +11,19 @@
  * para sair inteiro depois.
  */
 import '../../../js/templates.js';
+import '../../../js/aviso.js';
 import { itemDoModelo } from './modelosOuro.js';
 
 const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
 /*
- * Quanto da tela cada parte da grade ocupa (0–100), pela trilha do layout:
- * "1fr 11vh" = a linha fixa leva 11, as frações dividem o resto.
+ * Onde o aviso entra e como (a zona, a prioridade, até quando) mora em
+ * js/aviso.js desde que o servidor passou a pôr o aviso em cada TV (teste de
+ * carga, 16/11: POST /api/lote/aviso). Aqui fica o mesmo, para a prévia e os
+ * testes, sem mexer na programação recebida.
  */
-function partes(trilha) {
-  const t = String(trilha || '1fr').trim().split(/\s+/);
-  const fixo = t.reduce((s, x) => s + (/v[hw]$/.test(x) ? parseFloat(x) : 0), 0);
-  const fr = t.reduce((s, x) => s + (/fr$/.test(x) ? parseFloat(x) : 0), 0) || 1;
-  return t.map((x) => (/v[hw]$/.test(x) ? parseFloat(x) : (/fr$/.test(x) ? parseFloat(x) / fr * Math.max(0, 100 - fixo) : 0)));
-}
-
-/*
- * A zona do aviso (nota do consultor no D27): a principal; sem ela, a MAIOR
- * lista em área — nunca o cabeçalho nem o rodapé, onde o aviso não cabe e
- * vazaria. null = esta TV não tem onde mostrar.
- */
-export function zonaDoAviso(cfg) {
-  const layout = globalThis.MT_getLayout && globalThis.MT_getLayout(cfg && cfg.settings && cfg.settings.layoutId);
-  const listas = ((layout && layout.zones) || []).filter((z) => z.type === 'playlist');
-  const principal = listas.find((z) => /^(principal|video|z1)$/.test(z.id));
-  if (principal) return principal.id;
-  const g = (layout && layout.grid) || {};
-  const linhas = partes(g.rows);
-  const colunas = partes(g.columns);
-  const area = (z) => (g.areas || []).reduce((s, linha, i) => s + linha.trim().split(/\s+/).reduce((u, nome, j) => u + (nome === z.area ? (linhas[i] || 0) * (colunas[j] || 0) : 0), 0), 0);
-  const maior = listas.slice().sort((a, b) => area(b) - area(a))[0];
-  return maior ? maior.id : null;
-}
+const A = globalThis.MTAviso;
+export const zonaDoAviso = (cfg) => A.zonaDoAviso(cfg);
 
 export function pecaDoAviso(aviso, modelos, marca) {
   const modelo = modelos.get('servico-alerta');
@@ -60,29 +41,15 @@ export function pecaDoAviso(aviso, modelos, marca) {
 }
 
 // Quanto tempo o urgente sem data fica no ar.
-export const URGENTE_DURA_MS = 2 * 60 * 60 * 1000;
+export const URGENTE_DURA_MS = A.URGENTE_DURA_MS;
 
+// A programação com o aviso na frente da zona do aviso; a recebida não muda.
 export function aplicarAviso(cfg, item, aviso, id) {
-  const next = JSON.parse(JSON.stringify(cfg || {}));
-  if (!next.zonas) next.zonas = {};
-  const z = zonaDoAviso(next);
-  if (!z) throw new Error('esta TV não tem onde mostrar o aviso');
-  const zona = next.zonas[z] && Array.isArray(next.zonas[z].items) ? next.zonas[z] : { ...(next.zonas[z] || {}), items: [] };
-  const resto = zona.items.filter((it) => !(it && it._aviso === id));
-  /*
-   * O URGENTE TEM FIM (QA total, 05/11). Sem data, ele ficava para sempre
-   * tomando a tela. Sem "até quando", sai sozinho em 2 horas; com data, vale
-   * o dia escolhido. A TV confere `expiraEm` a cada volta (js/player.js).
-   */
-  const urgenteSemData = (aviso.prioridade || 'alta') === 'urgente' && !aviso.ate;
-  const novo = {
-    ...item, _aviso: id,
-    meta: { tipo: 'aviso', prioridade: aviso.prioridade || 'alta', ...(urgenteSemData ? { expiraEm: Date.now() + URGENTE_DURA_MS } : {}) },
-    ...(aviso.ate ? { agendamento: { ativo: true, dias: [], dataInicio: hojeIso(), dataFim: aviso.ate } } : {}),
-  };
-  next.zonas[z] = { ...zona, items: [novo].concat(resto) };
-  return next;
+  return A.porAviso(JSON.parse(JSON.stringify(cfg || {})), item, aviso, id, { hoje: hojeIso() });
 }
+
+// O dia de quem manda o aviso: a data do aviso começa nele (e não no dia do servidor, em UTC).
+export const hojeDoAviso = hojeIso;
 
 export function telasDoAviso(aviso, telas) {
   const a = (aviso && aviso.alvo) || { tipo: 'todas' };

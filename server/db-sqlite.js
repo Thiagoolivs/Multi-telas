@@ -1619,16 +1619,23 @@ async function numerosDaPlataforma(agora, vivaDesde, desde) {
 
 /* ---------------- Envio em lote (D26) ---------------- */
 const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
-const mapLote = (r, comAntes) => (r ? {
+// O antes em partes ({ telas, partes }) desde o teste de carga (16/11): ver db-postgres.js, mapLote.
+const mapLote = (r, comAntes) => (r ? Object.assign({
   id: r.id, descricao: r.descricao || '', createdAt: r.created_at, desfeitoEm: r.desfeito_em || null,
-  telas: (() => { try { const t = JSON.parse(r.telas || '[]'); return comAntes ? t : t.map(({ antes, ...x }) => x); } catch (e) { return []; } })(), // eslint-disable-line no-unused-vars
-} : null);
+}, telasDoLote(r.telas, comAntes)) : null);
+function telasDoLote(txt, comAntes) {
+  let t;
+  try { t = JSON.parse(txt || '[]'); } catch (e) { return { telas: [] }; }
+  const telas = Array.isArray(t) ? t : (t && Array.isArray(t.telas) ? t.telas : []);
+  if (comAntes) return Object.assign({ telas }, !Array.isArray(t) && t && t.partes ? { partes: t.partes } : {});
+  return { telas: telas.map(({ antes, antesPartes, ...x }) => x) }; // eslint-disable-line no-unused-vars
+}
 async function salvarLote(tenantId, lote) {
   const id = 'lot_' + rid(12);
   const agora = Date.now();
   db.prepare('DELETE FROM lotes WHERE tenant_id = ? AND created_at < ?').run(tenantId, agora - TRINTA_DIAS);
   db.prepare('INSERT INTO lotes (id, tenant_id, descricao, telas, created_at, desfeito_em) VALUES (?, ?, ?, ?, ?, NULL)')
-    .run(id, tenantId, String(lote.descricao || '').slice(0, 120), JSON.stringify(lote.telas || []), agora);
+    .run(id, tenantId, String(lote.descricao || '').slice(0, 120), JSON.stringify(lote.partes ? { telas: lote.telas || [], partes: lote.partes } : (lote.telas || [])), agora);
   return id;
 }
 async function loteDaConta(id, tenantId) { return mapLote(db.prepare('SELECT * FROM lotes WHERE id = ? AND tenant_id = ?').get(id, tenantId), true); }

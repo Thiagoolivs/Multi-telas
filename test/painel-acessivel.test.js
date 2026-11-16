@@ -152,6 +152,30 @@ test('contraste: texto de apoio ≥ 4,5:1 e anel de foco ≥ 3:1 em todos os fun
   assert.match(css, /:focus-visible \{ outline: 2px solid rgb\(var\(--c-accent\)\)/);
 });
 
+test('contraste no painel do operador (Plataforma), nos dois temas: botão, letra de destaque e texto de apoio', () => {
+  // Reteste 3: o verde-azulado #0D9488 dava 3,7:1 com o branco do botão e 3,3:1 como letra no selo (3 contrastes do axe).
+  const css = ler('web/src/index.css');
+  const claro = tokens(css, ':root');
+  const escuro = { ...claro, ...tokens(css, ":root[data-theme='dark']") };
+  const opClaro = { ...claro, ...tokens(css, "[data-modo='operador']") };
+  const opEscuro = { ...escuro, ...tokens(css, ":root[data-theme='dark'] [data-modo='operador']") };
+  for (const [nome, t] of [['claro', opClaro], ['escuro', opEscuro]]) {
+    const botao = contraste(t['accent-fg'], t.accent);
+    assert.ok(botao >= 4.5, 'operador ' + nome + ': texto do botão = ' + botao.toFixed(2) + ':1');
+    for (const fundo of ['canvas', 'surface', 'surface-2', 'accent-soft']) {
+      const letra = contraste(t['accent-texto'], t[fundo]);
+      assert.ok(letra >= 4.5, 'operador ' + nome + ': letra de destaque sobre ' + fundo + ' = ' + letra.toFixed(2) + ':1');
+      const apoio = contraste(t['ink-3'], t[fundo]);
+      assert.ok(apoio >= 4.5, 'operador ' + nome + ': ink-3 sobre ' + fundo + ' = ' + apoio.toFixed(2) + ':1');
+      assert.ok(contraste(t.accent, t[fundo]) >= 3, 'operador ' + nome + ': anel de foco sobre ' + fundo);
+      // O chip marcado ("7 dias"): border-accent bg-accent/10 text-accent.
+      const chip = t.accent.map((v, i) => Math.round(v * 0.1 + t[fundo][i] * 0.9));
+      const noChip = contraste(t['accent-texto'], chip);
+      assert.ok(noChip >= 4.5, 'operador ' + nome + ': letra do chip marcado sobre ' + fundo + ' = ' + noChip.toFixed(2) + ':1');
+    }
+  }
+});
+
 test('"Pular para o conteúdo" e o título da aba por página', () => {
   const a = ler('web/src/components/layout/AppShell.jsx');
   assert.match(a, /Pular para o conteúdo/);

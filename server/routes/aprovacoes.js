@@ -5,7 +5,8 @@
  *
  *   GET    /api/aprovacoes             a fila (dono/admin) ou os meus pedidos (membro)
  *   GET    /api/aprovacoes/contagem    o número do sino, leve
- *   GET    /api/aprovacoes/:id         um pedido, com o antes e o depois de cada TV
+ *   GET    /api/aprovacoes/:id         um pedido, com o antes e o depois de cada TV (o grande: a lista, e cada TV à parte)
+ *   GET    /api/aprovacoes/:id/telas/:tela  o antes e o depois de uma TV do pedido
  *   POST   /api/aprovacoes/:id/aprovar[?porCima=1]  põe no ar (com a versão conferida)
  *   POST   /api/aprovacoes/:id/recusar { motivo }   o membro vê o porquê
  *   DELETE /api/aprovacoes/:id         quem pediu desiste (enquanto espera)
@@ -28,6 +29,54 @@ module.exports = function (ctx) {
   async function contaLigada(tenantId) {
     const t = await db.getTenant(tenantId).catch(() => null);
     return !!(t && Number(t.aprovacao));
+  }
+
+  /*
+   * O PEDIDO GRANDE, TV POR TV (teste de carga, 16/11). O antes e o depois
+   * de cada TV vinham todos numa resposta: o aviso ou a campanha de um
+   * membro para 200 TVs de RH eram 36 MB (duas programações de ~96 KB por
+   * TV) e 2 s de servidor parado — para o revisor ver, no celular,
+   * as duas ou três que cabem na tela. Acima de ANTES_E_DEPOIS_JUNTO TVs, o
+   * pedido vem com a lista (nome, grupo, se mudou depois) e cada TV pede o
+   * antes e o depois dela quando aparece (GET /api/aprovacoes/:id/telas/:tela).
+   *
+   * As TVs do pedido (com a programação de cada uma) ficam 2 minutos em
+   * memória: abrir o pedido e rolar pelas TVs não lê e desmonta o pedido
+   * inteiro do banco a cada uma. Os itens de um pedido não mudam depois de
+   * criado (juntar pedidos cria outro, com outro id).
+   */
+  const ANTES_E_DEPOIS_JUNTO = 12;
+  const pedidosLidos = new Map();
+  // `daMemoria`: serve o guardado (as TVs); sem ele, lê de novo (o estado do pedido é o de agora) e guarda.
+  async function lerPedido(id, tenantId, daMemoria) {
+    const k = tenantId + ':' + id;
+    const c = pedidosLidos.get(k);
+    if (daMemoria && c && Date.now() - c.em < 2 * 60 * 1000) return c.pedido;
+    const pedido = await db.lerAprovacao(id, tenantId);
+    pedidosLidos.delete(k);
+    if (pedido) {
+      pedidosLidos.set(k, { pedido, em: Date.now() });
+      if (pedidosLidos.size > 3) pedidosLidos.delete(pedidosLidos.keys().next().value);
+    }
+    return pedido;
+  }
+  // O antes e o depois de umas TVs do pedido, como o painel desenha (a marca, o nome da conta).
+  async function antesEDepoisDe(sess, pedido, itens) {
+    const telasAgora = [];
+    for (const i of itens) {
+      const d = await db.getDevice(i.id);
+      if (d && d.tenant_id === sess.tenant_id) telasAgora.push(d);
+    }
+    const telas = aprovacao.antesEDepois(Object.assign({}, pedido, { itens }), telasAgora, ctx.publicar.normalizar);
+    if (ctx.publicar.vistaDoPainel) {
+      const vista = await ctx.publicar.vistaDoPainel(sess.tenant_id);
+      for (const t of telas) {
+        const d = telasAgora.find((x) => x.id === t.id) || { id: t.id, name: t.nome };
+        if (t.antes) t.antes = vista(t.antes, d) || t.antes;
+        if (t.depois) t.depois = vista(t.depois, d) || t.depois;
+      }
+    }
+    return telas;
   }
 
   async function contagem(sess) {
@@ -112,27 +161,31 @@ module.exports = function (ctx) {
     if (!seg || !/^apr_[A-Za-z0-9]{6,40}$/.test(seg)) return sendJson(res, 404, { error: 'rota de aprovação inválida' });
 
     if (req.method === 'GET' && !parts[3]) {
-      const pedido = await db.lerAprovacao(seg, sess.tenant_id);
+      const pedido = await lerPedido(seg, sess.tenant_id, false);
       // O membro vê só o que ele pediu; o dono e o admin, tudo da conta.
       if (!pedido || (!revisor && pedido.autorId !== sess.user_id)) return sendJson(res, 404, { error: 'pedido não encontrado' });
-      // Uma a uma, com a programação (a lista da conta não traz a config).
-      const telasAgora = [];
-      for (const i of (pedido.itens || []).slice(0, 200)) {
-        const d = await db.getDevice(i.id);
-        if (d && d.tenant_id === sess.tenant_id) telasAgora.push(d);
-      }
-      const telas = aprovacao.antesEDepois(pedido, telasAgora, ctx.publicar.normalizar);
-      // O antes e o depois como a TV desenha (a marca, o nome da conta): o painel abre o próprio player neles.
-      if (ctx.publicar.vistaDoPainel) {
-        const vista = await ctx.publicar.vistaDoPainel(sess.tenant_id);
-        for (const t of telas) {
-          const d = telasAgora.find((x) => x.id === t.id) || { id: t.id, name: t.nome };
-          if (t.antes) t.antes = vista(t.antes, d) || t.antes;
-          if (t.depois) t.depois = vista(t.depois, d) || t.depois;
+      const { itens: _itens, ...resto } = pedido; // eslint-disable-line no-unused-vars
+      const itens = pedido.itens || [];
+      if (itens.length > ANTES_E_DEPOIS_JUNTO) {
+        // O pedido grande: só a lista (sem a programação de nenhuma TV); cada TV pede o antes e o depois dela.
+        const telas = [];
+        for (const i of itens) {
+          const d = await db.getDeviceLeve(i.id);
+          const daConta = !!d && d.tenant_id === sess.tenant_id;
+          telas.push({ id: i.id, nome: (daConta && d.name) || i.nome || 'TV', grupo: (daConta && d.grupo) || '', existe: daConta,
+            mudouDepois: daConta && (Number(d.updated_at) || 0) !== (Number(i.versao) || 0), sobDemanda: true });
         }
+        return sendJson(res, 200, { pedido: resto, telas });
       }
-      const { itens, ...resto } = pedido; // eslint-disable-line no-unused-vars
-      return sendJson(res, 200, { pedido: resto, telas });
+      // Uma a uma, com a programação (a lista da conta não traz a config); o antes e o depois como a TV desenha.
+      return sendJson(res, 200, { pedido: resto, telas: await antesEDepoisDe(sess, pedido, itens) });
+    }
+    if (req.method === 'GET' && parts[3] === 'telas' && parts[4] && !parts[5]) {
+      const pedido = await lerPedido(seg, sess.tenant_id, true);
+      if (!pedido || (!revisor && pedido.autorId !== sess.user_id)) return sendJson(res, 404, { error: 'pedido não encontrado' });
+      const item = (pedido.itens || []).find((i) => i.id === parts[4]);
+      if (!item) return sendJson(res, 404, { error: 'esta TV não está no pedido' });
+      return sendJson(res, 200, { tela: (await antesEDepoisDe(sess, pedido, [item]))[0] });
     }
     if (req.method === 'POST' && parts[3] === 'aprovar') {
       // Aprovar é do dono e do admin. O membro não aprova nem o próprio pedido.

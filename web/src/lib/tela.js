@@ -183,3 +183,23 @@ export function nomeDaParte(zona, layout) {
   if (n === 'Secundária') return layout && layout.orientation === 'portrait' ? 'Embaixo' : 'Lado';
   return NOME_DA_PARTE[n] || (papelDaZona(zona) === 'principal' ? 'Meio' : 'Lado');
 }
+
+/*
+ * As partes com mais de uma peça girando, e em qual a TV está: a peça
+ * escolhida (`foco`, a página da TV) ou a que a TV contou estar no ar
+ * (`estado`). Na ordem em que as partes aparecem na TV. `partes`: as
+ * zonas medidas no quadro ({ id }), como em components/tela/TvAoVivo.jsx.
+ */
+export function contagensDasPartes(partes, layout, cfg, foco, contou) {
+  const saida = [];
+  for (const p of partes || []) {
+    const f = foco && foco.zona === p.id ? foco : null;
+    const z = contou && contou[p.id];
+    const total = f ? (((cfg && cfg.zonas && cfg.zonas[p.id]) || {}).items || []).length : z && z.total;
+    const posicao = f ? f.indice + 1 : z && z.posicao;
+    if (!(total > 1) || !(posicao > 0)) continue;
+    const zona = layout && layout.zones.find((x) => x.id === p.id);
+    saida.push({ id: p.id, nome: nomeDaParte(zona, layout), posicao, total });
+  }
+  return saida;
+}

@@ -97,6 +97,9 @@ test('no painel: o horário fica sempre editável, e a escolha do que a TV mostr
   const s = ler('web/src/components/tela/HorarioDaTela.jsx');
   assert.ok(ler('web/src/pages/ScreensPage.jsx').includes('<CamposDoHorario exp={exp} setExp={setExp} />'));
   assert.ok(ler('web/src/components/content/SettingsForm.jsx').includes('<CamposDoHorario exp={exp} setExp={setExp} />'));
-  assert.match(s, /\['ligada', 'Continua mostrando a programação'\], \['relogio', 'Mostra só o relógio'\], \['preta', 'Fica preta/);
+  // Reteste 3: as três escolhas moram em lib/horarioDaTela.js, com o porquê de cada uma, e o relógio (o padrão) primeiro.
+  assert.match(s, /\{FORA_DO_HORARIO\.map\(\(\[v, rotulo, porque\]\) => \(/);
+  const h = ler('web/src/lib/horarioDaTela.js');
+  assert.match(h, /\['relogio', 'Mostra só o relógio', [^\n]+\],\n  \['preta', 'Fica preta', [^\n]+\],\n  \['ligada', 'Continua mostrando a programação', [^\n]+\],/);
   assert.doesNotMatch(s, /<fieldset disabled=\{!exp\.alerta\}/, 'desligar o alerta não pode travar o horário');
 });

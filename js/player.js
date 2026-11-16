@@ -537,6 +537,8 @@
       guardarMarcaDaEspera(dados && dados.marca);
       showAguardando(dados && dados.nome);
     });
+    // A conta não pôde receber esta TV (plano, teste, fatura): a TV diz por quê, com o código ainda na tela.
+    document.addEventListener('mt:pareamento-recusado', function (e) { showRecusada(e && e.detail); });
     // A chamada de senha (fase 12): chega pelo mesmo tempo real, com pergunta de reserva (js/senha.js).
     if (global.MTSenha) MTSenha.ligar(dev.id);
     /*
@@ -761,6 +763,25 @@
     const d = el.querySelector('.mt-pairing-hint');
     if (t) t.textContent = textosPairing.titulo;
     if (d) d.innerHTML = textosPairing.dica;
+  }
+
+  /*
+   * A CONTA NÃO PÔDE RECEBER ESTA TV (reteste 3, item 7). Quem pareia a 2ª
+   * TV no plano grátis via o painel dizer "limite do plano", e a TV ficava
+   * no código sem dizer nada — quem estava na frente dela tentava de novo.
+   * Agora o servidor manda o motivo (server/plans.js, recusaNaTv) e ele
+   * entra no lugar do título e da instrução. O código e o QR ficam: com o
+   * plano resolvido, é o mesmo código. Só vale com o código na tela; o
+   * próximo showPairing volta o texto de sempre (restaurarTextosPairing).
+   */
+  function showRecusada(dados) {
+    const el = document.getElementById('pairing');
+    if (!el || el.classList.contains('hidden') || !dados || typeof dados !== 'object') return;
+    const titulo = el.querySelector('.mt-pairing-title');
+    const dica = el.querySelector('.mt-pairing-hint');
+    guardarTextosPairing(el);
+    if (titulo && dados.titulo) titulo.textContent = String(dados.titulo).slice(0, 80);
+    if (dica && dados.texto) dica.textContent = String(dados.texto).slice(0, 400);
   }
 
   // Ligou sem internet e sem nenhuma config guardada: dizer isso, e não

@@ -4,6 +4,7 @@ import { Palco } from '../content/VerTelaAgora.jsx';
 import { TvAoVivo } from './TvAoVivo.jsx';
 import { telaAgora } from '../../api.js';
 import { lerProgramacao } from '../../lib/programacaoDaTv.js';
+import { usePerto } from '../../lib/usePerto.js';
 
 /*
  * A TV em miniatura, com o que ela está mostrando (QA de 26/10: "o que está
@@ -40,6 +41,8 @@ export function podePedir(id, agora = Date.now(), deNovo = false) {
 
 /*
  * `altura`: a altura máxima do palco (o cartão usa 220; a página da TV, mais).
+ * No cartão a TV enche a caixa: a linha "Meio: peça 2 de 6" (TvAoVivo) não
+ * cabe embaixo dela e fica só na página da TV.
  * `pedirDeNovo`: muda quando a página da TV põe algo no ar — a miniatura
  * espera a TV trocar e pergunta de novo, em vez de seguir com a imagem velha.
  */
@@ -55,12 +58,22 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
   const [resposta, setResposta] = useState(null);
   // undefined: lendo; null: não deu para ler (fica o desenho de antes).
   const [lida, setLida] = useState(undefined);
+  /*
+   * A PROGRAMAÇÃO SÓ QUANDO A MINIATURA APARECE (teste de carga, 16/11). A
+   * lista da conta grande vem sem ela (server/routes/telas.js, a lista de
+   * Telas), e as 300 miniaturas pedindo a sua ao abrir seriam os mesmos
+   * ~30 MB de antes, só que em pedaços. Pede a que está na tela (ou a 200 px
+   * dela, como o quadro do TvAoVivo) e só quando há o que desenhar: sem
+   * resposta da TV, a miniatura mostra o recado e não usa a programação.
+   */
+  const [setCaixa, perto] = usePerto(!cfg && !vazia);
+  const temImagem = !!(resposta && resposta.estado);
   useEffect(() => {
-    if (cfg || vazia) return undefined;
+    if (cfg || vazia || !perto || !temImagem) return undefined;
     let vivo = true;
     lerProgramacao(d.id, d.updatedAt || 0).then((c) => { if (vivo) setLida(c); });
     return () => { vivo = false; };
-  }, [d.id, d.updatedAt, cfg, vazia]);
+  }, [d.id, d.updatedAt, cfg, vazia, perto, temImagem]);
   const programacao = cfg || lida;
   // Começa "perguntando": até a primeira leitura voltar, a TV no ar está sendo consultada.
   const [perguntando, setPerguntando] = useState(online && !vazia);
@@ -101,13 +114,23 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
     const quando = resposta.em ? new Date(resposta.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
     const velha = !resposta.em || Date.now() - resposta.em > VELHA_MS;
     const selo = !online ? 'Última imagem · ' + quando : velha && quando ? 'Visto em ' + quando : '';
+    /*
+     * A TV de verdade (o player num quadro) apaga e põe o selo ela mesma, só
+     * na imagem: a linha "Meio: peça 2 de 6" embaixo dela (reteste 3) não fica
+     * cinza nem coberta pelo selo. Sem a programação ainda, o desenho de antes.
+     */
+    if (programacao) {
+      return (
+        <div className="pointer-events-none relative w-full" aria-label={(selo ? selo + ' · ' : 'O que está passando agora · ') + (d.name || '')}>
+          <TvAoVivo cfg={programacao} estado={resposta.estado} alturaMaxima={altura} leve={altura <= 240} contagem={altura > 240}
+            apagada={!online} selo={selo} rotulo={'O que passa agora em ' + (d.name || 'esta TV')} />
+        </div>
+      );
+    }
     return (
-      <div className="pointer-events-none relative w-full" aria-label={(selo ? selo + ' · ' : 'O que está passando agora · ') + (d.name || '')}>
+      <div ref={setCaixa} className="pointer-events-none relative w-full" aria-label={(selo ? selo + ' · ' : 'O que está passando agora · ') + (d.name || '')}>
         <div className={!online ? 'opacity-50 grayscale' : ''}>
-          {/* A TV de verdade (o player num quadro); sem a programação ainda, o desenho de antes. */}
           {programacao === undefined ? <div className="aspect-video w-full rounded-lg bg-surface-2" />
-            : programacao
-            ? <TvAoVivo cfg={programacao} estado={resposta.estado} alturaMaxima={altura} leve={altura <= 240} rotulo={'O que passa agora em ' + (d.name || 'esta TV')} />
             : <Palco estado={resposta.estado} alturaMaxima={altura} />}
         </div>
         {selo && <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">{selo}</span>}
@@ -115,7 +138,7 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
     );
   }
   return (
-    <div className="flex flex-col items-center gap-2 px-4 text-center">
+    <div ref={setCaixa} className="flex flex-col items-center gap-2 px-4 text-center">
       <MonitorPlay size={26} className={online ? 'text-accent' : 'text-ink-3'} />
       <span className="text-sm font-medium text-ink-2">
         {vazia ? 'Nada passando nesta TV ainda' : !online ? 'Sem imagem: a TV está fora do ar'

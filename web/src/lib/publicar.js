@@ -5,69 +5,27 @@
  * e uma segunda cópia é como as duas acabariam divergindo: uma mandaria a
  * peça em pé para a lateral e a outra, para a principal.
  */
-import { primaryZoneKey } from './contentTypes.js';
-import { aplicarConteudo, distribuirPorZona, agendarPeca, cobrirODia } from './aplicarConteudo.js';
-import { zonesOf } from './screenConfig.js';
-import { aplicarPeca, zonasPorPapel, gravarEmLote } from './rodar.js';
-
-// Peça de cabeçalho ou de rodapé: vai para a lista da faixa, nunca para uma playlist.
-const ehFaixa = (p) => { const papel = (p.item && p.item.papel) || p.papel; return papel === 'cabecalho' || papel === 'rodape'; };
+import '../../../js/lote-tv.js';
+import { enviarOperacao } from './rodar.js';
 
 /*
  * pecas: [{ formato, item, faixa? }]; alvos: ids das telas.
  * substituir: esvazia a zona antes ('limpar'); senão troca só o que veio
  * desta mesma origem (`titulo`) e preserva o resto.
+ *
+ * QUEM MONTA É O SERVIDOR (teste de carga, 16/11): a regra de cada TV — a
+ * peça em pé na zona em pé, as faixas de horário, o cabeçalho e o rodapé
+ * pelo mesmo caminho das Peças prontas (EXECUTOR §2e, item 42) — mora em
+ * js/lote-tv.js (montarPublicacao). O painel lia a programação de cada TV,
+ * montava e mandava todas de volta: numa conta de RH, acima de ~19 TVs o
+ * envio passava de 2 MB e era recusado. Agora vai a operação "estas peças
+ * nestas TVs" (a operação 'publicar'), tudo ou nada, com o Desfazer.
  */
 export async function publicarPecas({ alvos, pecas: todas, titulo, telas, dias = 0, substituir = false }) {
-  /*
-   * As faixas seguem o MESMO caminho das Peças prontas e do Pôr pra rodar
-   * (lib/rodar.js, aplicarPeca; EXECUTOR §2e, item 42). Antes uma peça de
-   * cabeçalho publicada de Meus Designs caía na principal, como se fosse um
-   * cartaz espremido.
-   */
-  const faixas = todas.filter(ehFaixa);
-  const pecas = todas.filter((p) => !ehFaixa(p));
-  /*
-   * A mudança como função da programação, para todas as TVs de uma vez
-   * (D26, tudo ou nada): o lote lê com a versão e relê e reaplica se alguma
-   * mudou no meio (D0.5). Falha ao ler não vira "TV vazia" gravada por cima.
-   */
   const devs = alvos.map((id) => (telas || []).find((s) => s.id === id) || { id, name: 'Tela' });
-  // (montar, logo abaixo, é declaração de função: vale aqui.)
-  return gravarEmLote(devs, (cfg) => montar(cfg), titulo || 'Pôr na TV');
-
-  function montar(cfg) {
-    /*
-     * Peça em pé vai para a zona em pé. Antes tudo caía na principal e a
-     * lateral seguia com a cara de sempre enquanto a campanha rodava ao
-     * lado — a queixa de "adicionou uma tela só na principal".
-     */
-    const zonas = zonesOf(cfg).filter((z) => z.type === 'playlist');
-    let blocos = distribuirPorZona(pecas, zonas, dias);
-    if (!Object.keys(blocos).length && pecas.length) {
-      blocos = { [primaryZoneKey(cfg)]: cobrirODia(pecas.map((p) => agendarPeca(p.item, p.faixa, dias))) };
-    }
-    /*
-     * 'trocar' substitui só o que veio DESTA campanha; 'limpar' esvazia a
-     * zona. Antes o padrão empilhava para sempre e a única alternativa
-     * apagava também o que não era campanha.
-     */
-    let novaCfg = pecas.length ? aplicarConteudo(cfg, blocos, { chave: '_campanha', valor: titulo },
-      substituir ? 'limpar' : 'trocar') : cfg;
-    if (faixas.length) {
-      // Publicar de novo troca as faixas desta mesma origem, como nas playlists.
-      const z = zonasPorPapel(novaCfg);
-      for (const papel of ['cabecalho', 'rodape']) {
-        const zona = z[papel] && novaCfg.zonas[z[papel]];
-        if (!zona || !Array.isArray(zona.pecas)) continue;
-        const resto = zona.pecas.filter((p) => !(p && p._campanha === titulo));
-        if (resto.length !== zona.pecas.length) {
-          novaCfg = { ...novaCfg, zonas: { ...novaCfg.zonas, [z[papel]]: { ...zona, pecas: resto, peca: resto[0] } } };
-          if (!resto.length) { delete novaCfg.zonas[z[papel]].pecas; delete novaCfg.zonas[z[papel]].peca; }
-        }
-      }
-      for (const p of faixas) novaCfg = aplicarPeca(novaCfg, { ...p, campanha: titulo });
-    }
-    return novaCfg;
-  }
+  const pecas = (todas || []).map((p) => ({ item: p.item, formato: p.formato || '', ...(p.faixa ? { faixa: p.faixa } : {}), ...(p.papel ? { papel: p.papel } : {}) }));
+  return enviarOperacao({ tipo: 'publicar', pecas, titulo: titulo || 'Pôr na TV', dias, substituir: !!substituir }, devs.map((d) => ({ id: d.id })));
 }
+
+// A publicação numa TV, para a prévia e os testes: a mesma do servidor (`agora`: o dia de referência).
+export const montarPublicacao = (cfg, publicacao, agora) => globalThis.MTLoteTv.montarPublicacao(cfg, publicacao, agora);

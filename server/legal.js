@@ -219,6 +219,7 @@ function privacidade(env) {
 </ul>
 
 <h2>2. O que guardamos</h2>
+<div class="rolar" role="region" tabindex="0" aria-label="O que guardamos">
 <table>
   <tr><th>Dado</th><th>Para quê</th><th>Base legal</th></tr>
   <tr><td>E-mail, nome e senha (guardada como hash, nunca em texto)</td><td>criar e acessar a conta</td><td>execução de contrato</td></tr>
@@ -233,8 +234,10 @@ function privacidade(env) {
   <tr><td>Convites de equipe: e-mail do convidado e papel</td><td>dar acesso ao painel</td><td>execução de contrato</td></tr>
   <tr><td>Acessos do suporte à sua conta: quem entrou, quando e o motivo</td><td>prestar contas de cada acesso</td><td>legítimo interesse</td></tr>
 </table>
+</div>
 
 <h2 id="cookies">3. Cookies e medição</h2>
+<div class="rolar" role="region" tabindex="0" aria-label="Cookies e medição">
 <table>
   <tr><th>Nome</th><th>Onde</th><th>Para quê</th><th>Por quanto tempo</th></tr>
   <tr><td><code>mt_session</code></td><td>painel</td><td>manter você conectado. Essencial: sem ele não há login, por isso dispensa consentimento</td><td>até 30 dias, ou até você sair</td></tr>
@@ -242,15 +245,18 @@ function privacidade(env) {
   <tr><td><code>mt_cookies</code> (guardado no navegador)</td><td>página do site</td><td>lembrar se você aceitou ou recusou a medição</td><td>até você limpar os dados do navegador</td></tr>
   <tr><td><code>_ga</code>, <code>_ga_*</code> (Google Analytics) e <code>_gcl_au</code> (Google Ads)</td><td><b>só na página do site</b> (multitelas.net.br, /empresas, /saude, /comercio)</td><td>contar visitas e saber quais anúncios trouxeram quem se cadastrou</td><td>até 2 anos (<code>_ga</code>) e 90 dias (<code>_gcl_au</code>), pelas regras do Google</td></tr>
 </table>
+</div>
 <p><b>Os cookies do Google só são gravados se você clicar em "Aceitar"</b> no aviso da página. Até lá, e se você clicar em "Recusar", a medição fica desligada (o Google recebe, no máximo, um sinal sem cookie de que a página foi aberta). A personalização de anúncios (remarketing) fica sempre desligada. Para mudar de ideia, use o link <b>Cookies</b> no rodapé da página ou limpe os dados do site no navegador.</p>
 <p>O <b>painel</b> e a <b>TV</b> não têm Google Analytics nem Google Ads. Não vendemos dados pessoais e não os compartilhamos para publicidade de terceiros.</p>
 
 <h2>4. Para onde os dados vão</h2>
 <p>Usamos os serviços abaixo para operar. A maioria fica fora do Brasil; a transferência internacional se apoia nas cláusulas-padrão contratuais aprovadas pela ANPD (Resolução CD/ANPD nº 19/2024) ou nas garantias equivalentes dos contratos de cada serviço, e no que for necessário para executar o serviço que você contratou (LGPD, art. 33).</p>
+<div class="rolar" role="region" tabindex="0" aria-label="Para onde os dados vão">
 <table>
   <tr><th>Serviço</th><th>Para quê</th><th>Quando</th><th>Onde</th></tr>
   ${SUBOPERADORES.map((s) => `<tr><td>${s.nome}</td><td>${s.papel}</td><td>${s.quando}</td><td>${s.local}</td></tr>`).join('\n  ')}
 </table>
+</div>
 <p><b>Sobre a IA:</b> quando você gera uma campanha, o pedido que escreveu vai para o motor de IA. Quando você sobe imagens como referência de estilo ou como acervo da marca, <b>essas imagens são enviadas ao Google para serem analisadas</b>. Se elas contiverem rostos ou qualquer dado pessoal, isso vale como compartilhamento — leve em conta antes de subir.</p>
 
 <h2>5. Fotos de pessoas</h2>
@@ -307,7 +313,14 @@ p, li { color: #33383f; }
 ul { padding-left: 1.2rem; }
 li { margin: .3rem 0; }
 code { font-size: .85em; }
-table { width: 100%; border-collapse: collapse; margin: .8rem 0; font-size: .9rem; display: block; overflow-x: auto; }
+/*
+ * A tabela que não cabe no celular rola dentro da caixa, e a caixa entra no
+ * Tab (reteste 3: scrollable-region-focusable, do axe), com o nome da
+ * seção. Antes a própria tabela rolava, e o teclado não chegava nela.
+ */
+.rolar { overflow-x: auto; margin: .8rem 0; border-radius: 4px; }
+.rolar:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+table { width: 100%; border-collapse: collapse; margin: 0; font-size: .9rem; }
 th, td { border: 1px solid #dfe2e8; padding: .5rem .6rem; text-align: left; vertical-align: top; }
 th { background: #eef0f4; font-weight: 600; }
 .meta { color: #6b7280; font-size: .85rem; }
@@ -323,6 +336,7 @@ footer { margin-top: 3rem; border-top: 1px solid #dfe2e8; padding-top: 1rem; }
   .nota { border-color: #262b33; background: #14171c; }
   footer { border-color: #262b33; }
   a { color: #a5b4fc; }
+  .rolar:focus-visible { outline-color: #a5b4fc; }
 }
 `;
 

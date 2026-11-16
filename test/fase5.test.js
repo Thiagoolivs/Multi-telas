@@ -61,5 +61,6 @@ test('o dia inteiro coberto: a faixa sem peça fica com a vizinha', async () => 
   // Com peça no dia todo, ou um horário escolhido à mão, nada muda.
   const comDia = [A.agendarPeca({ id: 'd' }, 'dia', 0), A.agendarPeca({ id: 't' }, 'tarde', 0)];
   assert.deepEqual(A.cobrirODia(comDia), comDia);
-  assert.match(ler('web/src/lib/publicar.js'), /cobrirODia\(pecas\.map/);
+  assert.match(ler('js/lote-tv.js'), /cobrirODia\(pecas\.map\(\(p\) => agendarPeca\(p\.item, p\.faixa, dias, agora\)\)\)/);
+  assert.match(ler('web/src/lib/publicar.js'), /enviarOperacao\(\{ tipo: 'publicar'/);
 });

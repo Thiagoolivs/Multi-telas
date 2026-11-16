@@ -84,8 +84,17 @@ test('a peça: o alerta dos modelos, com a marca, sem nada do texto de exemplo; 
 
 test('o painel: aviso rápido na Programação, prévia antes, envio em lote com Desfazer', () => {
   const d = ler('web/src/components/tela/AvisoRapido.jsx');
-  assert.match(d, /const r = await gravarEmLote\(alvos, naTela, 'Aviso: ' \+ aviso\.titulo\);/);
-  assert.match(d, /throw new Error\(\(tv\.name \|\| 'Uma TV'\) \+ ': ' \+ e\.message \+ '\. Nada foi enviado\.'\);/, 'TV sem lugar para o aviso não para o envio');
+  /*
+   * Teste de carga (16/11): o envio é UM pedido "este aviso nestas TVs", e o
+   * servidor põe o aviso em cada uma pelo caminho do lote (tudo ou nada, a
+   * loja, a aprovação, o Desfazer — test/conta-grande.test.js). O painel não
+   * lê mais a programação de cada TV nem manda todas de volta.
+   */
+  assert.match(d, /const r = await lote\.aviso\(alvos\.map\(\(t\) => t\.id\), item, \{ titulo: aviso\.titulo, prioridade: aviso\.prioridade, ate: aviso\.ate \|\| '' \}, hojeDoAviso\(\)\);/);
+  assert.doesNotMatch(d, /gravarEmLote\(/, 'o aviso voltou a ler e mandar a programação de cada TV');
+  assert.match(ler('web/src/api.js'), /aviso: \(telas, item, aviso, hoje\) => api\('POST', '\/api\/lote\/aviso', \{ telas, item, aviso, hoje \}\),/);
+  // TV sem lugar para o aviso para o envio inteiro, dizendo qual (agora no servidor, montarAviso).
+  assert.match(ler('server/routes/telas.js'), /error: \(device\.name \|\| 'Uma TV'\) \+ ': ' \+ e\.message \+ '\. Nada foi enviado\.', code: 'sem-lugar'/, 'TV sem lugar para o aviso não para o envio');
   assert.match(d, /avisarComDesfazer\(/);
   assert.match(d, /<PecaHtml item=\{item\} formato="16\/9" \/>/, 'sem prévia antes de mandar');
   // Fase 7, um só Criar: o aviso rápido nasce na conversa do Criar (AcaoDaIA); a Programação só leva ao Criar.

@@ -167,7 +167,7 @@ test('o editor da TV: erro de leitura não semeia o padrão, salvar tenta de nov
    */
   assert.ok(!/const ESPERAS = \[/.test(s), 'o salvamento automático voltou');
   // Fase 7: o botão é "Pôr na TV", na barra de baixo da página da TV.
-  assert.match(s, />\s*\{publishing \? 'Pondo na TV…' : 'Pôr na TV'\}/);
+  assert.match(s, />\s*\{publishing \? \(vaiPedir \? 'Pedindo aprovação…' : 'Pondo na TV…'\) : \(vaiPedir \? 'Pedir aprovação' : 'Pôr na TV'\)\}/);
   // Desde o #232 pergunta antes, dizendo o que some; a versão nova é relida e usada.
   assert.match(s, /async function publicarPorCima\(\) \{\s*try \{\s*const r = await deviceConfig\.ler\(device\.id\);[\s\S]{0,1600}versao\.current = \(r && r\.versao\) \|\| 0;/);
   assert.match(s, />Pôr o meu por cima</);

@@ -10,6 +10,7 @@ import { devices } from '../../api.js';
 import { QUANDOS, FAIXAS_DO_DIA, comQuando, frasesDoQuando } from '../../lib/quando.js';
 import { porPecaNasTelas, avisarComDesfazer } from '../../lib/rodar.js';
 import { aviso } from '../../lib/avisos.js';
+import { usePedeAprovacao } from '../../lib/aprovacao.js';
 import { cn } from '../../lib/cn.js';
 
 /*
@@ -41,6 +42,8 @@ export function PorNaTV({ peca, telaInicial, telas: dadas, onFechar, onFeito, ti
   const falta = faltaData(escolha);
   // Fase 13: as TVs escolhidas em que esta pessoa já tem uma mudança esperando aprovação (a nova vai junto).
   const comPedido = (telas || []).filter((t) => t.meuPedido && alvos.includes(t.id));
+  // Reteste 3: com a aprovação ligada, o toque vira pedido (lib/aprovacao.js); o botão e a frase dizem antes.
+  const vaiPedir = usePedeAprovacao() || comPedido.length > 0;
 
   async function por() {
     setEnviando(true);
@@ -56,11 +59,13 @@ export function PorNaTV({ peca, telaInicial, telas: dadas, onFechar, onFeito, ti
 
   return (
     <Dialog open onClose={() => { if (!enviando) onFechar(); }} title={titulo} className="max-w-xl"
-      description={descricao || 'Escolha onde e quando. A TV muda na hora, e dá para desfazer.'}
+      description={vaiPedir
+        ? (descricao ? descricao + ' ' : 'Escolha onde e quando. ') + 'O dono da conta aprova antes de ir para a TV.'
+        : descricao || 'Escolha onde e quando. A TV muda na hora, e dá para desfazer.'}
       footer={<>
         <Button variant="ghost" onClick={onFechar} disabled={enviando}>Cancelar</Button>
         <Button variant="primary" icon={MonitorPlay} disabled={!alvos.length || enviando || falta} onClick={por}>
-          {enviando ? 'Pondo na TV…' : 'Pôr na TV'}
+          {enviando ? (vaiPedir ? 'Pedindo aprovação…' : 'Pondo na TV…') : (vaiPedir ? 'Pedir aprovação' : 'Pôr na TV')}
         </Button>
       </>}>
       <div className="space-y-4">
