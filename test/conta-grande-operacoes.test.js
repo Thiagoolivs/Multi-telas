@@ -386,7 +386,8 @@ test('a recusa do pareamento também vai no pulso da TV (sem o tempo real), e sa
   assert.ok(!('recusada' in (await pulso()).json));
   // A TV mostra o que vem no pulso pelo mesmo caminho do tempo real.
   assert.match(ler('js/cloud.js'), /if \(r && r\.recusada && typeof r\.recusada === 'object'\) \{\s*document\.dispatchEvent\(new CustomEvent\('mt:pareamento-recusado', \{ detail: r\.recusada \}\)\);/);
-  assert.match(ler('sw.js'), /const SHELL_CACHE = 'mt-shell-v92';/);
+  // O player mudou (o recado no pulso): o shell da TV subiu de versão — v92 ou depois, para não prender a próxima mudança.
+  assert.ok(Number((/const SHELL_CACHE = 'mt-shell-v(\d+)';/.exec(ler('sw.js')) || [])[1]) >= 92);
 });
 
 /* ---------------- A regra de uma TV, igual nos dois lados ---------------- */
