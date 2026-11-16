@@ -40,7 +40,11 @@ pedido de 10 KB, em 0,85 s, sem travar o servidor mais de 20 ms. Na mesma
 leva, a **campanha, a peça pronta e a publicação** para muitas TVs viraram
 operações do servidor como o aviso (300 TVs: 1 pedido de ~26 KB em vez de
 601 pedidos e 33 MB recusados), e a **página Programação** da conta grande
-caiu de 31 MB para os cartões que aparecem (0,6 MB na primeira tela).
+caiu de 31 MB para os cartões que aparecem (0,6 MB na primeira tela). Depois,
+a **Agenda, os indicadores, as planilhas, as telas prontas e o quiz** também
+(nenhum envio para muitas TVs lê e manda mais a programação de cada uma), e
+abrir um **pedido de aprovação de 200 TVs** caiu de 36 MB e 2 s parado para
+a lista (0,03 MB) e o antes e o depois de cada TV quando ela aparece.
 
 **Tamanho e quando escalar.** Com as correções, **1 vCPU e 1 GB** no
 Railway atendem até o teto de 2.000 TVs com folga (planejamento: ~3.000 por
@@ -357,12 +361,60 @@ TVs caiu de ~29 MB para 256 KB.
 | 300 TVs: Desfazer | — | 1,2–1,4 s · trava 130–200 ms (gravar no SQLite local é síncrono; no Postgres a escrita não para o servidor); guardados 256 KB |
 | 300 TVs: peça pronta / publicação | 413 (como a campanha) | 1 pedido de 14 KB · 1,7–2,1 s · trava ≤ 54 ms |
 
-Seguem no caminho de antes (ler e mandar a programação de cada TV, presos
-aos 2 MB, ~19 TVs de RH): a Agenda (datas do calendário em várias TVs), os
-Indicadores, as Planilhas de preço, as Telas prontas em várias TVs e o quiz
-do Criar. Ficaram mais leves com a memória da porta (o envio para 15 TVs de
-RH caiu de 418 ms e trava de 340 ms para 169 ms e 59 ms), mas o próximo
-passo é cada um virar um tipo de operação.
+**A Agenda, os indicadores, as planilhas, as telas prontas e o quiz, do
+mesmo jeito (16/11, terceira leva).** Eram os caminhos que ainda liam e
+mandavam a programação de cada TV (`gravarEmLote`), presos aos 2 MB (~19 TVs
+de RH). Cada um virou um tipo em `POST /api/lote/operacao`, com a regra de
+cada TV em `js/lote-tv.js` (o painel passou a chamá-la de lá:
+`web/src/lib/calendario.js`, `telasProntas.js`, `quizNaTv.js`):
+
+- `calendario` (a Agenda): as datas, com a peça de cada uma, vão uma vez; cada
+  TV aponta para o que é dela — as datas que recebe e as que saem dela
+  (`porAgendaNasTelas` em `web/src/lib/calendario.js`); `tirar-calendario`
+  (apagar a data) tira a peça das TVs em que estava;
+- `indicador` e `planilha`: o cartão ao vivo e a tabela (ou o cardápio) no fim
+  da área principal; pôr de novo troca o mesmo, não duplica;
+- `tela-pronta`: o layout e as peças da tela em cada TV, e o resto da
+  programação (horário, som, tema, o jeito do rodapé) fica;
+- `quiz` (o do Criar): na zona pedida ou, se a TV não a tem, na principal — o
+  servidor devolve essas TVs (`marcadas`) e o painel diz quais.
+
+Os mesmos cuidados de todos: loja, aprovação, versão com nova tentativa, a
+porta das peças, tudo ou nada, em pedaços, e o Desfazer com o antes em
+partes. Medido na conta de 300 TVs com a programação de RH (com a máquina
+dividida com outros trabalhos — carga de 20 a 24 em 4 núcleos —, então a trava
+varia de uma medida para outra; o pedido antes era o mesmo do lote de antes:
+301 pedidos e ~30 MB, recusado acima de ~19 TVs):
+
+| Envio para 300 TVs | pedido | tempo | trava | Desfazer guardado |
+|---|---|---|---|---|
+| Agenda (2 datas) | 1, 25,7 KB | 2,1–3,0 s | 70–315 ms | 256 KB |
+| Apagar uma data | 1, 6,4 KB | 2,1 s | 124–136 ms | 184 KB |
+| Indicador | 1, 6,5 KB | 1,9–2,3 s | 84–262 ms | 177 KB |
+| Planilha | 1, 6,5 KB | 2,8–3,0 s | 108–271 ms | 177 KB |
+| Tela pronta | 1, 40,8 KB | 1,6–1,9 s | 55–136 ms | 177 KB |
+| Quiz | 1, 6,6 KB | 1,6–1,8 s | 99–192 ms | 127 KB |
+
+O que segue lendo e mandando a programação da TV é **de uma TV só por
+desenho**: mudar a aparência de uma TV pela IA (`MudarAparencia`), a tela
+pronta da TV recém-pareada (`primeiraTv.js`, `ScreensPage.jsx`) e o editor
+de uma TV.
+
+**O pedido de aprovação grande, TV por TV (terceira leva).** O antes e o
+depois de cada TV de um pedido vinham todos juntos: o pedido de um membro
+para 200 TVs de RH eram 36 MB e 2 s de servidor parado para abrir. Acima de
+12 TVs, o pedido agora vem com a lista (nome, grupo, se a TV saiu da conta ou
+mudou depois — lidos sem a programação), e cada TV pede o antes e o depois
+dela quando aparece na tela (`GET /api/aprovacoes/:id/telas/:tela`;
+`TelaSobDemanda` em `web/src/pages/AprovacoesPage.jsx`). As TVs do pedido
+ficam 2 minutos em memória, para rolar o pedido não desmontar a linha
+inteira do banco a cada TV (os itens de um pedido não mudam depois de
+criado). Até 12 TVs, como antes.
+
+| Abrir o pedido de 200 TVs | antes | depois |
+|---|---|---|
+| O pedido | 36,3 MB · 2,66 s · trava 1,98 s | **0,03 MB · 253 ms · trava 245 ms** (ler a linha do pedido) |
+| Cada TV que aparece | (vinha junto) | 0,18 MB · 6–9 ms |
 
 ### 3.6 Teto da instância única e tamanho no Railway
 
@@ -492,6 +544,9 @@ Medido com `tools/carga/limites-conta.mjs` e na própria instalação das
    de ~26 KB em vez de 601 pedidos e 33 MB.
 5. **A Programação da conta grande** (segunda leva, 3.5): a página pede
    "todas, se forem até 12"; acima, cada cartão pede a sua quando aparece.
+6. **A Agenda, os indicadores, as planilhas, as telas prontas e o quiz como
+   operação** (terceira leva, 3.5), e **o pedido de aprovação grande TV por
+   TV**.
 
 **A 2ª TV do plano grátis diz por quê** (reteste 3, item 7; não era deste
 relatório, foi junto): o 402 do pareamento ia só para o painel, e a TV ficava
@@ -514,14 +569,10 @@ texto deles.
 2. **Plano para 50–300 TVs**: o Essencial para em 49 (`server/plans.js:76`);
    a Visitor vai precisar de um plano (ou de um Enterprise ativado pelo
    operador) antes da primeira venda grande.
-3. **A Agenda, os Indicadores, as Planilhas, as Telas prontas e o quiz para
-   muitas TVs como operação do servidor**, como a campanha: seguem lendo e
-   mandando a programação de cada TV (`gravarEmLote`), presos aos 2 MB (~19
-   TVs de RH). Cada um vira um tipo em `POST /api/lote/operacao`, com a
-   regra num arquivo dos dois lados.
-4. **O antes e o depois de um pedido de aprovação grande**: o revisor recebe
-   a programação inteira de cada TV duas vezes (até 200 TVs, ~38 MB);
-   precisa de páginas ou de só o que mudou.
+3. **O pedido de aprovação guarda a programação inteira de cada TV** (até
+   200 TVs de RH, ~19 MB numa linha): abrir o pedido grande ainda lê a linha
+   inteira uma vez (245 ms parado). Guardar o pedido em partes, como o
+   Desfazer, tira isso.
 
 ---
 
@@ -804,13 +855,16 @@ inteira passando e as medidas de `tools/carga/conta-grande.mjs`):
 | O Desfazer guarda o antes em partes (zonas e resto, uma vez por envio) | `server/routes/telas.js` (`antesEmPartes`, `antesDasPartes`), `server/db-sqlite.js` e `server/db-postgres.js` (`mapLote`, `salvarLote`) | campanha em 300 TVs: ~29 MB → 256 KB; 15 TVs pelo lote de antes: 1,5 MB → 108 KB |
 | Programação: todas num pedido só até 12 TVs; acima, cada cartão pede a sua | `server/routes/telas.js` (`?ate=`), `web/src/pages/ProgramacaoPage.jsx`, `web/src/lib/usePerto.js` (novo), `web/src/api.js` | 323 TVs: 31,4 MB, 849 ms, trava 556 ms → ~0 MB, 22 ms, trava 17 ms (+0,58 MB da primeira tela) |
 
-Testes da segunda leva em `test/conta-grande-operacoes.test.js` (o painel de
-verdade falando com o servidor de verdade) e em `test/conta-grande.test.js`.
+| A Agenda (pôr e apagar), o indicador, a planilha, a tela pronta e o quiz como operação do servidor | `server/routes/telas.js` (`OPERACOES`), `js/lote-tv.js`, `web/src/lib/calendario.js`, `telasProntas.js`, `quizNaTv.js`, `rodar.js`, `web/src/pages/CalendarioPage.jsx`, `IndicadoresPage.jsx`, `PlanilhasPage.jsx`, `TelasProntasPage.jsx`, `web/src/components/criar/AcaoDaIA.jsx` | 300 TVs: 301 pedidos e ~30 MB (413) → 1 pedido de 6–41 KB, 1,6–3,0 s |
+| O pedido de aprovação grande: a lista primeiro, o antes e o depois de cada TV quando ela aparece | `server/routes/aprovacoes.js` (`GET /api/aprovacoes/:id/telas/:tela`, `lerPedido`), `web/src/pages/AprovacoesPage.jsx` (`TelaSobDemanda`), `web/src/api.js` | 200 TVs: 36,3 MB, 2,66 s, trava 1,98 s → 0,03 MB, 253 ms, trava 245 ms; cada TV 0,18 MB |
+
+Testes da segunda e da terceira leva em `test/conta-grande-operacoes.test.js`
+(o painel de verdade falando com o servidor de verdade) e em
+`test/conta-grande.test.js`.
 
 **Não mudou** (proposta, por ser regra de negócio, contrato do painel ou
-app sem compilar aqui): o teto de 2.000 conexões, a Agenda, os Indicadores,
-as Planilhas, as Telas prontas e o quiz para muitas TVs como operação do
-servidor, o vigia do app Android e a limpeza do cache de mídia.
+app sem compilar aqui): o teto de 2.000 conexões, o pedido de aprovação
+guardado em partes, o vigia do app Android e a limpeza do cache de mídia.
 
 ---
 
@@ -838,7 +892,8 @@ node tools/carga/tabela.mjs /tmp/carga /tmp/maquina.jsonl  # as tabelas deste re
 LIM_BASE=http://127.0.0.1:6090 LIM_PSQL="-h /caminho/do/socket -U mt -d multitelas" node tools/carga/limites-conta.mjs
 
 # 3b. A página Telas, a Programação, o aviso rápido e a campanha numa conta de 323 TVs (3.5),
-#     com a sonda a cada 1 s. CG_SO escolhe: telas, aviso-lote, aviso, campanha-lote, campanha, programacao.
+#     com a sonda a cada 1 s. CG_SO escolhe: telas, aviso-lote, aviso, campanha-lote, campanha, programacao,
+#     outros (Agenda, indicador, planilha, tela pronta, quiz) e aprovacao (o pedido de 200 TVs).
 # (Postgres: "$PG" no fim do subir-servidor.sh, e CG_PG="$PG" no lugar de CG_DADOS.)
 SONDA_MS=1000 tools/carga/subir-servidor.sh 6121 /tmp/cg            # SQLite em /tmp/cg
 CG_BASE=http://127.0.0.1:6121 CG_DADOS=/tmp/cg CG_SONDA=/tmp/cg/sonda.jsonl node tools/carga/conta-grande.mjs

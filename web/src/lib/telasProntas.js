@@ -7,6 +7,8 @@
  * A tela que o dono ainda não aprovou ('proposta') não aparece aqui.
  */
 import '../../../js/templates.js';
+// Pôr a tela pronta numa TV mora em js/lote-tv.js desde o teste de carga (16/11): o servidor a põe em muitas TVs com a mesma regra.
+import '../../../js/lote-tv.js';
 import { carregarModelos, itemDoModelo, naEpoca } from './modelosOuro.js';
 import { carregarManifesto } from './pacoteOuro.js';
 import { getLayout as layoutDoPainel } from './screenConfig.js';
@@ -55,9 +57,8 @@ export function paraOCliente(t) {
 
 export const emPe = (layoutId) => /^portrait/.test(layoutId || '');
 
-// O grupo da tela (cabecalho, principal, lateral, rodape) de cada zona do layout — o mesmo de js/bancada.js.
-const GRUPO_DA_ZONA = { cabecalho: 'cabecalho', principal: 'principal', video: 'principal', lateral: 'lateral', secundaria: 'lateral', info: 'lateral', rodape: 'rodape' };
-export const grupoDaZona = (zona) => GRUPO_DA_ZONA[zona.id] || (zona.type === 'header' ? 'cabecalho' : zona.type === 'ticker' ? 'rodape' : 'principal');
+// O grupo da tela (cabecalho, principal, lateral, rodape) de cada zona do layout — o mesmo de js/bancada.js (a regra em js/lote-tv.js).
+export const grupoDaZona = (zona) => globalThis.MTLoteTv.grupoDaZona(zona);
 
 let cache = null;
 // O manifesto e as peças abertas, uma vez por sessão.
@@ -192,23 +193,7 @@ export function estadoDaPrevia(montada) {
  * dele, as peças dela (no lugar do que havia). O resto da programação —
  * horário, som, tema, nome — fica. Não modifica a recebida.
  */
-export function aplicarTelaPronta(cfg, montada) {
-  const next = JSON.parse(JSON.stringify(cfg || {}));
-  next.settings = { ...(next.settings || {}), layoutId: montada.layout };
-  const antes = next.zonas || {};
-  next.zonas = {};
-  for (const z of getLayout(montada.layout).zones) {
-    // _pendentes é só do painel (o que ficou para a pessoa completar): não vai para a TV.
-    const pecas = (montada.grupos[grupoDaZona(z)] || []).map(({ _pendentes, ...p }) => ({ duracao: p.duracao || 20, ...p, origem: { ...(p.origem || {}), pedido: 'tela pronta', tela: montada.id } })); // eslint-disable-line no-unused-vars
-    // A zona mantém o que é dela (transição, notícias, velocidade); o conteúdo passa a ser o da tela.
-    const anterior = antes[z.id] && typeof antes[z.id] === 'object' ? antes[z.id] : {};
-    const { items: _i, peca: _pe, pecas: _ps, messages: _m, ...resto } = anterior; // eslint-disable-line no-unused-vars
-    if (z.type === 'header') next.zonas[z.id] = { ...resto, header: true, ...(pecas.length ? { pecas, peca: pecas[0] } : {}) };
-    else if (z.type === 'ticker') next.zonas[z.id] = { ...resto, ...(pecas.length ? { pecas, peca: pecas[0] } : {}), messages: montada.mensagens.slice() };
-    else next.zonas[z.id] = { ...resto, items: pecas };
-  }
-  return next;
-}
+export const aplicarTelaPronta = (cfg, montada) => globalThis.MTLoteTv.aplicarTelaPronta(cfg, montada);
 
 /* A marca da conta no formato que as telas prontas usam (a partir do que brand.get devolve). */
 export function marcaDaConta(r) {

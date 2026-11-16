@@ -182,7 +182,8 @@ export async function enviarOperacao(operacao, telas) {
   if (!lista.length) return { lote: null, ids: [] };
   const r = await loteApi.operacao({ operacao, telas: lista.map((t) => (t.entrada != null ? { id: t.id, entrada: t.entrada } : t.id)), hoje: hojeLocal() });
   // Com a aprovação ligada, o envio do membro virou pedido (202): quem chama pode dizer "espera o dono".
-  return { lote: (r && r.lote) || null, ids: lista.map((t) => t.id), ...(r && r.pendente ? { pendente: true, mensagem: r.mensagem || '' } : {}) };
+  return { lote: (r && r.lote) || null, ids: lista.map((t) => t.id), ...(r && r.pendente ? { pendente: true, mensagem: r.mensagem || '' } : {}),
+    ...(r && Array.isArray(r.marcadas) ? { marcadas: r.marcadas } : {}) };
 }
 
 /*

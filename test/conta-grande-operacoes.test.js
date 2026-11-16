@@ -412,3 +412,191 @@ test('js/lote-tv.js: o painel usa a mesma regra que o servidor (a campanha, a pe
   for (const f of ['aplicarConteudo', 'removerOrigem', 'distribuirPorZona', 'cobrirODia', 'agendarPeca']) assert.equal(typeof A[f], 'function', f);
   for (const f of ['zonasPorPapel', 'zonasQueFaltam', 'layoutPara', 'aplicarCampanha', 'tirarCampanha', 'quandoNaCampanha', 'aplicarPeca', 'planoDeRodar', 'rodarCampanha', 'pausarCampanha', 'porPecaNasTelas']) assert.equal(typeof R[f], 'function', f);
 });
+
+/* ---------------- Os outros envios para muitas TVs (terceira leva) ---------------- */
+
+test('a Agenda para a conta grande: as datas de cada TV num pedido, a data que muda de grupo sai das TVs de antes, e apagar tira de todas', async () => {
+  await oPainel();
+  const C = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/calendario.js')).href);
+  const dono = await cadastro();
+  const tvs = naConta(dono.tenantId, await tvsNovas(25, '10.87.0.1'), (i) => (i < 5 ? 'Unidade Norte' : 'Unidade Sul'));
+  const item = (titulo) => comCampos(PROGRAMA.zonas.principal.items[1], { assunto: titulo });
+  const salvos = [
+    { id: 'cal_sipat', titulo: 'SIPAT', data: '2099-11-20', antecedencia: 5, tipo: 'evento', prioridade: 'alta', alvo: { tipo: 'todas' }, item: item('SIPAT') },
+    { id: 'cal_vacina', titulo: 'Vacinação', data: '2099-11-25', antecedencia: 2, tipo: 'aviso', prioridade: 'urgente', alvo: { tipo: 'grupo', nome: 'Unidade Norte' }, item: item('Vacinação') },
+  ];
+  comoQuem(dono.cookie);
+  const r = await C.porAgendaNasTelas(salvos, tvs);
+  assert.equal(pedidosDoPainel.length, 1, 'a Agenda leu ou mandou TV por TV');
+  assert.equal(r.ids.length, 25);
+  const datas = (id) => configDe(id).cfg.zonas.principal.items.filter((it) => it._calendario).map((it) => it._calendario + ' ' + it.agendamento.dataInicio + '→' + it.agendamento.dataFim);
+  for (const t of tvs) {
+    assert.deepEqual(datas(t.id), t.grupo === 'Unidade Norte'
+      ? ['cal_sipat 2099-11-15→2099-11-20', 'cal_vacina 2099-11-23→2099-11-25']
+      : ['cal_sipat 2099-11-15→2099-11-20'], t.name);
+    assert.equal(configDe(t.id).cfg.zonas.principal.items.length, 8 + (t.grupo === 'Unidade Norte' ? 2 : 1));
+  }
+  // A vacinação vai para a Unidade Sul: sai das 5 TVs da Norte (onde estava) e entra nas 20 da Sul.
+  const mudou = salvos.map((e) => (e.id === 'cal_vacina' ? { ...e, alvo: { tipo: 'grupo', nome: 'Unidade Sul' }, telas: tvs.slice(0, 5).map((t) => t.id) } : { ...e, telas: tvs.map((t) => t.id) }));
+  comoQuem(dono.cookie);
+  await C.porAgendaNasTelas(mudou, tvs);
+  assert.equal(pedidosDoPainel.length, 1);
+  for (const t of tvs) assert.equal(datas(t.id).some((d) => d.startsWith('cal_vacina')), t.grupo === 'Unidade Sul', t.name);
+  // Apagar a SIPAT: sai das 25.
+  comoQuem(dono.cookie);
+  const tirou = await C.tirarDaAgenda({ ...mudou[0], telas: tvs.map((t) => t.id) }, tvs);
+  assert.equal(pedidosDoPainel.length, 1);
+  for (const t of tvs) assert.ok(!datas(t.id).some((d) => d.startsWith('cal_sipat')), t.name);
+  assert.equal((await pedir('/api/lote', { cookie: dono.cookie })).json.lotes[0].descricao, 'Tirar: SIPAT');
+  assert.equal((await pedir('/api/lote/' + tirou.lote + '/desfazer', { method: 'POST', cookie: dono.cookie })).json.voltaram.length, 25);
+  for (const t of tvs) assert.ok(datas(t.id).some((d) => d.startsWith('cal_sipat')), 'o Desfazer não devolveu a data à ' + t.name);
+  // A data sem dia, ou a operação sem a data: nada vai.
+  const op = (json) => pedir('/api/lote/operacao', { method: 'POST', cookie: dono.cookie, json });
+  assert.equal((await op({ operacao: { tipo: 'calendario', eventos: [{ id: 'x', data: 'amanhã' }], entradas: [{ dela: [0], fora: [] }] }, telas: [{ id: tvs[0].id, entrada: 0 }] })).json.code, 'operacao-invalida');
+  assert.equal((await op({ operacao: { tipo: 'tirar-calendario' }, telas: [tvs[0].id] })).json.code, 'operacao-invalida');
+});
+
+test('o indicador e a planilha na área principal de muitas TVs: um pedido, e pôr de novo troca, não duplica', async () => {
+  const { R } = await oPainel();
+  const dono = await cadastro();
+  const tvs = naConta(dono.tenantId, await tvsNovas(25, '10.88.0.1'));
+  const kpi = { type: 'kpi', indicador: 'acidentes', rotulo: 'Dias sem acidente', duracao: 12 };
+  comoQuem(dono.cookie);
+  const r = await R.enviarOperacao({ tipo: 'indicador', item: kpi }, tvs);
+  assert.equal(pedidosDoPainel.length, 1);
+  assert.equal(r.ids.length, 25);
+  await R.enviarOperacao({ tipo: 'indicador', item: kpi }, tvs);
+  for (const t of tvs) {
+    const itens = configDe(t.id).cfg.zonas.principal.items;
+    assert.equal(itens.filter((i) => i.type === 'kpi' && i.indicador === 'acidentes').length, 1, 'o indicador duplicou na ' + t.name);
+    assert.equal(itens[itens.length - 1].type, 'kpi', 'o indicador não entrou no fim da principal');
+  }
+  assert.equal((await pedir('/api/lote', { cookie: dono.cookie })).json.lotes[0].descricao, 'Indicador: Dias sem acidente');
+
+  const precos = (secao) => ({ type: 'precos', titulo: 'CARDÁPIO', colunas: 'auto', duracao: 20, rodape: '', linhas: 'Café;5', planilha: 'pla_1', ...(secao ? { planilhaSecao: secao } : {}) });
+  comoQuem(dono.cookie);
+  await R.enviarOperacao({ tipo: 'planilha', item: precos(''), nome: 'Cantina' }, tvs);
+  await R.enviarOperacao({ tipo: 'planilha', item: precos(''), nome: 'Cantina' }, tvs);
+  await R.enviarOperacao({ tipo: 'planilha', item: precos('Bebidas'), nome: 'Cantina' }, tvs);
+  assert.equal(pedidosDoPainel.length, 3);
+  for (const t of tvs) {
+    const daPlanilha = configDe(t.id).cfg.zonas.principal.items.filter((i) => i.planilha === 'pla_1');
+    assert.deepEqual(daPlanilha.map((i) => i.planilhaSecao || ''), ['', 'Bebidas'], 'a mesma planilha duplicou (ou a outra seção trocou a primeira) na ' + t.name);
+  }
+  const op = (json) => pedir('/api/lote/operacao', { method: 'POST', cookie: dono.cookie, json });
+  assert.equal((await op({ operacao: { tipo: 'indicador', item: { type: 'text', titulo: 'x' } }, telas: [tvs[0].id] })).json.code, 'operacao-invalida');
+  assert.equal((await op({ operacao: { tipo: 'planilha', item: { type: 'precos' } }, telas: [tvs[0].id] })).json.code, 'operacao-invalida');
+  // A porta vale: a planilha em forma de peça com script não vai para TV nenhuma.
+  const cardapio = PROGRAMA.zonas.principal.items[6];
+  const ruim = await op({ operacao: { tipo: 'planilha', item: { ...cardapio, html: cardapio.html + '<script>x()</script>', planilha: 'pla_2' }, nome: 'X' }, telas: [tvs[0].id] });
+  assert.equal(ruim.status, 400);
+});
+
+test('a tela pronta em muitas TVs: o layout e as peças dela em cada uma, o resto da TV fica, e o Desfazer devolve tudo', async () => {
+  const { R } = await oPainel();
+  const dono = await cadastro();
+  const tvs = naConta(dono.tenantId, await tvsNovas(25, '10.89.0.1'));
+  const antes = new Map(tvs.map((t) => [t.id, configDe(t.id).cfg]));
+  const tela = {
+    id: 'rh-boas-vindas', nome: 'Boas-vindas', layout: 'sidebar-right',
+    grupos: {
+      principal: [PROGRAMA.zonas.principal.items[0], { ...PROGRAMA.zonas.principal.items[2], _pendentes: ['telefone'] }],
+      lateral: [PROGRAMA.zonas.lateral.items[0]],
+      rodape: [],
+    },
+    mensagens: ['Bem-vindo à Metalúrgica Alfa'],
+  };
+  comoQuem(dono.cookie);
+  const r = await R.enviarOperacao({ tipo: 'tela-pronta', tela }, tvs.map((t) => ({ id: t.id })));
+  assert.equal(pedidosDoPainel.length, 1);
+  assert.ok(pedidosDoPainel[0].bytes < 60e3, 'a tela pronta foi com ' + pedidosDoPainel[0].bytes + ' bytes');
+  for (const t of tvs) {
+    const c = configDe(t.id).cfg;
+    assert.equal(c.settings.layoutId, 'sidebar-right');
+    assert.equal(c.settings.transicao, PROGRAMA.settings.transicao, 'o resto da programação mudou');
+    assert.equal(c.zonas.principal.items.length, 2);
+    assert.ok(!c.zonas.principal.items.some((i) => '_pendentes' in i), 'o que é só do painel foi para a TV');
+    assert.equal(c.zonas.principal.items[0].origem.pedido, 'tela pronta');
+    assert.equal(c.zonas.lateral.items.length, 1);
+    assert.deepEqual(c.zonas.rodape.messages, ['Bem-vindo à Metalúrgica Alfa']);
+    assert.equal(c.zonas.rodape.movimento, 'manchetes', 'o rodapé perdeu o jeito dele (movimento)');
+  }
+  assert.equal((await pedir('/api/lote/' + r.lote + '/desfazer', { method: 'POST', cookie: dono.cookie })).json.voltaram.length, 25);
+  for (const t of tvs) assert.deepEqual(configDe(t.id).cfg, antes.get(t.id));
+  const op = (json) => pedir('/api/lote/operacao', { method: 'POST', cookie: dono.cookie, json });
+  assert.equal((await op({ operacao: { tipo: 'tela-pronta', tela: { ...tela, layout: 'nao-existe' } }, telas: [tvs[0].id] })).json.code, 'operacao-invalida');
+  assert.equal((await op({ operacao: { tipo: 'tela-pronta', tela: { ...tela, grupos: { principal: [{ type: 'text', html: 'x'.repeat(120e3) }] } } }, telas: [tvs[0].id] })).json.code, 'operacao-invalida');
+});
+
+test('o quiz do Criar em muitas TVs: um pedido, na lateral pedida (ou na principal, dizendo quais), conferido, sem duplicar', async () => {
+  const { R } = await oPainel();
+  const dono = await cadastro();
+  const tvs = naConta(dono.tenantId, await tvsNovas(22, '10.90.1.1'));
+  // Duas TVs num layout sem lateral: o quiz cai na principal delas.
+  const cheia = Object.assign({}, PROGRAMA, { settings: Object.assign({}, PROGRAMA.settings, { layoutId: 'full' }), zonas: { principal: PROGRAMA.zonas.principal } });
+  for (const t of tvs.slice(0, 2)) banco.prepare('UPDATE devices SET config = ? WHERE id = ?').run(JSON.stringify(cheia), t.id);
+  const quiz = { titulo: 'Quiz da segurança', tempo: 10, revelar: 7, perguntas: [
+    { pergunta: 'Onde fica o extintor?', alternativas: ['Na saída', 'No teto'], certa: 0, explicacao: '', revisada: false },
+  ] };
+  comoQuem(dono.cookie);
+  const r = await R.enviarOperacao({ tipo: 'quiz', quiz, zona: 'lateral', id: 'conv1:4' }, tvs);
+  assert.equal(pedidosDoPainel.length, 1);
+  assert.deepEqual((r.marcadas || []).slice().sort(), tvs.slice(0, 2).map((t) => t.id).sort(), 'o painel não sabe em que TVs o quiz caiu na principal');
+  await R.enviarOperacao({ tipo: 'quiz', quiz, zona: 'lateral', id: 'conv1:4' }, tvs);
+  tvs.forEach((t, i) => {
+    const c = configDe(t.id).cfg;
+    const zona = i < 2 ? 'principal' : 'lateral';
+    const q = c.zonas[zona].items.filter((it) => it.type === 'quiz');
+    assert.equal(q.length, 1, t.name + ': o quiz não entrou na ' + zona + ' (ou duplicou)');
+    assert.equal(q[0]._quiz, 'conv1:4');
+    assert.ok(q[0].perguntas.every((p) => p.revisada), 'a TV recebeu pergunta não conferida');
+  });
+  assert.equal((await pedir('/api/lote/operacao', { method: 'POST', cookie: dono.cookie, json: { operacao: { tipo: 'quiz', quiz: { titulo: 'x', perguntas: [] }, zona: 'lateral', id: 'q' }, telas: [tvs[0].id] } })).json.code, 'operacao-invalida');
+});
+
+test('o pedido de aprovação grande: a lista vem leve e cada TV pede o antes e o depois dela; o pequeno, como antes', async () => {
+  const { R } = await oPainel();
+  const dono = await cadastro();
+  assert.equal((await pedir('/api/billing/dev-activate', { method: 'POST', cookie: dono.cookie, json: { plan: 'pro' } })).status, 200);
+  const emailDoMembro = emailNovo();
+  const convite = await pedir('/api/team/invites', { method: 'POST', cookie: dono.cookie, json: { email: emailDoMembro, role: 'member' } });
+  const membro = await cadastro({ inviteCode: convite.json.code, name: 'Gerente' }, emailDoMembro);
+  const emailDoOutro = emailNovo();
+  const convite2 = await pedir('/api/team/invites', { method: 'POST', cookie: dono.cookie, json: { email: emailDoOutro, role: 'member' } });
+  const outro = await cadastro({ inviteCode: convite2.json.code, name: 'Outro' }, emailDoOutro);
+  const tvs = naConta(dono.tenantId, await tvsNovas(16, '10.90.2.1'));
+  assert.equal((await pedir('/api/aprovacoes/regra', { method: 'PUT', cookie: dono.cookie, json: { ligada: true } })).status, 200);
+  const peca = { item: PROGRAMA.zonas.principal.items[3], label: 'Segurança' };
+  comoQuem(membro.cookie);
+  assert.equal((await R.porPecaNasTelas(peca, tvs.map((t) => t.id), tvs)).pendente, true);
+  const grande = (await pedir('/api/aprovacoes', { cookie: dono.cookie })).json.pendentes[0];
+  // Uma TV mudou depois do pedido: a lista leve já diz.
+  banco.prepare('UPDATE devices SET updated_at = ? WHERE id = ?').run(Date.now() + 50, tvs[3].id);
+  const lista = await pedir('/api/aprovacoes/' + grande.id, { cookie: dono.cookie });
+  assert.equal(lista.status, 200);
+  assert.equal(lista.json.telas.length, 16);
+  assert.ok(lista.bytes < 10e3, 'o pedido grande veio com ' + lista.bytes + ' bytes (antes: o antes e o depois de cada TV, ~3 MB)');
+  assert.ok(lista.json.telas.every((t) => t.sobDemanda && !('antes' in t) && !('depois' in t) && t.existe));
+  assert.deepEqual(lista.json.telas.filter((t) => t.mudouDepois).map((t) => t.id), [tvs[3].id]);
+  assert.equal(lista.json.pedido.estado, 'pendente');
+  const uma = await pedir('/api/aprovacoes/' + grande.id + '/telas/' + tvs[5].id, { cookie: dono.cookie });
+  assert.equal(uma.status, 200);
+  assert.equal(uma.json.tela.antes.zonas.principal.items.length, 8);
+  assert.equal(uma.json.tela.depois.zonas.principal.items.length, 9, 'o depois não tem a peça pedida');
+  assert.ok(uma.json.tela.antes.settings.theme, 'o antes sem a marca, como a TV desenha');
+  // Quem pediu vê; outro membro, não; TV fora do pedido, não.
+  assert.equal((await pedir('/api/aprovacoes/' + grande.id + '/telas/' + tvs[5].id, { cookie: membro.cookie })).status, 200);
+  assert.equal((await pedir('/api/aprovacoes/' + grande.id + '/telas/' + tvs[5].id, { cookie: outro.cookie })).status, 404);
+  assert.equal((await pedir('/api/aprovacoes/' + grande.id + '/telas/dev_nao', { cookie: dono.cookie })).status, 404);
+  // O pedido pequeno (até 12 TVs) segue com o antes e o depois juntos.
+  await pedir('/api/aprovacoes/' + grande.id + '/recusar', { method: 'POST', cookie: dono.cookie, json: { motivo: 'teste' } });
+  comoQuem(membro.cookie);
+  await R.porPecaNasTelas(peca, tvs.slice(0, 3).map((t) => t.id), tvs);
+  const pequeno = (await pedir('/api/aprovacoes', { cookie: dono.cookie })).json.pendentes[0];
+  const p = await pedir('/api/aprovacoes/' + pequeno.id, { cookie: dono.cookie });
+  assert.ok(p.json.telas.every((t) => t.antes && t.depois && !t.sobDemanda));
+  const pg = ler('web/src/pages/AprovacoesPage.jsx');
+  assert.match(pg, /\{telas\.map\(\(t\) => \(t\.sobDemanda\s*\? <TelaSobDemanda key=\{t\.id\} pedidoId=\{id\} t=\{t\} nomesDasMidias=\{nomesDasMidias\} \/>/);
+  assert.match(pg, /const \[ref, perto\] = usePerto\(true\);/);
+  assert.match(pg, /aprovacoes\.tela\(pedidoId, t\.id\)\.then/);
+});

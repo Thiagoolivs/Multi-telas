@@ -7,27 +7,19 @@
  * troca o de antes, e o resto da zona fica. Sem lateral na TV, vai para a
  * principal — e quem chama avisa.
  */
-import { aplicarConteudo } from './aplicarConteudo.js';
-import { zonasPorPapel } from './rodar.js';
+/*
+ * A regra mora em js/lote-tv.js desde o teste de carga (16/11): o servidor
+ * põe o quiz em muitas TVs com a mesma (POST /api/lote/operacao, tipo 'quiz').
+ */
+import '../../../js/lote-tv.js';
+
+const L = globalThis.MTLoteTv;
 
 // O item da playlist: as perguntas já conferidas por quem pôs (a TV só mostra as conferidas).
-export function itemDoQuiz(quiz) {
-  const tempo = Number(quiz.tempo) || 10;
-  const revelar = Number(quiz.revelar) || 7;
-  const perguntas = (quiz.perguntas || []).map((p) => ({ ...p, revisada: true }));
-  return { type: 'quiz', titulo: quiz.titulo || 'Quiz', tempo, revelar, perguntas, duracao: Math.max(4, perguntas.length * (tempo + revelar)) };
-}
+export const itemDoQuiz = (quiz) => L.itemDoQuiz(quiz);
 
 // A zona onde o quiz entra nesta TV: a pedida, ou a principal se a TV não tem a pedida.
-export function zonaDoQuiz(cfg, zona) {
-  const z = zonasPorPapel(cfg);
-  const id = z[zona] || z.principal || z.lateral;
-  return { id, caiu: !!id && id !== z[zona] };
-}
+export const zonaDoQuiz = (cfg, zona) => L.zonaDoQuiz(cfg, zona);
 
 // A config nova da TV com o quiz. Não modifica a recebida.
-export function aplicarQuiz(cfg, quiz, zona, id) {
-  const { id: zonaId } = zonaDoQuiz(cfg, zona);
-  if (!zonaId) return cfg;
-  return aplicarConteudo(cfg, { [zonaId]: [itemDoQuiz(quiz)] }, { chave: '_quiz', valor: id }, 'trocar');
-}
+export const aplicarQuiz = (cfg, quiz, zona, id) => L.aplicarQuiz(cfg, quiz, zona, id);

@@ -12,7 +12,7 @@ import { useAsync } from '../lib/useAsync.js';
 import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { planilhas, devices, brand } from '../api.js';
-import { gravarEmLote, avisarComDesfazer, zonasPorPapel } from '../lib/rodar.js';
+import { enviarOperacao, avisarComDesfazer } from '../lib/rodar.js';
 import { carregarModelos, itemDoModelo } from '../lib/modelosOuro.js';
 import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
 import { usePerfil } from '../lib/perfil.js';
@@ -160,16 +160,8 @@ function PorNaTv({ planilha, onFechar }) {
         ? { ...(await itemDoCardapio()), ...vivo }
         : { type: 'precos', titulo: tituloFinal.toUpperCase(), colunas: 'auto', duracao: 20, rodape: '', linhas: P.textoDaPlanilha(planilha.itens, secao), ...vivo };
       const escolhidas = telas.filter((t) => marcados.includes(t.id));
-      const mesma = (i) => i && i.planilha === planilha.id && i.type === item.type && (i.planilhaSecao || '') === (secao || '');
-      const r = await gravarEmLote(escolhidas, (cfg) => {
-        const next = JSON.parse(JSON.stringify(cfg || {}));
-        next.zonas = next.zonas || {};
-        const z = zonasPorPapel(next).principal || 'principal';
-        const zona = next.zonas[z] && Array.isArray(next.zonas[z].items) ? next.zonas[z] : { items: [] };
-        // Pôr de novo troca a que já estava (não duplica a mesma planilha na mesma TV).
-        next.zonas[z] = { ...zona, items: zona.items.filter((i) => !mesma(i)).concat(item) };
-        return next;
-      }, 'Planilha: ' + planilha.nome);
+      // Na área principal; pôr de novo troca a que já estava (js/lote-tv.js, porPlanilha) — o servidor põe em cada TV (teste de carga, 16/11).
+      const r = await enviarOperacao({ tipo: 'planilha', item, nome: planilha.nome }, escolhidas);
       avisarComDesfazer(tituloFinal + ' na TV' + (escolhidas.length === 1 ? '.' : 's (' + escolhidas.length + ').'), r.lote);
       onFechar();
     } catch (e) { aviso.erro('planilha', e.message || 'Não deu para pôr na TV.'); }

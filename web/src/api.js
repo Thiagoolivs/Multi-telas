@@ -137,6 +137,8 @@ export const aprovacoes = {
   listar: () => api('GET', '/api/aprovacoes'),
   contagem: () => api('GET', '/api/aprovacoes/contagem'),
   ver: (id) => api('GET', '/api/aprovacoes/' + encodeURIComponent(id)),
+  // O antes e o depois de uma TV de um pedido grande (o pedido vem só com a lista; teste de carga, 16/11).
+  tela: (id, telaId) => api('GET', '/api/aprovacoes/' + encodeURIComponent(id) + '/telas/' + encodeURIComponent(telaId)).then((r) => (r && r.tela) || null),
   aprovar: (id, porCima) => api('POST', '/api/aprovacoes/' + encodeURIComponent(id) + '/aprovar' + (porCima ? '?porCima=1' : '')),
   recusar: (id, motivo) => api('POST', '/api/aprovacoes/' + encodeURIComponent(id) + '/recusar', { motivo }),
   desistir: (id) => api('DELETE', '/api/aprovacoes/' + encodeURIComponent(id)),
