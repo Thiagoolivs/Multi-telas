@@ -136,15 +136,22 @@
    * quando as fontes chegam, porque a fonte certa muda a largura do texto.
    */
   /*
-   * Fase 3: a letra mínima depende de onde a TV fica. A régua do QA
-   * (docs/qa-total/REFERENCIAS.md, 6.1 e 6.2) é 4,5% do lado menor para uma
-   * TV de 50" lida a 4 m, e a altura da letra cresce com a distância.
-   *   balcão, vitrine (4 m)        4,5%
-   *   recepção, sala de espera (3 m) 3,5%
-   *   escritório, corredor (2–2,5 m) 3%  — é onde as zonas fazem sentido
-   * Sem escolha, vale a frente da conta (o servidor manda settings.frente).
+   * Fase 3: a letra mínima dependia de onde a TV fica — balcão 4,5%,
+   * recepção 3,5%, escritório 3% do lado menor. A régua do QA
+   * (docs/qa-total/REFERENCIAS.md, 6.1 e 6.2) é 4,5% para uma TV de 50"
+   * lida a 4 m, o mínimo absoluto (rodapé, aviso legal).
+   *
+   * Reteste 3 (14/11): na Saúde e na Empresas a etiqueta, a linha de apoio,
+   * o item da lista e quase tudo da lateral e do bloco ficavam em 3,5% e 3%,
+   * e a régua de leitura só passava no Comércio (6 de 17 na lateral). A sala
+   * de espera é lida de longe por quem está sentado, e o refeitório e o
+   * corredor, de passagem. Agora o mínimo é 4,5% em todo lugar; o local
+   * continua decidindo o tamanho da volta (js/rodizio.js, VOLTA_DO_LOCAL).
+   * O que não cabe com a letra inteira se recompõe (caberNaCaixa: aperta,
+   * ganha coluna, o título desce, o apoio sai, a lista vira páginas) em vez
+   * de encolher. Sem escolha, vale a frente da conta (settings.frente).
    */
-  const LOCAIS = { balcao: 0.045, recepcao: 0.035, escritorio: 0.03 };
+  const LOCAIS = { balcao: 0.045, recepcao: 0.045, escritorio: 0.045 };
   const LOCAL_DA_FRENTE = { comercio: 'balcao', saude: 'recepcao', empresa: 'escritorio' };
   function localDaTv(settings) {
     const s = settings || {};
@@ -239,6 +246,22 @@
         }
         // 5. a lista de preços vai em páginas, com a letra inteira (a coluna lateral não cabe a tabela toda a 4 m).
         if (precos && esc < 1 && paginarPrecos(slide, miolo, precos, () => caixa()[0])) esc = sobra();
+        /*
+         * 6. Reteste 3 (14/11): com a letra de 4,5% também na Saúde e na
+         * Empresas, o comunicado de segurança na lateral (título de 8
+         * palavras) ainda passava 5% da caixa, e a caixa toda encolhia —
+         * a letra miúda caía para 4,3%. Antes disso, o título desce mais,
+         * até 1,25× o piso: continua o maior e o mais forte da caixa, e
+         * nada fica abaixo da letra mínima.
+         */
+        const titulos = esc < 1 ? Array.prototype.filter.call(miolo.querySelectorAll('[data-mt-cabe]'), (e) => parseFloat(getComputedStyle(e).fontSize) > piso * 1.25) : [];
+        for (let i = 0; i < 8 && esc < 1 && titulos.length; i++) {
+          titulos.forEach((e) => {
+            const atual = parseFloat(getComputedStyle(e).fontSize);
+            e.style.fontSize = Math.max(piso * 1.25, atual * Math.max(0.85, Math.sqrt(esc))).toFixed(1) + 'px';
+          });
+          esc = sobra();
+        }
       }
       if (esc < 1) {
         miolo.style.transformOrigin = 'center center';
@@ -1476,6 +1499,8 @@
       ctl = MTPecaRender.montar(alvo, lista[i], MTRender.opcoesDaPeca({
         marcaNaTela: false,
         semRelogio: zone.type === 'ticker' && !!global.MT_RELOGIO_NO_CABECALHO,
+        // Reteste 3: a data e o clima que o cabeçalho já mostra também não se repetem no rodapé.
+        jaNoCabecalho: zone.type === 'ticker' ? (global.MT_JA_NO_CABECALHO || []) : [],
         // As frases do rodapé, e as chamadas que giram no cabeçalho.
         mensagens: Array.isArray(data.messages) ? data.messages : [],
         contagem: data.contagem || '',
@@ -2517,6 +2542,8 @@
       const conhecidos = items.filter((it) => it && !ehExemplo(it) && (!MTRender.conhece || MTRender.conhece(it.type))
         // O aniversário automático numa semana sem aniversário fica fora da volta (reteste 2).
         && (!MTRender.temAniversario || MTRender.temAniversario(it))
+        // A peça que só existe pelo QR, sem o link, também (reteste 3: a cena-qr ia ao ar só com a foto).
+        && (!MTRender.vaiAoAr || MTRender.vaiAoAr(it))
         // O urgente sem data sai na hora marcada (web/src/lib/aviso.js, QA total 05/11).
         && !(it.meta && Number(it.meta.expiraEm) > 0 && agoraMs > Number(it.meta.expiraEm)));
       // Fase 9: o respiro do modo ambiente entra em comAutomaticos, por último.
@@ -3186,6 +3213,7 @@
     // A logo da marca (D8), que o servidor manda junto. logoUrl é o nome antigo.
     global.MT_LOGO = (s.logo && s.logo.url) ? s.logo : (s.logoUrl ? { url: s.logoUrl } : null);
     global.MT_RELOGIO_NO_CABECALHO = relogioNoCabecalho(cfg, layout);
+    global.MT_JA_NO_CABECALHO = jaNoCabecalho(cfg, layout);
     global.MT_NOME = s.nome || '';
     // O ramo e a frente da conta (o servidor manda): o espaço de foto vazio leva a foto padrão (js/peca-render.js, fotoPadrao).
     global.MT_RAMO = typeof s.ramo === 'string' ? s.ramo : '';
@@ -3207,6 +3235,21 @@
     const pecas = (Array.isArray(d.pecas) && d.pecas.length ? d.pecas : (d.peca ? [d.peca] : [])).filter((p) => p && p.type === 'peca-html');
     if (!pecas.length) return d.relogio !== false;
     return pecas.some((p) => /data-vivo="(relogio|data)"/.test(p.html || ''));
+  }
+  /*
+   * A DATA DUAS VEZES (reteste 3, 14/11): com o relógio no cabeçalho, o
+   * rodapé escondia só o relógio dele, e a data ficava ("QUINTA · 12 NOV" em
+   * cima e embaixo, nas telas dos lotes 2 e 3). Agora o rodapé não repete
+   * nada que o cabeçalho mostra: a hora, a data e o clima, cada um só se o
+   * cabeçalho tem (o cabeçalho padrão mostra a data junto da hora).
+   */
+  function jaNoCabecalho(cfg, layout) {
+    const z = layout && layout.zones.find((x) => x.type === 'header');
+    if (!z) return [];
+    const d = (cfg.zonas && cfg.zonas[z.id]) || {};
+    const pecas = (Array.isArray(d.pecas) && d.pecas.length ? d.pecas : (d.peca ? [d.peca] : [])).filter((p) => p && p.type === 'peca-html');
+    if (!pecas.length) return (d.relogio !== false ? ['relogio', 'data'] : []).concat(d.clima !== false ? ['clima'] : []);
+    return ['relogio', 'data', 'clima'].filter((v) => pecas.some((p) => String(p.html || '').indexOf('data-vivo="' + v + '"') >= 0));
   }
 
   /*
@@ -3246,7 +3289,13 @@
       left.appendChild(img);
       // O fundo do cabeçalho só existe depois de a zona entrar na página (setTimeout, não
       // requestAnimationFrame: este não roda com a aba em segundo plano, e a logo nunca vinha).
-      setTimeout(() => { img.src = logoNoFundo(logo, zoneEl); }, 0);
+      setTimeout(() => {
+        const url = logoNoFundo(logo, zoneEl);
+        // Sem a margem vazia em volta (reteste 3; js/peca-render.js, logoAparada): o desenho da logo ocupa a altura que ela tem.
+        const aparar = global.MTPecaRender && MTPecaRender.logoAparada;
+        const pronta = aparar ? aparar(url, (src) => { if (img.getAttribute('src') === url) { img.src = src; caberNome(title); } }) : '';
+        img.src = pronta || url;
+      }, 0);
     }
     const title = document.createElement('div');
     title.className = 'mt-header-title';

@@ -21,7 +21,9 @@ const ler = (f) => fs.readFileSync(path.join(RAIZ, f), 'utf8');
 test('player: cabeçalho com a logo na versão do fundo, sem repetir o nome', () => {
   const p = ler('js/player.js');
   assert.match(p, /global\.MT_LOGO = \(s\.logo && s\.logo\.url\) \? s\.logo : \(s\.logoUrl \? \{ url: s\.logoUrl \} : null\);/);
-  assert.match(p, /setTimeout\(\(\) => \{ img\.src = logoNoFundo\(logo, zoneEl\); \}, 0\);/);
+  // A versão do fundo, sem a margem vazia em volta (reteste 3: js/peca-render.js, logoAparada).
+  assert.match(p, /const url = logoNoFundo\(logo, zoneEl\);/);
+  assert.match(p, /const pronta = aparar \? aparar\(url, \(src\) => \{ if \(img\.getAttribute\('src'\) === url\) \{ img\.src = src; caberNome\(title\); \} \}\) : '';\s+img\.src = pronta \|\| url;/);
   assert.match(p, /return \(l < 0\.35 \? logo\.clara : logo\.escura\) \|\| logo\.url;/);
   assert.match(p, /title\.textContent = cfg\.settings\.titulo \|\| \(\(logo && logo\.url\) \? '' : cfg\.settings\.nome\) \|\| '';/);
   assert.match(ler('js/render.js'), /logo: global\.MT_LOGO \|\| null,/);

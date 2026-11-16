@@ -9,7 +9,8 @@
 .mt-peca { display: flex; align-items: center; justify-content: space-between; gap: 6cqh; padding: 0 3.4cqw;
   color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
 .marca { display: flex; align-items: center; gap: 9cqh; min-width: 0; }
-.logo { height: 54cqh; width: auto; max-width: 30cqw; object-fit: contain; }
+/* Reteste 3: a logo maior, legível a 4 m (a TV já corta o vazio em volta dela: js/peca-render.js, logoAparada). */
+.logo { height: 72cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
 .nome { font: 600 max(var(--mt-piso, 0cqw), 30cqh)/1 var(--mt-fonte-titulo); letter-spacing: -.01em; white-space: nowrap; }

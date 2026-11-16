@@ -9,7 +9,8 @@
 .mt-peca { display: flex; align-items: center; gap: 8cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: var(--mt-fundo); border-bottom: 1.2cqh solid var(--mt-linha); }
 .marca { flex: 0 1 auto; min-width: 0; max-width: 38%; display: flex; align-items: center; }
-.logo { height: 52cqh; width: auto; max-width: 22cqw; object-fit: contain; }
+/* Reteste 3: a logo maior, legível a 4 m (a TV já corta o vazio em volta dela: js/peca-render.js, logoAparada). */
+.logo { height: 70cqh; width: auto; max-width: 24cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
 /* O espaço entre as letras é fixo: em em, ele crescia com a letra do piso e a marca longa empurrava a chamada. A marca longa quebra em duas linhas. */
@@ -33,6 +34,8 @@
 @container (aspect-ratio < 9) {
   .mt-peca { gap: 5cqh; }
   .marca { max-width: 42%; }
+  /* Reteste 3: a logo grande encostava na tarja da chamada; aqui ela fica um pouco menor (ainda o dobro do desenho de antes, com o vazio cortado). */
+  .logo { height: 60cqh; }
   .nome { font-size: max(var(--mt-piso, 0cqw), 12cqh); letter-spacing: 1.7cqh; }
   /* Reteste 2: as duas linhas da chamada não cabiam na tarja de 18cqh de margem (cortava o acento e a perna). A tarja cresce e a entrelinha aperta. */
   .chamada { margin: 9cqh 0; }

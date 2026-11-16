@@ -196,7 +196,8 @@ test('o que era da empresa de exemplo vira o da conta quando a conta tem (site, 
   const L = await lib();
   const ex = L.nomesDeExemplo(M.marcas);
   const conta = { nome: 'Padaria Real', site: 'padariareal.com.br', endereco: 'Rua Nova, 10' };
-  assert.equal(L.limparDoExemplo('https://wa.me/5511977770000', { tipo: 'qr' }, conta, ex), 'padariareal.com.br');
+  // O QR leva o site da conta, com o https:// que o celular precisa para abrir (reteste 3).
+  assert.equal(L.limparDoExemplo('https://wa.me/5511977770000', { tipo: 'qr' }, conta, ex), 'https://padariareal.com.br');
   assert.equal(L.limparDoExemplo('(11) 97777-0000', { tipo: 'texto' }, conta, ex), '');
   assert.equal(L.limparDoExemplo('@oticacentral', { tipo: 'texto' }, conta, ex), '');
   assert.equal(L.limparDoExemplo('Rua das Flores, 120 · Centro', { tipo: 'texto' }, conta, ex), 'Rua Nova, 10');

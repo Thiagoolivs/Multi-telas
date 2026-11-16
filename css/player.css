@@ -495,7 +495,14 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 /* O nome da empresa tem a vez: o lado direito (clima e relógio) não encolhe. */
 .mt-header-left { display: flex; align-items: center; gap: 3cqw; min-width: 0; flex: 1 1 auto; }
-.mt-header-logo { height: 54cqh; width: auto; max-width: 24cqw; object-fit: contain; }
+/*
+ * A logo do cabeçalho legível a 4 m (reteste 3, 14/11): ela tinha 54% da
+ * faixa, e a logo com vazio em volta virava um "Sol" de 15 px. Agora a TV
+ * corta o vazio (js/peca-render.js, logoAparada) e a logo ganha 72% da
+ * altura da faixa e até 30% da largura. O nome da empresa não aparece junto
+ * (a logo é o nome), e o título, se houver, encolhe antes (caberNome).
+ */
+.mt-header-logo { height: 72cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .mt-header-title {
   position: relative; padding-left: 3cqw;
   font-size: max(var(--mt-piso, 0px), 30cqh); font-weight: 800; letter-spacing: -.01em;
@@ -1617,6 +1624,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 @keyframes mt-precos-vira { from { opacity: 0; transform: translateY(1.5cqh); } to { opacity: 1; transform: none; } }
 .mt-perf .mt-precos-vira { animation: none; }
 .mt-ann.mt-compacto .ann-inner { gap: 1.8cqh; padding: 2.5cqw; }
+/* Reteste 3: sem espaço, a entrelinha folgada do corpo (1,5) também aperta antes de a letra encolher. */
+.mt-ann.mt-compacto .ann-body { line-height: 1.32; }
 .mt-compacto .mt-text-title { margin-bottom: .2em; }
 @container (orientation: portrait) {
   .mt-precos-lista { column-count: var(--cols-pe, 1); font-size: max(var(--mt-piso, 0px), var(--corpo-pe)); }

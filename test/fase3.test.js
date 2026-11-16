@@ -49,9 +49,9 @@ test('a TV usa o layout com as zonas vazias juntadas, e o rodapé sem mensagem s
   assert.match(P, /function assinaturaPalco\(cfg\) \{\n    const l = layoutDaTela\(cfg\);/, 'zona que ganha conteúdo refaz o palco');
 });
 
-test('a letra mínima é a do local da TV: balcão 4,5%, recepção 3,5%, escritório 3%', () => {
+test('a letra mínima é 4,5% em todo local da TV (reteste 3: eram 3,5% na recepção e 3% no escritório)', () => {
   const P = ler('js/player.js');
-  assert.match(P, /const LOCAIS = \{ balcao: 0\.045, recepcao: 0\.035, escritorio: 0\.03 \};/);
+  assert.match(P, /const LOCAIS = \{ balcao: 0\.045, recepcao: 0\.045, escritorio: 0\.045 \};/);
   assert.match(P, /const LOCAL_DA_FRENTE = \{ comercio: 'balcao', saude: 'recepcao', empresa: 'escritorio' \};/);
   assert.match(P, /document\.documentElement\.style\.setProperty\('--mt-piso-tv', String\(LOCAIS\[local\]\)\);/);
   assert.match(ler('css/player.css'), /\.mt-zone > \* \{ --mt-piso: calc\(var\(--mt-piso-tv, \.045\) \* 100vmin\); \}/);
@@ -66,7 +66,11 @@ test('a letra mínima é a do local da TV: balcão 4,5%, recepção 3,5%, escrit
   assert.equal(S.normalize({ settings: { local: 'praia' } }).settings.local, '');
   const F = ler('web/src/components/content/SettingsForm.jsx');
   assert.match(F, /label="Onde fica a TV\?"/);
-  assert.match(F, /local === 'balcao' && temLateral/, 'no balcão, a lateral pede outro layout');
+  // A letra é a de 4 m em todo local: a lateral estreita pede outro layout para cardápio inteiro em qualquer um.
+  assert.match(F, /\{temLateral && \(/, 'a lateral pede outro layout');
+  assert.match(F, /A letra é sempre a que se lê a 4 m\./);
+  // O local continua decidindo a volta (o rodízio e o aviso de volta longa).
+  assert.match(ler('js/rodizio.js'), /const VOLTA_DO_LOCAL = \{ balcao: \[120, 300\], recepcao: \[480, 720\], escritorio: \[180, 600\] \};/);
 });
 
 test('na zona pequena o apoio sai por nível antes de a letra encolher', () => {
@@ -82,7 +86,7 @@ test('o robô mede a lateral e o bloco nos layouts que cada TV oferece, e a meta
   assert.match(robo, /\[\{ deitada: 'corporate' \}, 'lateral', 'Lateral', false\]/);
   assert.match(robo, /\[\{ deitada: 'duo', 'em pé': 'portrait-duo' \}, 'secundaria', 'Bloco', false\]/);
   assert.match(robo, /const META_ZONAS = 0\.85;/);
-  assert.match(robo, /const PISO_DA_FRENTE = \{ comercio: 4\.5, saude: 3\.5, empresa: 3 \};/);
+  assert.match(robo, /const PISO_DA_FRENTE = \{ comercio: 4\.5, saude: 4\.5, empresa: 4\.5 \};/);
   assert.match(robo, /conferirPecas\(navegador, 'escritorio'\)/, 'as peças da lateral também');
 });
 

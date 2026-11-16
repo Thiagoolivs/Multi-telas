@@ -7,7 +7,7 @@
  * A tela que o dono ainda não aprovou ('proposta') não aparece aqui.
  */
 import '../../../js/templates.js';
-import { carregarModelos, itemDoModelo, naEpoca } from './modelosOuro.js';
+import { carregarModelos, itemDoModelo, naEpoca, linkDaConta } from './modelosOuro.js';
 import { carregarManifesto } from './pacoteOuro.js';
 import { getLayout as layoutDoPainel } from './screenConfig.js';
 
@@ -115,11 +115,14 @@ export function nomesDeExemplo(marcas) {
 const EH_CONTATO = /@[\w.]{2,}|https?:\/\/|\bwww\.|\b[\w-]+\.(com|net|org)(\.br)?\b|\(?\b\d{2}\)?\s?\d{4,5}-\d{4}\b/i;
 const EH_ENDERECO = /^\s*(rua|r\.|av\.|avenida|alameda|travessa|rodovia|praça|praca|estrada)\s/i;
 
+// O QR do Wi-Fi não é link: nunca leva o contato da conta (e o da empresa de exemplo é a rede dela).
+const qrDeWifi = (def, v) => (def && def.nome === 'wifi') || /^WIFI:/i.test(String(v || ''));
+
 export function limparDoExemplo(valor, def, conta, exemplos) {
   const v = String(valor == null ? '' : valor);
   if (!v || !exemplos) return v;
   const c = conta || {};
-  if (def && def.tipo === 'qr') return EH_CONTATO.test(v) ? (c.site || '') : v;
+  if (def && def.tipo === 'qr') return qrDeWifi(def, v) ? '' : EH_CONTATO.test(v) ? linkDaConta(c) : v;
   if (EH_CONTATO.test(v)) return /https?:\/\/|\bwww\.|\.(com|net|org)\b/i.test(v) && !/@/.test(v) ? (c.site || '') : '';
   if (EH_ENDERECO.test(v)) return c.endereco || '';
   let saida = v;
@@ -142,6 +145,12 @@ export function itemDaTela(modelo, entrada, modo, papel, marca, exemplos) {
   for (const d of defs) {
     if (d.tipo === 'img' || d.nome === 'marca' || DO_EXEMPLO.includes(d.nome)) continue;
     const antes = d.nome in campos ? campos[d.nome] : d.exemplo;
+    // O QR que a tela deixou vazio leva o contato da conta; sem contato, a pessoa completa (e até lá a TV não o mostra).
+    if (d.tipo === 'qr' && !String(antes || '').trim()) {
+      campos[d.nome] = qrDeWifi(d, '') ? '' : linkDaConta(marca);
+      if (!campos[d.nome]) pendentes.push(d.nome);
+      continue;
+    }
     const limpo = limparDoExemplo(antes, d, marca, exemplos);
     if (limpo === antes) continue;
     campos[d.nome] = limpo;
@@ -176,9 +185,12 @@ export function montarTela(tela, modelos, marca, exemplos) {
 export function estadoDaPrevia(montada) {
   const layout = getLayout(montada.layout);
   const zonas = {};
+  // A prévia mostra o que a TV mostraria: a peça que só existe pelo QR, sem o link, a TV pula (js/peca-html.js, vaiAoAr).
+  const P = globalThis.MTPecaHtml;
+  const vaiAoAr = (p) => !P || !P.vaiAoAr || P.vaiAoAr(p);
   for (const z of layout.zones) {
     const g = grupoDaZona(z);
-    const pecas = montada.grupos[g] || [];
+    const pecas = (montada.grupos[g] || []).filter(vaiAoAr);
     if (!pecas.length) continue;
     zonas[z.id] = z.type === 'header' || z.type === 'ticker'
       ? { peca: pecas[0], mensagens: z.type === 'ticker' ? montada.mensagens : [] }
@@ -217,6 +229,8 @@ export function marcaDaConta(r) {
   // O site e o endereço da Marca entram onde a tela de exemplo tinha os dela.
   return { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', clima: k.clima || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '',
     site: k.site || '', endereco: [local.endereco, local.bairro].filter(Boolean).join(' · '),
+    // O "WhatsApp ou site" de Onde fica: o outro contato que pode ir no QR (linkDaConta).
+    contato: local.link || '',
     // O ramo que a Marca deduziu (js/paletas.js, detectarRamo): põe o pacote do negócio da conta primeiro.
     ramo: (r && r.ramo) || '' };
 }
