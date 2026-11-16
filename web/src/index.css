@@ -96,10 +96,18 @@
 /*
  * Painel do operador: outra cor de destaque (verde-azulado), para nunca
  * confundir "estou como operador" com o painel de uma loja (PLANO §7.2).
+ *
+ * Reteste 3: o #0D9488 dava 3,7:1 com o branco do botão e 3,3:1 como letra
+ * no fundo claro do selo — os 3 contrastes baixos do axe na Plataforma. O
+ * verde-azulado mais fundo (#0F766E) enche o botão (5,5:1 com o branco); a
+ * letra é um tom abaixo (#0C6861), que passa também no chip marcado
+ * (bg-accent/10 sobre o fundo cinza, ≥ 5:1). No escuro, o fundo do selo
+ * desce um tom para o texto de apoio passar de 4,5:1.
+ * test/painel-acessivel.test.js confere os dois.
  */
 [data-modo='operador'] {
-  --c-accent: 13 148 136;       /* #0D9488 */
-  --c-accent-texto: 13 148 136;
+  --c-accent: 15 118 110;       /* #0F766E: 5,5:1 com o branco */
+  --c-accent-texto: 12 104 97;  /* #0C6861 */
   --c-accent-fg: 255 255 255;
   --c-accent-soft: 223 244 241; /* #DFF4F1 */
 }
@@ -107,7 +115,7 @@
   --c-accent: 45 212 191;       /* #2DD4BF */
   --c-accent-texto: 45 212 191;
   --c-accent-fg: 12 14 18;
-  --c-accent-soft: 17 42 40;    /* #112A28 */
+  --c-accent-soft: 14 36 34;    /* #0E2422 (era #112A28: 4,46:1 com o texto de apoio) */
 }
 
 @media (max-width: 639px) {

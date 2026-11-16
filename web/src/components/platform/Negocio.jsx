@@ -64,7 +64,7 @@ function Frota({ frota }) {
         <Stat label="Meta: telas no ar" value={formatNumber(noAr)} unit={'/ ' + META_TELAS} icon={Target}
           footer={<Progress value={Math.min(100, (noAr / META_TELAS) * 100)} className="h-1.5" />} hint="até o meio de 2027" />
       </div>
-      <Table>
+      <Table rotulo="Frota">
         <THead><TH>Tela</TH><TH>Conta</TH><TH>Último sinal</TH><TH>Aparelho</TH><TH>Situação</TH><TH /></THead>
         <TBody>
           {lista.map((t) => (
@@ -122,7 +122,7 @@ function Clientes({ clientes }) {
     <Panel>
       <PanelHeader title="Clientes" description="Quem não está no grátis: plano, telas, contrato e pagamento." />
       {clientes.length === 0 ? <p className="p-4 text-sm text-ink-3">Nenhuma conta paga ainda.</p> : (
-        <Table>
+        <Table rotulo="Clientes">
           <THead><TH>Conta</TH><TH>Plano</TH><TH align="right">Telas</TH><TH>Contrato</TH><TH>Pagamento</TH><TH align="right">Por mês</TH></THead>
           <TBody>
             {clientes.map((c) => (
@@ -199,7 +199,7 @@ function Funil({ funil: f }) {
         <span><b className="tnum text-ink">{f.total.pagos}</b> pagam</span>
         <span className="text-ink-2">do teste para cliente: <b className="text-ink">{Math.round(f.conversaoDoTeste * 100)}%</b></span>
       </div>
-      <Table>
+      <Table rotulo="Funil">
         <THead><TH>Semana</TH><TH align="right">Cadastros</TH><TH align="right">Ligaram a TV</TH><TH align="right">Pagam</TH></THead>
         <TBody>
           {f.porSemana.map((s) => (
@@ -261,7 +261,7 @@ function CustoIa({ itens }) {
     <Panel>
       <PanelHeader title="Custo de IA por conta" description="Últimos 30 dias, medido em cada chamada, contra o que a conta paga por mês." />
       {itens.length === 0 ? <p className="p-4 text-sm text-ink-3">Nenhum uso de IA na janela.</p> : (
-        <Table>
+        <Table rotulo="Custo de IA por conta">
           <THead><TH>Conta</TH><TH>Plano</TH><TH align="right">Criações</TH><TH align="right">Chamadas</TH><TH align="right">Custo</TH><TH align="right">Teto</TH><TH align="right">Paga</TH><TH align="right">Margem</TH></THead>
           <TBody>
             {itens.map((c) => (

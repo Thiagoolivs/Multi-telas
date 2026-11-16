@@ -40,6 +40,8 @@ export function podePedir(id, agora = Date.now(), deNovo = false) {
 
 /*
  * `altura`: a altura máxima do palco (o cartão usa 220; a página da TV, mais).
+ * No cartão a TV enche a caixa: a linha "Meio: peça 2 de 6" (TvAoVivo) não
+ * cabe embaixo dela e fica só na página da TV.
  * `pedirDeNovo`: muda quando a página da TV põe algo no ar — a miniatura
  * espera a TV trocar e pergunta de novo, em vez de seguir com a imagem velha.
  */
@@ -101,13 +103,23 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
     const quando = resposta.em ? new Date(resposta.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
     const velha = !resposta.em || Date.now() - resposta.em > VELHA_MS;
     const selo = !online ? 'Última imagem · ' + quando : velha && quando ? 'Visto em ' + quando : '';
+    /*
+     * A TV de verdade (o player num quadro) apaga e põe o selo ela mesma, só
+     * na imagem: a linha "Meio: peça 2 de 6" embaixo dela (reteste 3) não fica
+     * cinza nem coberta pelo selo. Sem a programação ainda, o desenho de antes.
+     */
+    if (programacao) {
+      return (
+        <div className="pointer-events-none relative w-full" aria-label={(selo ? selo + ' · ' : 'O que está passando agora · ') + (d.name || '')}>
+          <TvAoVivo cfg={programacao} estado={resposta.estado} alturaMaxima={altura} leve={altura <= 240} contagem={altura > 240}
+            apagada={!online} selo={selo} rotulo={'O que passa agora em ' + (d.name || 'esta TV')} />
+        </div>
+      );
+    }
     return (
       <div className="pointer-events-none relative w-full" aria-label={(selo ? selo + ' · ' : 'O que está passando agora · ') + (d.name || '')}>
         <div className={!online ? 'opacity-50 grayscale' : ''}>
-          {/* A TV de verdade (o player num quadro); sem a programação ainda, o desenho de antes. */}
           {programacao === undefined ? <div className="aspect-video w-full rounded-lg bg-surface-2" />
-            : programacao
-            ? <TvAoVivo cfg={programacao} estado={resposta.estado} alturaMaxima={altura} leve={altura <= 240} rotulo={'O que passa agora em ' + (d.name || 'esta TV')} />
             : <Palco estado={resposta.estado} alturaMaxima={altura} />}
         </div>
         {selo && <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">{selo}</span>}

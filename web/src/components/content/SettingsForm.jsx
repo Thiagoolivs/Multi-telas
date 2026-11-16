@@ -9,7 +9,7 @@ import { nomeDoLayout, comoSeDivide } from '../../lib/nomesDosLayouts.js';
 import { useAsync } from '../../lib/useAsync.js';
 import { brand, devices } from '../../api.js';
 import { SoundPanel } from './SoundPanel.jsx';
-import { CamposDoHorario, HORARIO_PADRAO } from '../tela/HorarioDaTela.jsx';
+import { CamposDoHorario, horarioParaEditar } from '../tela/HorarioDaTela.jsx';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
 import { FUNDOS_TV, corDoFundo } from '../../lib/fundoDaTV.js';
@@ -143,11 +143,12 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
     set({ layoutId: id });
   }
 
-  const [exp, setExp] = React.useState(() => ({ ...HORARIO_PADRAO, ...((device && device.expediente) || {}) }));
+  const [exp, setExp] = React.useState(() => horarioParaEditar(device));
   const [salvandoHorario, setSalvandoHorario] = React.useState(false);
   async function salvarHorario() {
     setSalvandoHorario(true);
-    try { await devices.expediente(deviceId, exp); aviso.ok('Horário salvo.'); }
+    // Salvo, a TV passa a ter horário: sai o recado de "ainda não tem horário salvo".
+    try { await devices.expediente(deviceId, exp); aviso.ok('Horário salvo.'); setExp(({ semHorario, ...resto }) => resto); } // eslint-disable-line no-unused-vars
     catch (e) { aviso.erro('horario', e.message || 'Não deu para salvar o horário.'); }
     finally { setSalvandoHorario(false); }
   }
