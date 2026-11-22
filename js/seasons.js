@@ -130,6 +130,12 @@
     },
     {
       id: 'black-friday', label: 'Black Friday', emoji: '🏷️',
+      /*
+       * Só no Comércio (reteste 4): a Black Friday é data de loja. O RH de uma
+       * metalúrgica abria o Início e via "Hoje: Black Friday" com "Ofertas
+       * imperdíveis"; a clínica, idem. As outras datas valem para todos.
+       */
+      frentes: ['comercio'],
       // Última sexta de novembro — móvel. O 'depois' cobre a Cyber Monday.
       quando: { tipo: 'semana', mes: 11, semana: -1, diaSemana: 5 }, antes: 7, depois: 3,
       decoracao: 'confetti',
@@ -153,16 +159,30 @@
    * (5 dias) precisa ganhar do Outubro Rosa (31), senão a campanha do mês
    * engole todas as datas específicas que caem dentro dela.
    */
-  function todaySeason(date) {
+  // A data vale para a frente da conta? Sem `frentes` na data, ou sem frente conhecida, vale para todas.
+  function daFrente(s, frente) { return !frente || !Array.isArray(s.frentes) || s.frentes.indexOf(frente) >= 0; }
+  function todaySeason(date, frente) {
     const hoje = date || new Date();
     let melhor = null;
     for (const s of SEASONS) {
+      if (!daFrente(s, frente)) continue;
       const j = D.janelaVigente(s, hoje);
       if (!j) continue;
       const dur = D.duracao(j);
       if (!melhor || dur < melhor.dur) melhor = { s, dur };
     }
     return melhor ? melhor.s : null;
+  }
+
+  /*
+   * O dia da data na janela vigente (o 1º do mês, numa campanha de mês
+   * inteiro), em AAAA-MM-DD: o painel diz "faltam 5 dias" em vez de "é hoje".
+   */
+  function alvoVigente(season, date) {
+    const j = D && season ? D.janelaVigente(season, date || new Date()) : null;
+    if (!j || !j.alvo) return null;
+    const a = j.alvo;
+    return a.getFullYear() + '-' + String(a.getMonth() + 1).padStart(2, '0') + '-' + String(a.getDate()).padStart(2, '0');
   }
 
   /* Quando a data cai neste ano, para o painel mostrar em vez de adivinhar. */
@@ -275,7 +295,7 @@
     };
   }
 
-  const api = { SEASONS, DECORATIONS, todaySeason, dataDe, getSeason, programaDe, FRASES };
+  const api = { SEASONS, DECORATIONS, todaySeason, daFrente, alvoVigente, dataDe, getSeason, programaDe, FRASES };
   global.MTSeasons = api;
   /*
    * O servidor lê o MESMO arquivo (require) para servir o catálogo ao painel

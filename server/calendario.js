@@ -94,17 +94,34 @@ function lerSemIA(texto, hoje) {
       if (m && MESES.indexOf(m[2].toLowerCase()) >= 0) { dia = Number(m[1]); mes = MESES.indexOf(m[2].toLowerCase()) + 1; ano = m[3] ? Number(m[3]) : 0; resto = m[4]; }
     }
     if (!dia || !mes) continue;
-    if (!ano) {
-      ano = agora.getFullYear();
-      if (new Date(ano, mes - 1, dia) < new Date(agora.getFullYear(), agora.getMonth(), agora.getDate())) ano += 1;
+    /*
+     * Mais de uma data na mesma linha (reteste 4): "24/12 e 31/12 expediente
+     * até as 12h" virava UM evento no dia 24, com o título "e 31/12
+     * expediente…". Cada data vira um evento, com o mesmo texto.
+     */
+    const datas = [[dia, mes, ano]];
+    let mais;
+    const OUTRA = /^\s*(?:,|e|&|\/)\s*(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b\s*(.*)$/i;
+    while ((mais = OUTRA.exec(resto)) && datas.length < 10) {
+      datas.push([Number(mais[1]), Number(mais[2]), mais[3] ? Number(mais[3].length === 2 ? '20' + mais[3] : mais[3]) : ano]);
+      resto = mais[4];
     }
-    // "31/02" não existe: o Date "transbordaria" para março.
-    const quando = new Date(ano, mes - 1, dia);
-    if (quando.getMonth() !== mes - 1 || quando.getDate() !== dia) continue;
     const titulo = resto.replace(/^[\s:–—-]+/, '').replace(/\s*[–—-]\s*/, ' — ');
-    const [principal, detalhe] = titulo.split(' — ');
-    const ev = normalizar({ data: iso(new Date(ano, mes - 1, dia)), titulo: principal, detalhe: detalhe || '', tipo: tipoDoTexto(titulo) });
-    if (ev) saida.push(ev);
+    const [bruto, detalhe] = titulo.split(' — ');
+    // A primeira letra maiúscula: "expediente até as 12h" vira o título "Expediente até as 12h" na TV.
+    const principal = bruto ? bruto.charAt(0).toUpperCase() + bruto.slice(1) : bruto;
+    for (const [d, m, a0] of datas) {
+      let a = a0;
+      if (!a) {
+        a = agora.getFullYear();
+        if (new Date(a, m - 1, d) < new Date(agora.getFullYear(), agora.getMonth(), agora.getDate())) a += 1;
+      }
+      // "31/02" não existe: o Date "transbordaria" para março.
+      const quando = new Date(a, m - 1, d);
+      if (quando.getMonth() !== m - 1 || quando.getDate() !== d) continue;
+      const ev = normalizar({ data: iso(quando), titulo: principal, detalhe: detalhe || '', tipo: tipoDoTexto(titulo) });
+      if (ev) saida.push(ev);
+    }
   }
   return saida.sort((a, b) => a.data.localeCompare(b.data));
 }

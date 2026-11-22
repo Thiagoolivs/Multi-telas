@@ -443,6 +443,16 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   flex: 1 1 auto; min-height: 0;
   display: grid; gap: 1.4cqw;
   grid-auto-flow: dense;
+  grid-template-columns: var(--mural-cols, 1fr);
+  grid-template-rows: var(--mural-rows, 1fr);
+}
+/* Zona em pé: a grade trocada (linhas viram colunas), para a foto ocupar a
+ * altura que a TV tem em vez de duas tiras altas e vazias (reteste 4). */
+@container (aspect-ratio < 1) {
+  .mt-mural-parede {
+    grid-template-columns: var(--mural-cols-empe, 1fr);
+    grid-template-rows: var(--mural-rows-empe, 1fr);
+  }
 }
 .mt-mural-foto {
   position: relative; overflow: hidden; border-radius: 1.2cqw;

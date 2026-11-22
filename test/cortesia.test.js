@@ -141,6 +141,42 @@ test('sair da lista devolve a conta para o grátis', async () => {
   });
 });
 
+test('o colega da equipe que entra NÃO derruba a cortesia do dono (reteste 4)', async () => {
+  /*
+   * O caso do lançamento: a lista tem o e-mail da dona (o RH). O encarregado
+   * da produção, convidado como membro, entra no painel pela primeira vez —
+   * e a conta voltava para o grátis: 7 das 8 TVs iam para "Esta TV está
+   * pausada". A conta segue em cortesia enquanto alguém da equipe estiver
+   * na lista.
+   */
+  const db = bancoFalso({ plan: 'pro', plan_status: 'cortesia' });
+  db.listUsers = async () => [{ email: 'rh@empresa.com', role: 'owner' }, { email: 'encarregado@empresa.com', role: 'member' }];
+  await comAmbiente({ CONTAS_CORTESIA: 'rh@empresa.com' }, async () => {
+    assert.equal(await cortesia.sincronizar(db, 't1', 'encarregado@empresa.com'), 'nada');
+    assert.equal(db.tenant.plan_status, 'cortesia', 'o login do membro rebaixou a conta');
+    assert.equal(db.tenant.plan, 'pro');
+  });
+  // Ninguém da equipe na lista: aí sim volta para o grátis (a lista manda nos dois sentidos).
+  await comAmbiente({ CONTAS_CORTESIA: 'outro@x.com' }, async () => {
+    assert.equal(await cortesia.sincronizar(db, 't1', 'encarregado@empresa.com'), 'devolveu');
+    assert.equal(db.tenant.plan_status, 'free');
+  });
+  // A dona entra de novo na lista: o login do membro também promove (a conta está nela).
+  await comAmbiente({ CONTAS_CORTESIA: 'rh@empresa.com' }, async () => {
+    assert.equal(await cortesia.sincronizar(db, 't1', 'encarregado@empresa.com'), 'promoveu');
+    assert.equal(db.tenant.plan_status, 'cortesia');
+  });
+});
+
+test('sem conseguir ler a equipe, a cortesia não é tocada', async () => {
+  const db = bancoFalso({ plan: 'pro', plan_status: 'cortesia' });
+  db.listUsers = async () => { throw new Error('banco fora do ar'); };
+  await comAmbiente({ CONTAS_CORTESIA: 'rh@empresa.com' }, async () => {
+    assert.equal(await cortesia.sincronizar(db, 't1', 'encarregado@empresa.com'), 'nada');
+    assert.equal(db.tenant.plan_status, 'cortesia');
+  });
+});
+
 test('conta que PAGA nunca é tocada', async () => {
   /*
    * Nos dois sentidos, e este é o erro caro: rebaixar quem paga desligaria a

@@ -284,7 +284,8 @@ const paraBlob = (cv) => new Promise((ok) => cv.toBlob(ok, 'image/png'));
  * (para a página subir se a pessoa aprovar) e a lista do que foi feito,
  * em português, para o "antes e depois".
  */
-export async function propor(url, analise) {
+// `opcoes.clara`: faz a versão branca mesmo quando a logo lê no preto puro (versoesQueFaltam, abaixo).
+export async function propor(url, analise, opcoes) {
   const a = analise || await analisar(url);
   const img = await carregar(url);
   let cv = noCanvas(img, a.svg ? LADO_SAIDA : Math.min(LADO_SAIDA, Math.max(img.naturalWidth, img.naturalHeight)));
@@ -316,7 +317,7 @@ export async function propor(url, analise) {
 
   // As versões de uma cor só, para quando a logo some num dos fundos.
   const versoes = {};
-  if (!escuro.ok) { versoes.clara = { blob: await paraBlob(monocromatica(cv, CLARO)), nome: 'logo-clara.png' }; feito.push('Fiz uma versão branca, para o fundo escuro da TV (a original some nele).'); }
+  if (!escuro.ok || (opcoes && opcoes.clara)) { versoes.clara = { blob: await paraBlob(monocromatica(cv, CLARO)), nome: 'logo-clara.png' }; feito.push('Fiz uma versão branca, para o fundo escuro da TV (a original some nele).'); }
   if (!claro.ok) { versoes.escura = { blob: await paraBlob(monocromatica(cv, ESCURO)), nome: 'logo-escura.png' }; feito.push('Fiz uma versão escura, para o fundo claro (a original some nele).'); }
 
   return {
@@ -332,4 +333,30 @@ export async function propor(url, analise) {
     },
     mudou: feito.length > 0,
   };
+}
+
+/*
+ * AS VERSÕES QUE FALTAM, NA HORA EM QUE A LOGO CHEGA (reteste 4, 22/11).
+ *
+ * Quem monta a primeira TV manda a logo no passo 2 e nunca passa pela página
+ * da Marca, onde mora o "Melhorar". A logo escura (texto azul-marinho, o caso
+ * comum) sumia no cabeçalho escuro, no rodapé e na espera das 8 TVs. Aqui sai
+ * só o que FALTA — a versão branca para o fundo escuro, a escura para o
+ * claro —, nunca uma logo trocada: a principal fica como veio, e o passo
+ * mostra na TV desenhada e diz o que foi feito. Devolve { clara?, escura? }
+ * com os arquivos, ou {} quando a logo já lê nos dois fundos.
+ */
+export async function versoesQueFaltam(url) {
+  const a = await analisar(url);
+  /*
+   * A tinta escura da logo vira a cor do cabeçalho: a paleta da TV sai da
+   * própria logo (passo 2). A logo "Sol", laranja e marrom, lia no preto
+   * puro da análise — e o "Sol" marrom sumia no cabeçalho marrom. Com tinta
+   * escura, a versão branca sai sempre.
+   */
+  const tintaEscura = (a.cores || []).some((c) => luminancia(...rgb(c)) < 0.15);
+  if (a.escuro.ok && a.claro.ok && !tintaEscura) return {};
+  const p = await propor(url, a, { clara: tintaEscura });
+  for (const k of Object.keys(p.previa || {})) { try { if (p.previa[k]) URL.revokeObjectURL(p.previa[k]); } catch (e) { /* já solto */ } }
+  return p.versoes || {};
 }

@@ -161,3 +161,13 @@ test('as rotas: ler o texto, guardar a lista, editar, apagar — só da própria
   assert.equal((await pedir('/api/calendario/' + id, { method: 'DELETE', cookie: c })).status, 200);
   assert.equal((await pedir('/api/calendario', { cookie: c })).json.eventos.length, 1);
 });
+
+test('sem IA: duas ou mais datas na mesma linha viram um evento cada, com o mesmo texto (reteste 4)', () => {
+  const hoje = new Date(2026, 10, 22);
+  const e = C.lerSemIA('24/12 e 31/12 expediente até as 12h\n05/12, 12/12 e 19/12 Plantão do RH', hoje);
+  const ver = e.map((x) => x.data + ' ' + x.titulo);
+  assert.deepEqual(ver, [
+    '2026-12-05 Plantão do RH', '2026-12-12 Plantão do RH', '2026-12-19 Plantão do RH',
+    '2026-12-24 Expediente até as 12h', '2026-12-31 Expediente até as 12h',
+  ], 'virava um evento só, com o título "e 31/12 expediente…"');
+});

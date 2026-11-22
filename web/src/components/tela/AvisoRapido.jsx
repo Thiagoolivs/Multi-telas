@@ -133,7 +133,8 @@ export function AvisoRapido({ onFechar, avisoInicial }) {
             </label>
             <p className="flex items-start gap-1.5 text-2xs text-ink-3">
               <Megaphone size={13} className="mt-px shrink-0" />
-              Entra na frente da zona principal{aviso.ate ? ' até o fim do dia ' + aviso.ate.split('-').reverse().slice(0, 2).join('/') : ', até você tirar'}.
+              {/* O urgente sem data sai sozinho em 2 horas (o aviso logo acima): "até você tirar" dizia o contrário (reteste 4). */}
+              Entra na frente da zona principal{aviso.ate ? ' até o fim do dia ' + aviso.ate.split('-').reverse().slice(0, 2).join('/') : aviso.prioridade === 'urgente' ? ', por 2 horas' : ', até você tirar'}.
             </p>
             {!tvs.length && <p className="text-2xs text-warn">Você ainda não tem TV conectada.</p>}
           </div>

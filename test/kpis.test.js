@@ -176,3 +176,20 @@ test('a TV e o painel: o cartão ao vivo (número, variação, meta), a busca de
   assert.match(ler('web/src/pages/IndicadoresPage.jsx'), /const item = \{ type: 'kpi', indicador: indicador\.chave, rotulo: indicador\.nome, duracao: 12 \};/);
   assert.match(ler('sw.js'), /mt-shell-v(59|[6-9]\d)/);
 });
+
+test('o "%" e o "R$" escritos na célula viram a unidade (reteste 4: a planilha do Excel em porcentagem)', () => {
+  const P = require('../server/planilha');
+  // A primeira aba do .xlsx como o Conector manda: a célula como o Excel mostra, a coluna Unidade vazia.
+  const linhas = P.lerCsv('Indicador,Valor,Meta,Unidade,Anterior\r\nEficiência da linha,"91,2%","95,0%",,"88,4%"\r\nPeças produzidas,"5.899","6.000",peças,"5.400"\r\nFaturamento,"R$ 1.234,56",,,\r\n');
+  const { lista } = P.lerIndicadores(linhas.linhas || linhas);
+  const por = (c) => lista.find((i) => i.chave === c);
+  assert.equal(por('eficiencia-da-linha').valor, 91.2);
+  assert.equal(por('eficiencia-da-linha').unidade, '%', 'a TV mostraria 91,2 sem o %');
+  assert.equal(por('pecas-produzidas').unidade, 'peças', 'a coluna Unidade escrita vale mais');
+  assert.equal(por('faturamento').unidade, 'R$');
+  // No push também: o número com o símbolo, sem unidade, leva o símbolo; com unidade, vale a dela.
+  assert.equal(K.normalizar({ nome: 'Treinamentos', valor: '87,5%' }).unidade, '%');
+  assert.equal(K.normalizar({ nome: 'Treinamentos', valor: '87,5%', unidade: 'pontos' }).unidade, 'pontos');
+  // Sem símbolo e sem unidade: não inventa (o campo ausente é "não mexe").
+  assert.equal(K.normalizar({ nome: 'Pedidos', valor: 42 }).unidade, undefined);
+});

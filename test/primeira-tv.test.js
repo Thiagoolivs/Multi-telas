@@ -377,3 +377,30 @@ test('servidor: o progresso guardado na conta, o negócio vira o ramo, e o fim p
   const g3 = (await pedir('/api/primeira-tv', { cookie: dono })).json;
   assert.deepEqual([g3.abrir, g3.nova, !!g3.estado.fim], [false, false, true]);
 });
+
+test('passo 7, "E depois?": o próximo passo é o da frente — nada de "Planilha de preços" no RH nem na clínica (reteste 4)', () => {
+  const pronto = ler('web/src/components/primeira-tv/PassoPronto.jsx');
+  const proximos = pronto.slice(pronto.indexOf('const proximos = ['), pronto.indexOf('];', pronto.indexOf('const proximos = [')));
+  // Empresa: os aniversariantes; Saúde: a chamada de senha; Comércio (e o resto): a planilha de preços.
+  assert.match(proximos, /frente === 'empresa'\s*\?\s*\{ id: 'pessoas'[^}]*titulo: 'Aniversariantes'[^}]*onIr\('birthdays'\)/);
+  assert.match(proximos, /frente === 'saude'\s*\?\s*\{ id: 'senha'[^}]*titulo: 'Chamada de senha'[^}]*onIr\('senha'\)/);
+  assert.match(proximos, /: \{ id: 'planilha'[^}]*titulo: 'Planilha de preços'/);
+  assert.equal((proximos.match(/Planilha de preços/g) || []).length, 1, 'a planilha de preços apareceu fora do Comércio');
+});
+
+test('passo 2: a logo que some num fundo ganha a versão para ele, e o passo diz (reteste 4)', () => {
+  const marca = ler('web/src/components/primeira-tv/PassoMarca.jsx');
+  // Depois de guardar a logo, as versões que faltam sobem como logo-clara / logo-escura (a principal fica como veio).
+  assert.match(marca, /await brand\.addAsset\('logo', up\.url[^;]*;\s*\/\/[^\n]*\n\s*const versoes = \{ clara: '', escura: '' \};\s*try \{\s*const v = await versoesQueFaltam\(up\.url\);/);
+  assert.match(marca, /\['clara', 'logo-clara', 'logo para fundo escuro'\], \['escura', 'logo-escura', 'logo para fundo claro'\]/);
+  assert.match(marca, /globalThis\.MT_LOGO = \{ url: up\.url, clara: versoes\.clara, escura: versoes\.escura \};/);
+  // A TV desenhada do passo já usa a versão, e o texto conta o que foi feito.
+  assert.match(marca, /clara: \(logoClara && logoClara\.url\) \|\| ''/);
+  assert.match(marca, /fiz uma versão branca para ele/);
+  const lib = ler('web/src/lib/logo.js');
+  const f = lib.slice(lib.indexOf('export async function versoesQueFaltam'));
+  assert.match(f, /const tintaEscura = \(a\.cores \|\| \[\]\)\.some\(\(c\) => luminancia\(\.\.\.rgb\(c\)\) < 0\.15\);/, 'a tinta escura vira o cabeçalho: precisa da versão branca');
+  assert.match(f, /if \(a\.escuro\.ok && a\.claro\.ok && !tintaEscura\) return \{\};/, 'a logo clara que lê nos dois fundos não ganha versão');
+  assert.match(lib, /if \(!escuro\.ok \|\| \(opcoes && opcoes\.clara\)\) \{ versoes\.clara =/);
+  assert.match(f, /return p\.versoes \|\| \{\};/, 'só as versões, nunca a logo principal trocada');
+});

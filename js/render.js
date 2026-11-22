@@ -1952,8 +1952,16 @@
       const fotos = todas.slice(0, 9);
       const g = grade(fotos.length);
       const parede = div('mt-mural-parede');
-      parede.style.gridTemplateColumns = g.cols;
-      parede.style.gridTemplateRows = g.rows;
+      /*
+       * A grade deitada e a mesma grade de pé, trocadas (reteste 4): numa TV
+       * em pé, duas fotos lado a lado viravam duas tiras altas com a foto
+       * pequena no meio e o resto vazio. O CSS escolhe pela forma da zona
+       * (css/player.css, @container (aspect-ratio < 1)).
+       */
+      parede.style.setProperty('--mural-cols', g.cols);
+      parede.style.setProperty('--mural-rows', g.rows);
+      parede.style.setProperty('--mural-cols-empe', g.rows);
+      parede.style.setProperty('--mural-rows-empe', g.cols);
 
       // Mais recente primeiro e em destaque: é a foto que a pessoa acabou de
       // mandar, e ela está olhando para a TV agora.

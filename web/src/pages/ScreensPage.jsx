@@ -188,7 +188,13 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
  *     (nome, recarregar, som, horário, backup, remover) mora em "Mais
  *     opções", cada uma com o nome escrito.
  */
+/*
+ * O exemplo de grupo na língua da frente (reteste 4): o RH lia "Ex.: Loja
+ * Centro" e "Quando a loja abre" no menu de cada TV.
+ */
+const GRUPO_DE_EXEMPLO = { empresa: 'Produção', comercio: 'Loja Centro', saude: 'Unidade Centro' };
 function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup, onAlerta, onRemove }) {
+  const perfil = usePerfil();
   const st = deviceStatus(d.lastSeen);
   const online = st.tone === 'ok';
   const [mais, setMais] = useState(false);
@@ -275,12 +281,12 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
       <Dialog open={mais} onClose={() => setMais(false)} title={d.name || 'Tela sem nome'}
         description={'Código da TV: ' + (d.code || '—') + (d.grupo ? ' · Grupo ' + d.grupo : '')}>
         <div className="-mx-1 flex flex-col">
-          <OpcaoDaTela icon={Pencil} titulo="Nome e grupo" texto="Ex.: Recepção, Loja Centro." onClick={fechar(onRename)} />
+          <OpcaoDaTela icon={Pencil} titulo="Nome e grupo" texto={'Ex.: ' + perfil.textos.nomesDeTv.split(', ')[0] + ', ' + (GRUPO_DE_EXEMPLO[perfil.id] || GRUPO_DE_EXEMPLO.comercio) + '.'} onClick={fechar(onRename)} />
           <OpcaoDaTela icon={RotateCw} titulo="Recarregar a TV" texto="O “desliga e liga”, sem ir até ela." onClick={fechar(recarregar)} disabled={!!recarregando} />
           {d.info && d.info.app && <OpcaoDaTela icon={Power} titulo="Reiniciar o app da TV" texto="Quando recarregar não resolveu. Leva até 1 minuto." onClick={fechar(reiniciar)} disabled={!!recarregando} />}
           <OpcaoDaTela icon={Music} titulo="Som ao vivo" texto="Volume e música, na hora." onClick={fechar(onSom)} />
           <OpcaoDaTela icon={semAlerta ? BellOff : Bell} titulo="Horário e aviso de queda"
-            texto={semAlerta ? 'O aviso por e-mail está desligado.' : 'Quando a loja abre e o e-mail se a TV cair.'} onClick={fechar(onAlerta)} />
+            texto={semAlerta ? 'O aviso por e-mail está desligado.' : 'Quando a ' + perfil.lugar + ' abre e o e-mail se a TV cair.'} onClick={fechar(onAlerta)} />
           <OpcaoDaTela icon={Archive} titulo="Backup e cópia" texto="Guardar, restaurar ou copiar de outra TV." onClick={fechar(onBackup)} />
           {/* Sempre à mão (QA de 03/11): a TV que perdeu o vínculo mostra o código na hora, e o painel só a diz "fora do ar" depois de 90 s. */}
           <OpcaoDaTela icon={RefreshCw} titulo="Reconectar" texto="A TV voltou mostrando um código." onClick={fechar(onReconnect)} />
@@ -658,6 +664,7 @@ function RenomearGrupoDialog({ grupo, onClose, onDone }) {
 }
 
 function RenameDialog({ target, grupos, onClose, onDone }) {
+  const perfilDoGrupo = usePerfil();
   const [name, setName] = useState('');
   const [grupo, setGrupo] = useState('');
   const [busy, setBusy] = useState(false);
@@ -692,7 +699,7 @@ function RenameDialog({ target, grupos, onClose, onDone }) {
         <Field label="Nome da tela">
           <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         </Field>
-        <Field label="Grupo" hint="Ex.: Loja Centro. Na hora de pôr na TV, dá para marcar o grupo inteiro de uma vez.">
+        <Field label="Grupo" hint={'Ex.: ' + (GRUPO_DE_EXEMPLO[perfilDoGrupo.id] || GRUPO_DE_EXEMPLO.comercio) + '. Na hora de pôr na TV, dá para marcar o grupo inteiro de uma vez.'}>
           <Input value={grupo} onChange={(e) => setGrupo(e.target.value)} list="grupos-de-telas" placeholder="Sem grupo" />
           <datalist id="grupos-de-telas">{(grupos || []).map((g) => <option key={g} value={g} />)}</datalist>
         </Field>
@@ -759,7 +766,8 @@ function BackupDialog({ target, screens, onClose, onDone }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'multitelas-' + (target.name || 'tela').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.json';
+      // Sem o acento, e não sem a letra: "Produção 1" vira producao-1, e não produ-o-1 (reteste 4).
+      a.download = 'multitelas-' + (target.name || 'tela').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       setMsg('Backup baixado.');

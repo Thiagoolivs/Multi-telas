@@ -131,3 +131,57 @@ test('a TV não espera 30 s: o cartão entra assim que a lista de aniversariante
   assert.ok(PLAYER.includes("if (auto) global.addEventListener('mt:aniversarios', aoChegarAniversarios);"));
   assert.ok(PLAYER.includes("if (auto) global.removeEventListener('mt:aniversarios', aoChegarAniversarios);"), 'o ouvinte fica pendurado ao refazer a zona');
 });
+
+test('a primeira importação dos aniversariantes liga "mostrar nas TVs"; quem desligou de propósito segue desligado (reteste 4)', () => {
+  // Nunca decidiu: liga em todas as TVs, e o mural que já existia fica.
+  assert.deepEqual(A.ligarNaPrimeiraImportacao(null), { aniversarios: { ligado: true, telas: 'todas' }, mural: null });
+  assert.deepEqual(A.ligarNaPrimeiraImportacao('{"mural":{"codigo":"AB12CD","telas":"todas"}}'),
+    { aniversarios: { ligado: true, telas: 'todas' }, mural: { codigo: 'AB12CD', telas: 'todas' } });
+  // Já decidiu (ligado ou desligado): a importação não mexe.
+  assert.equal(A.ligarNaPrimeiraImportacao({ aniversarios: { ligado: false, telas: 'todas' } }), null);
+  assert.equal(A.ligarNaPrimeiraImportacao({ aniversarios: { ligado: true, telas: { grupo: 'Refeitório' } } }), null);
+});
+
+test('importar a planilha do RH põe os aniversariantes na TV sem procurar a chave (servidor de verdade)', async (t) => {
+  // Uma faixa só deste teste: o npm test roda os arquivos juntos, e a 6300 é a do quiz, a 5100 a da cobrança.
+  const porta = 4600 + Math.floor(Math.random() * 90);
+  const dados = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-r4-aniv-'));
+  const servidor = spawn(process.execPath, ['server.js'], {
+    cwd: RAIZ, stdio: 'ignore',
+    env: { ...process.env, PORT: String(porta), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '', DATA_DIR: dados, MEDIA_DIR: dados, AI_PROVIDER: 'dev' },
+  });
+  t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
+  const p = (caminho, o = {}) => new Promise((resolve, reject) => {
+    const req = http.request({ host: '127.0.0.1', port: porta, path: caminho, method: o.method || 'GET',
+      headers: { ...(o.json ? { 'Content-Type': 'application/json' } : {}), ...(o.cookie ? { Cookie: o.cookie } : {}), ...(o.headers || {}) } }, (res) => {
+      let corpo = '';
+      res.on('data', (x) => { corpo += x; });
+      res.on('end', () => { let json = null; try { json = JSON.parse(corpo); } catch (e) { json = null; } resolve({ status: res.statusCode, json, cookies: [].concat(res.headers['set-cookie'] || []) }); });
+    });
+    req.on('error', reject);
+    if (o.json) req.write(JSON.stringify(o.json));
+    req.end();
+  });
+  let ok = false;
+  for (let i = 0; i < 160 && !ok; i++) { try { await p('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  assert.ok(ok, 'o servidor de teste não subiu');
+  const c = cookieDe(await p('/api/auth/signup', { method: 'POST', json: { email: 'rh' + Date.now() + '@teste.local', password: 'senha-de-teste-123', name: 'Metalúrgica', perfil: 'empresa', aceite: true } }));
+  const tv = (await p('/api/devices', { method: 'POST', json: {} })).json;
+  const daTv = { 'x-device-token': tv.deviceToken };
+  await p('/api/devices/' + tv.id + '/config', { headers: daTv });
+  assert.ok((await p('/api/pair', { method: 'POST', cookie: c, json: { code: tv.code } })).status < 300);
+  assert.equal((await p('/api/devices/' + tv.id + '/config', { method: 'PUT', cookie: c, json: { settings: { layoutId: 'full' }, zonas: {} } })).status, 200);
+
+  const linhas = [{ nome: 'Ana Paula Ferreira', nascimento: '22/11/1990', setor: 'RH' }, { nome: 'José Carlos', nascimento: '01/12/1978' }];
+  const r = await p('/api/birthdays/import', { method: 'POST', cookie: c, json: { rows: linhas } });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.ligouNasTvs, true, 'a importação não ligou o "mostrar nas TVs"');
+  const cfg = (await p('/api/devices/' + tv.id + '/config', { headers: daTv })).json;
+  assert.deepEqual(cfg.settings.automaticos, { aniversarios: true, mural: '' }, 'a TV não recebe os aniversariantes depois da importação');
+
+  // O dono desliga; importar de novo não liga outra vez.
+  await p('/api/automaticos', { method: 'PUT', cookie: c, json: { aniversarios: { ligado: false, telas: 'todas' } } });
+  const r2 = await p('/api/birthdays/import', { method: 'POST', cookie: c, json: { rows: linhas } });
+  assert.equal(r2.json.ligouNasTvs, false);
+  assert.equal((await p('/api/automaticos', { cookie: c })).json.automaticos.aniversarios.ligado, false, 'a importação religou o que o dono desligou');
+});

@@ -65,4 +65,22 @@ function paraATela(automaticos, device) {
   };
 }
 
-module.exports = { VAZIO, normalizar, paraATela, alcanca, telasLimpas };
+/*
+ * A PRIMEIRA IMPORTAÇÃO LIGA (reteste 4, 22/11).
+ *
+ * O RH importava a planilha, a página dizia "o aniversário de cada um, que a
+ * TV mostra sozinha" — e a chave "Mostrar nas TVs" nascia desligada: as 8 TVs
+ * não mostravam ninguém até alguém achar a chave. Quem importa a lista quer
+ * vê-la na TV. Então, se a conta NUNCA decidiu (não há `aniversarios`
+ * guardado), a importação liga em todas as TVs. Quem já desligou de
+ * propósito continua desligado.
+ *
+ * Devolve o objeto novo para gravar, ou null quando não há o que mudar.
+ */
+function ligarNaPrimeiraImportacao(bruto) {
+  const b = lerJson(bruto) || {};
+  if (b.aniversarios && typeof b.aniversarios === 'object') return null;
+  return { aniversarios: { ligado: true, telas: 'todas' }, mural: b.mural || null };
+}
+
+module.exports = { VAZIO, normalizar, paraATela, alcanca, telasLimpas, ligarNaPrimeiraImportacao };
