@@ -1,0 +1,46 @@
+# Monta o Conector MultiTelas (conector/) e publica o MultiTelasConector.zip
+# como artefato.
+#
+# O .exe sai daqui mesmo, de um Linux: o build baixa o node.exe oficial e o
+# Node do Linux da mesma versão (sha256 fixado em conector/build/build.js),
+# monta o .exe com `node --build-sea` e, como prova, monta e EXECUTA o mesmo
+# pacote como binário Linux. O .exe em si só roda num Windows.
+
+name: Conector
+
+on:
+  push:
+    paths: ['conector/**', 'docs/implantacao/CONECTOR.md', '.github/workflows/conector.yml']
+  pull_request:
+    paths: ['conector/**', 'docs/implantacao/CONECTOR.md', '.github/workflows/conector.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: conector-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Os testes do conector não dependem de nada instalado.
+      - name: Testes do conector
+        run: node --test test/conector.test.js
+
+      - name: Montar o .exe e o .zip
+        run: npm run conector:build
+
+      - name: MultiTelasConector.zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: MultiTelasConector
+          path: conector/dist/MultiTelasConector.zip
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,19 @@
+{
+  "name": "multitelas-conector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Conector MultiTelas: leva a pasta de rede, a planilha e o feed da intranet da empresa para o MultiTelas.",
+  "main": "src/main.js",
+  "bin": {
+    "multitelas-conector": "src/main.js"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "build": "node build/build.js",
+    "test": "node --test ../test/conector.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {}
+}
