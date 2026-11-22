@@ -1722,56 +1722,104 @@ module.exports = function (ctx) {
       aplicar: (cfg, tela, op) => loteTv.aplicarQuiz(cfg, op.quiz, op.zona, op.id),
       marcar: (cfg, tela, op) => loteTv.zonaDoQuiz(cfg, op.zona).caiu,
     },
+    /*
+     * A INTEGRAÇÃO (docs/INTEGRACOES.md): a pasta da rede e os comunicados da
+     * intranet, empurrados pelo Conector. Só o servidor manda esta operação
+     * (server/routes/integracoes.js, `interna`): a origem `_integracao` é
+     * dele, e o painel não a forja. Cada TV leva uma das entradas — a lista
+     * de agora (as TVs do mapa) ou a vazia (as que saíram do mapa: o que era
+     * da integração sai delas). O resto passa pelo mesmo caminho de sempre:
+     * posse, loja, versão, a porta das peças, tudo ou nada, o Desfazer e a
+     * aprovação (202) quando a pasta pede.
+     */
+    integracao: {
+      interna: true,
+      porEntrada: true,
+      limpar(o) {
+        const id = curto(o.id, 80);
+        // Foto, vídeo e o Aviso do comunicado: o PDF e o PPTX chegam como slides em imagem (o Conector converte).
+        const TIPOS = ['image', 'video', 'announce'];
+        const entradas = (Array.isArray(o.entradas) ? o.entradas.slice(0, 2) : []).map((e) => {
+          const itens = ehObjeto(e) && Array.isArray(e.itens) ? e.itens.slice(0, 300) : null;
+          return itens && itens.every((it) => itemOk(it) && TIPOS.indexOf(it.type) >= 0) ? { itens } : null;
+        });
+        if (!id || !entradas.length || entradas.some((e) => !e)) return recusa('A integração mandou uma lista que não serve. Nada foi enviado.', 'operacao-invalida');
+        return { op: { id, titulo: curto(o.titulo, 100), entradas, zona: o.zona === 'lateral' ? 'lateral' : 'principal', posicao: o.posicao === 'inicio' ? 'inicio' : 'fim' } };
+      },
+      descricao: (op) => op.titulo || 'Integração',
+      aplicar: (cfg, tela, op) => loteTv.aplicarIntegracao(cfg, { id: op.id, zona: op.zona, posicao: op.posicao, itens: op.entradas[tela.entrada].itens }),
+    },
   };
 
   async function rotaOperacao(res, sess, b) {
-    if (!ehObjeto(b) || !ehObjeto(b.operacao)) return sendJson(res, 400, { error: 'json inválido' });
+    // A operação interna (a integração) não entra pelo painel: quem a manda é o servidor.
+    const tipoPedido = ehObjeto(b) && ehObjeto(b.operacao) ? b.operacao.tipo : '';
+    if (Object.prototype.hasOwnProperty.call(OPERACOES, tipoPedido) && OPERACOES[tipoPedido].interna) {
+      return sendJson(res, 400, { error: 'operação desconhecida', code: 'operacao-invalida' });
+    }
+    const r = await executarOperacao(sess, b);
+    return sendJson(res, r.status, r.corpo);
+  }
+
+  /*
+   * A operação sem a resposta HTTP: devolve { status, corpo }. O painel entra
+   * por rotaOperacao; a integração (server/routes/integracoes.js) chama
+   * direto, com a sessão dela. `opcoes.soQuemMuda`: a TV em que a operação
+   * não muda nada fica fora do envio — a pasta sincroniza a cada mudança, e
+   * gravar (e pedir aprovação para) as TVs iguais encheria os "Últimos
+   * envios" e a fila do dono de nada. Se nenhuma muda: 200 com `nada: true`.
+   */
+  async function executarOperacao(sess, b, opcoes) {
+    const o = opcoes || {};
+    const falha = (status, corpo) => ({ status, corpo });
+    if (!ehObjeto(b) || !ehObjeto(b.operacao)) return falha(400, { error: 'json inválido' });
     const tipo = Object.prototype.hasOwnProperty.call(OPERACOES, b.operacao.tipo) ? OPERACOES[b.operacao.tipo] : null;
-    if (!tipo) return sendJson(res, 400, { error: 'operação desconhecida', code: 'operacao-invalida' });
-    if (JSON.stringify(b.operacao).length > OPERACAO_BYTES) return sendJson(res, 400, { error: 'O envio ficou grande demais. Mande menos peças de uma vez.', code: 'grande-demais' });
+    if (!tipo) return falha(400, { error: 'operação desconhecida', code: 'operacao-invalida' });
+    if (JSON.stringify(b.operacao).length > OPERACAO_BYTES) return falha(400, { error: 'O envio ficou grande demais. Mande menos peças de uma vez.', code: 'grande-demais' });
     const telas = (Array.isArray(b.telas) ? b.telas : []).map((t) => (ehObjeto(t)
       ? { id: String(t.id || '').slice(0, 64), entrada: Number(t.entrada) || 0 }
       : { id: String(t || '').slice(0, 64), entrada: 0 })).filter((t) => t.id);
-    if (!telas.length) return sendJson(res, 400, { error: 'escolha pelo menos uma TV' });
-    if (new Set(telas.map((t) => t.id)).size !== telas.length) return sendJson(res, 400, { error: 'A mesma TV veio duas vezes no envio. Nada foi enviado.', code: 'tv-repetida' });
+    if (!telas.length) return falha(400, { error: 'escolha pelo menos uma TV' });
+    if (new Set(telas.map((t) => t.id)).size !== telas.length) return falha(400, { error: 'A mesma TV veio duas vezes no envio. Nada foi enviado.', code: 'tv-repetida' });
     const max = sess.precisaAprovar ? LOTE_MAX : OPERACAO_MAX;
-    if (telas.length > max) return sendJson(res, 400, loteGrande(max));
+    if (telas.length > max) return falha(400, loteGrande(max));
     const limpo = tipo.limpar(b.operacao);
-    if (limpo.erro) return sendJson(res, 400, limpo.erro);
+    if (limpo.erro) return falha(400, limpo.erro);
     const op = limpo.op;
     if (tipo.porEntrada && !telas.every((t) => Number.isInteger(t.entrada) && t.entrada >= 0 && t.entrada < op.entradas.length)) {
-      return sendJson(res, 400, { error: CAMPANHA_INVALIDA, code: 'operacao-invalida' });
+      return falha(400, { error: CAMPANHA_INVALIDA, code: 'operacao-invalida' });
     }
     const hoje = hojeDoPedido(b.hoje);
     // `agora`: meio-dia do dia de quem mandou, no relógio daqui — as datas das peças saem iguais às do painel.
     const c = { hoje, agoraMs: Date.now(), agora: new Date(hoje + 'T12:00:00') };
     if (b.simular === true) {
-      if (!tipo.simular) return sendJson(res, 400, { error: 'esta operação não tem simulação', code: 'operacao-invalida' });
+      if (!tipo.simular) return falha(400, { error: 'esta operação não tem simulação', code: 'operacao-invalida' });
       const sim = await simularOperacao(sess, telas, (cfg, tela) => tipo.simular(cfg, tela, op, c));
-      return sim.status ? sendJson(res, sim.status, sim.corpo) : sendJson(res, 200, { telas: sim.telas });
+      return sim.status ? falha(sim.status, sim.corpo) : falha(200, { telas: sim.telas });
     }
     const descricao = String(tipo.descricao(op) || 'Envio').slice(0, 120);
     // Alguém gravou numa das TVs entre ler e gravar (aplicarLote desfaz tudo): lê de novo e aplica outra vez, até três vezes.
     for (let tentativa = 0; tentativa < 3; tentativa++) {
-      const montado = await montarOperacao(sess, telas, (cfg, tela) => tipo.aplicar(cfg, tela, op, c), tipo.marcar ? (cfg, tela) => tipo.marcar(cfg, tela, op, c) : null);
-      if (montado.status) return sendJson(res, montado.status, montado.corpo);
+      const montado = await montarOperacao(sess, telas, (cfg, tela) => tipo.aplicar(cfg, tela, op, c), tipo.marcar ? (cfg, tela) => tipo.marcar(cfg, tela, op, c) : null, o.soQuemMuda);
+      if (montado.status) return falha(montado.status, montado.corpo);
+      if (!montado.itens.length) return falha(200, { ok: true, nada: true, telas: [] });
       const conferido = await conferirLote(sess, montado.itens, { lidas: montado.lidas, meus: montado.meus });
       if (!conferido.prontos) {
         if (conferido.status === 409 && tentativa < 2) continue;
-        return sendJson(res, conferido.status, conferido.corpo);
+        return falha(conferido.status, conferido.corpo);
       }
       if (sess.precisaAprovar) {
         const pedido = await aprovacao.pedir(db, sess, conferido.prontos, descricao, conferido.meus);
-        return sendJson(res, 202, aprovacao.resposta(pedido));
+        return falha(202, aprovacao.resposta(pedido));
       }
       const r = await aplicarLote(sess.tenant_id, sess.user_id, conferido.prontos, descricao, tipo.desfazer ? tipo.desfazer(op) : {});
       if (r.status === 409 && tentativa < 2) continue;
       if (r.status === 200 && op.id && op.aviso) r.corpo.aviso = op.id;
       // As TVs que a operação marcou (o quiz que caiu na principal): o painel diz quais.
       if (r.status === 200 && tipo.marcar) r.corpo.marcadas = montado.marcadas;
-      return sendJson(res, r.status, r.corpo);
+      return r;
     }
-    return sendJson(res, 409, { error: 'A programação dessas TVs está mudando agora. Nada foi enviado; tente de novo em instantes.', code: 'config-mudou' });
+    return falha(409, { error: 'A programação dessas TVs está mudando agora. Nada foi enviado; tente de novo em instantes.', code: 'config-mudou' });
   }
   // O aviso rápido, pelo endereço de sempre: a operação 'aviso'.
   function rotaAviso(res, sess, b) {
@@ -1799,7 +1847,7 @@ module.exports = function (ctx) {
    * loja recusa o envio inteiro antes de a operação entrar nela (e nem o
    * nome dela sai na resposta), como no envio em lote.
    */
-  async function montarOperacao(sess, telas, aplicar, marcar) {
+  async function montarOperacao(sess, telas, aplicar, marcar, soQuemMuda) {
     const meus = sess.precisaAprovar ? await aprovacao.meusPendentesPorTela(db, sess) : null;
     const lidas = new Map();
     const itens = [];
@@ -1813,11 +1861,14 @@ module.exports = function (ctx) {
       lidas.set(device.id, device);
       const lida = programacaoParaMudar(device, meus);
       if (marcar && marcar(lida.cfg, telas[i])) marcadas.push(device.id);
+      const antes = soQuemMuda ? JSON.stringify(lida.cfg) : '';
       let cfg;
       try { cfg = aplicar(lida.cfg, telas[i]); } catch (e) {
         // Sem zona que caiba (o aviso): nada vai, e a resposta diz qual TV (a pessoa troca o layout dela ou tira do envio).
         return { status: 400, corpo: { error: (device.name || 'Uma TV') + ': ' + e.message + '. Nada foi enviado.', code: 'sem-lugar', tela: { id: device.id, nome: device.name || '' } } };
       }
+      // A TV em que nada muda fica fora (executarOperacao, `soQuemMuda`).
+      if (soQuemMuda && JSON.stringify(cfg) === antes) continue;
       itens.push({ id: device.id, config: cfg, versao: lida.versao });
     }
     return { itens, lidas, meus, marcadas };
@@ -1884,7 +1935,8 @@ module.exports = function (ctx) {
     };
   }
   // A aprovação (server/routes/aprovacoes.js) põe no ar pelo mesmo caminho do envio.
-  ctx.publicar = { conferirLote, aplicarLote, normalizar: (c) => schema.normalize(c), vistaDoPainel };
+  // A integração (server/routes/integracoes.js) põe a pasta e os comunicados nas TVs pela operação (executarOperacao).
+  ctx.publicar = { conferirLote, aplicarLote, normalizar: (c) => schema.normalize(c), vistaDoPainel, operacao: executarOperacao };
 
   return async function (req, res, parts, query, sess) {
     if (parts[1] === 'lote') { await rotaLote(req, res, parts, sess); return true; }

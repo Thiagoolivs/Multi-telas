@@ -270,25 +270,36 @@ function conferirSvg(texto) {
 }
 
 async function saveStream(tenantId, req, { mime, max }) {
+  if (!extFor(mime)) throw httpErr(415, 'tipo de arquivo não suportado');
+  const recebido = await toTempFile(req, max);
+  try {
+    if (/svg/i.test(String(mime))) conferirSvg(await fs.promises.readFile(recebido.tmp, 'utf8'));
+    return await saveTempFile(tenantId, recebido.tmp, { mime, size: recebido.size, sha256: recebido.sha256 });
+  } finally {
+    fs.unlink(recebido.tmp, () => {});
+  }
+}
+
+/*
+ * Grava um arquivo que JÁ ESTÁ no disco temporário (toTempFile), com o tipo
+ * já decidido por quem chamou. Existe para o Conector (server/routes/
+ * integracoes.js): lá o tipo sai dos BYTES, conferidos depois de o corpo
+ * chegar inteiro — o nome e o Content-Type são do cliente e não decidem nada.
+ * Quem chama apaga o temporário (no disco, depois do rename ele já não existe).
+ */
+async function saveTempFile(tenantId, tmp, { mime, size, sha256 }) {
   const ext = extFor(mime);
   if (!ext) throw httpErr(415, 'tipo de arquivo não suportado');
   const id = rid(20);
   const key = tenantId + '/' + id + '.' + ext;
   const m = String(mime).toLowerCase();
-
-  const { tmp, size, sha256 } = await toTempFile(req, max);
-  try {
-    if (/svg/.test(m)) conferirSvg(await fs.promises.readFile(tmp, 'utf8'));
-    if (DRIVER === 's3') {
-      await s3Put(key, Readable.toWeb(fs.createReadStream(tmp)), m, sha256, size);
-    } else {
-      fs.mkdirSync(path.join(MEDIA_DIR, tenantId), { recursive: true });
-      // rename falha entre sistemas de arquivos diferentes (/tmp × volume).
-      try { fs.renameSync(tmp, path.join(MEDIA_DIR, key)); }
-      catch (e) { await pipeline(fs.createReadStream(tmp), fs.createWriteStream(path.join(MEDIA_DIR, key))); }
-    }
-  } finally {
-    fs.unlink(tmp, () => {});
+  if (DRIVER === 's3') {
+    await s3Put(key, Readable.toWeb(fs.createReadStream(tmp)), m, sha256, size);
+  } else {
+    fs.mkdirSync(path.join(MEDIA_DIR, tenantId), { recursive: true });
+    // rename falha entre sistemas de arquivos diferentes (/tmp × volume).
+    try { fs.renameSync(tmp, path.join(MEDIA_DIR, key)); }
+    catch (e) { await pipeline(fs.createReadStream(tmp), fs.createWriteStream(path.join(MEDIA_DIR, key))); }
   }
   return { id, key, ext, mime: m, size, url: publicUrl(key) };
 }
@@ -433,5 +444,7 @@ module.exports = {
   // Diagnóstico da configuração do bucket (aparece no boot).
   s3Info: () => (DRIVER === 's3' ? { endpoint: S3.endpoint, bucket: S3.bucket, region: S3.region, pathStyle: S3.pathStyle } : null),
   extFor, saveStream, saveBuffer, remove, publicUrl, resolveLocal, problemaNoSvg,
+  // O Conector (server/routes/integracoes.js): recebe no temporário, confere os bytes, e só então grava.
+  saveTempFile,
   readBuffer, serve, validKey, ephemeralWarning,
 };

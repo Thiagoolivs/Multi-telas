@@ -109,7 +109,7 @@ const MIME = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json',
   '.webp': 'image/webp', '.gif': 'image/gif', '.mp4': 'video/mp4', '.webm': 'video/webm',
-  '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=utf-8',
+  '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=utf-8', '.zip': 'application/zip',
 };
 
 // Assinantes SSE por device (em memória).
@@ -670,6 +670,8 @@ function montarCtx() {
     fotoqr: require('./server/routes/fotoqr')(ctx),
     // Os indicadores da empresa (D36).
     kpis: require('./server/routes/kpis')(ctx),
+    // As integrações: o Conector MultiTelas e a intranet, pela API pública /api/v1 (docs/INTEGRACOES.md).
+    integracoes: require('./server/routes/integracoes')(ctx),
     // O banco de imagens externo (D37).
     pixabay: require('./server/routes/pixabay')(ctx),
     // Fase 13: a fila de aprovação e as lojas de cada membro (usa ctx.publicar, de telas).
@@ -2802,6 +2804,8 @@ const negocioCache = new Map();
   if (await ctx.routes.calendario(req, res, parts, query, sess)) return;
   if (await ctx.routes.fotoqr(req, res, parts, query, sess)) return;
   if (await ctx.routes.kpis(req, res, parts, query, sess)) return;
+  // /api/v1 (o token da integração) e /api/integracoes (o painel).
+  if (await ctx.routes.integracoes(req, res, parts, query, sess)) return;
   if (await ctx.routes.pixabay(req, res, parts, query, sess)) return;
   if (await ctx.routes.planilha(req, res, parts, query, sess)) return;
   if (await ctx.routes.primeiraTv(req, res, parts, query, sess)) return;
@@ -3335,6 +3339,8 @@ const ARQUIVOS_PUBLICOS = new Set([
   '/player.html', '/bancada.html', '/experimento.html',
   '/sw.js', '/player.webmanifest', '/manifest.webmanifest',
   '/favicon.ico', '/robots.txt',
+  // O instalador do Conector MultiTelas (docs/INTEGRACOES.md): um arquivo, e não a pasta inteira.
+  '/conector/MultiTelasConector.zip',
 ]);
 
 function ehPublico(urlPath) {
@@ -3739,5 +3745,7 @@ db.init()
     setInterval(buscarIndicadores, 60 * 1000).unref();
     // As planilhas de preço (fase 11): de 5 em 5 minutos, e a TV só é avisada quando muda.
     require('./server/routes/planilha').ligarRelogio({ db, avisarTelas, erros });
+    // As integrações (docs/INTEGRACOES.md): a pasta e os comunicados vão às TVs, e a faxina da mídia que saiu.
+    montarCtx().routes.integracoes.ligarRelogio();
   }))
   .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });

@@ -16,6 +16,7 @@ passadas) e o que foi para o **arquivo**.
 | [`CONFIGURAR-RESEND-E-ASAAS.md`](CONFIGURAR-RESEND-E-ASAAS.md), [`ARMAZENAMENTO.md`](ARMAZENAMENTO.md), [`BACKUP.md`](BACKUP.md) | Passo a passo de configuração |
 | [`PROMPT-COWORK.md`](PROMPT-COWORK.md) | Prompt para configurar tudo pelo navegador |
 | [`BILLING.md`](BILLING.md) | Como a cobrança funciona (Asaas, planos, atraso) |
+| [`INTEGRACOES.md`](INTEGRACOES.md) | **O Conector MultiTelas e a API para a intranet**: a pasta da rede, a planilha e os comunicados indo para as TVs sozinhos (referência da API, com curl) |
 | [`ads/`](ads/README.md) | **Multi Telas Ads**: planejamento da rede de anúncios (proposta) |
 
 ## Referência — o porquê das decisões

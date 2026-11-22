@@ -123,6 +123,34 @@ async function init() {
       aviso TEXT, ultimo_ok BIGINT, ultimo_erro TEXT, proxima BIGINT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_planilhas_tenant ON planilhas(tenant_id);
+    -- Integrações (docs/INTEGRACOES.md): o Conector MultiTelas e a intranet; ver db-sqlite.js.
+    CREATE TABLE IF NOT EXISTS integracoes (
+      id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, token_hash TEXT, token_dica TEXT,
+      revogada_em BIGINT, visto_em BIGINT, chamada_em BIGINT, versao TEXT, maquina TEXT,
+      created_at BIGINT, updated_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_integracoes_tenant ON integracoes(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_integracoes_token ON integracoes(token_hash);
+    CREATE TABLE IF NOT EXISTS integracao_fontes (
+      id TEXT PRIMARY KEY, tenant_id TEXT, integracao_id TEXT, tipo TEXT, chave TEXT, nome TEXT,
+      config TEXT, estado TEXT, sincronizar_em BIGINT, created_at BIGINT, updated_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_integracao_fontes_int ON integracao_fontes(integracao_id);
+    CREATE INDEX IF NOT EXISTS idx_integracao_fontes_sinc ON integracao_fontes(sincronizar_em);
+    CREATE TABLE IF NOT EXISTS integracao_arquivos (
+      id TEXT PRIMARY KEY, tenant_id TEXT, fonte_id TEXT, nome TEXT, sha256 TEXT, tamanho BIGINT, mime TEXT,
+      media_id TEXT, url TEXT, aviso TEXT, em BIGINT, removido_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_integracao_arquivos_fonte ON integracao_arquivos(fonte_id, removido_em);
+    CREATE TABLE IF NOT EXISTS integracao_comunicados (
+      id TEXT PRIMARY KEY, tenant_id TEXT, integracao_id TEXT, id_externo TEXT, dados TEXT, inicio BIGINT, fim BIGINT,
+      created_at BIGINT, updated_at BIGINT
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_integracao_comunicados_ext ON integracao_comunicados(integracao_id, id_externo);
+    CREATE TABLE IF NOT EXISTS integracao_registro (
+      id TEXT PRIMARY KEY, tenant_id TEXT, integracao_id TEXT, acao TEXT, detalhe TEXT, quem TEXT, em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_integracao_registro_int ON integracao_registro(integracao_id, em);
     ALTER TABLE fotos_pessoa ADD COLUMN IF NOT EXISTS aceite_em BIGINT;
     -- Fotos para uma data (D33): a data do pedido e a foto aprovada que fica no mural dela.
     ALTER TABLE pedidos_foto ADD COLUMN IF NOT EXISTS data_id TEXT;
@@ -1264,6 +1292,167 @@ async function atualizarPlanilha(id, tenantId, campos) {
 }
 async function removerPlanilha(id, tenantId) { return (await pool.query('DELETE FROM planilhas WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rowCount; }
 
+/* ----- Integrações: o Conector MultiTelas e a intranet (docs/INTEGRACOES.md); ver db-sqlite.js ----- */
+const jsonDe = (txt, padrao) => { try { const v = JSON.parse(txt || ''); return v && typeof v === 'object' ? v : padrao; } catch (e) { return padrao; } };
+const mapIntegracao = (r) => (r ? {
+  id: r.id, tenantId: r.tenant_id, nome: r.nome || '', tokenDica: r.token_dica || '', revogadaEm: Number(r.revogada_em) || 0,
+  vistoEm: Number(r.visto_em) || 0, chamadaEm: Number(r.chamada_em) || 0, versao: r.versao || '', maquina: r.maquina || '',
+  criadoEm: Number(r.created_at) || 0, atualizadoEm: Number(r.updated_at) || 0,
+} : null);
+const mapFonte = (r) => (r ? {
+  id: r.id, tenantId: r.tenant_id, integracaoId: r.integracao_id, tipo: r.tipo, chave: r.chave || '', nome: r.nome || '',
+  config: jsonDe(r.config, {}), estado: jsonDe(r.estado, {}), sincronizarEm: Number(r.sincronizar_em) || 0,
+  criadoEm: Number(r.created_at) || 0, atualizadoEm: Number(r.updated_at) || 0,
+} : null);
+const mapArquivo = (r) => (r ? {
+  id: r.id, tenantId: r.tenant_id, fonteId: r.fonte_id, nome: r.nome, sha256: r.sha256 || '', tamanho: Number(r.tamanho) || 0,
+  mime: r.mime || '', mediaId: r.media_id || '', url: r.url || '', aviso: r.aviso || '', em: Number(r.em) || 0, removidoEm: Number(r.removido_em) || 0,
+} : null);
+const mapComunicado = (r) => (r ? {
+  id: r.id, tenantId: r.tenant_id, integracaoId: r.integracao_id, idExterno: r.id_externo, dados: jsonDe(r.dados, {}),
+  inicio: Number(r.inicio) || 0, fim: Number(r.fim) || 0, criadoEm: Number(r.created_at) || 0, atualizadoEm: Number(r.updated_at) || 0,
+} : null);
+const pgUma = async (sql, vals) => (await pool.query(sql, vals)).rows[0] || null;
+const pgVarias = async (sql, vals) => (await pool.query(sql, vals)).rows;
+// Uma transação curta (apagar a integração, trocar a versão de um arquivo): tudo ou nada.
+async function emTransacao(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await fn(client);
+    await client.query('COMMIT');
+    return r;
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+async function criarIntegracao(tenantId, i) {
+  const id = 'int_' + rid(14);
+  const agora = Date.now();
+  return mapIntegracao(await pgUma("INSERT INTO integracoes (id, tenant_id, nome, token_hash, token_dica, revogada_em, visto_em, chamada_em, versao, maquina, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,0,0,0,'','',$6,$6) RETURNING *",
+    [id, tenantId, i.nome || '', i.tokenHash || '', i.tokenDica || '', agora]));
+}
+async function listarIntegracoes(tenantId) { return (await pgVarias('SELECT * FROM integracoes WHERE tenant_id = $1 ORDER BY created_at', [tenantId])).map(mapIntegracao); }
+async function integracaoDaConta(id, tenantId) { return mapIntegracao(await pgUma('SELECT * FROM integracoes WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])); }
+async function integracaoPorToken(hash) {
+  const r = await pgUma("SELECT * FROM integracoes WHERE token_hash = $1 AND token_hash <> ''", [String(hash)]);
+  return r ? Object.assign(mapIntegracao(r), { tokenHash: r.token_hash }) : null;
+}
+const CAMPOS_INTEGRACAO = { nome: 'nome', tokenHash: 'token_hash', tokenDica: 'token_dica', revogadaEm: 'revogada_em', vistoEm: 'visto_em', chamadaEm: 'chamada_em', versao: 'versao', maquina: 'maquina' };
+async function atualizarIntegracao(id, tenantId, campos) {
+  const vals = [Date.now()];
+  const sets = ['updated_at = $1'];
+  for (const k of Object.keys(campos || {})) if (CAMPOS_INTEGRACAO[k]) { vals.push(campos[k]); sets.push(CAMPOS_INTEGRACAO[k] + ' = $' + vals.length); }
+  vals.push(String(id), tenantId);
+  return (await pool.query('UPDATE integracoes SET ' + sets.join(', ') + ' WHERE id = $' + (vals.length - 1) + ' AND tenant_id = $' + vals.length, vals)).rowCount;
+}
+async function removerIntegracao(id, tenantId) {
+  return emTransacao(async (c) => {
+    await c.query('DELETE FROM integracao_arquivos WHERE tenant_id = $2 AND fonte_id IN (SELECT id FROM integracao_fontes WHERE integracao_id = $1 AND tenant_id = $2)', [String(id), tenantId]);
+    await c.query('DELETE FROM integracao_fontes WHERE integracao_id = $1 AND tenant_id = $2', [String(id), tenantId]);
+    await c.query('DELETE FROM integracao_comunicados WHERE integracao_id = $1 AND tenant_id = $2', [String(id), tenantId]);
+    await c.query('DELETE FROM integracao_registro WHERE integracao_id = $1 AND tenant_id = $2', [String(id), tenantId]);
+    return (await c.query('DELETE FROM integracoes WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rowCount;
+  });
+}
+
+async function criarFonte(tenantId, integracaoId, f) {
+  const id = 'inf_' + rid(14);
+  const agora = Date.now();
+  return mapFonte(await pgUma("INSERT INTO integracao_fontes (id, tenant_id, integracao_id, tipo, chave, nome, config, estado, sincronizar_em, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,'{}',0,$8,$8) RETURNING *",
+    [id, tenantId, String(integracaoId), f.tipo, f.chave || '', f.nome || '', JSON.stringify(f.config || {}), agora]));
+}
+async function listarFontes(tenantId, integracaoId) {
+  if (integracaoId) return (await pgVarias('SELECT * FROM integracao_fontes WHERE tenant_id = $1 AND integracao_id = $2 ORDER BY created_at', [tenantId, String(integracaoId)])).map(mapFonte);
+  return (await pgVarias('SELECT * FROM integracao_fontes WHERE tenant_id = $1 ORDER BY created_at', [tenantId])).map(mapFonte);
+}
+async function fonteDaConta(id, tenantId) { return mapFonte(await pgUma('SELECT * FROM integracao_fontes WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])); }
+async function fontePorChave(integracaoId, tipo, chave) {
+  return mapFonte(await pgUma('SELECT * FROM integracao_fontes WHERE integracao_id = $1 AND tipo = $2 AND chave = $3', [String(integracaoId), String(tipo), String(chave)]));
+}
+async function fontesParaSincronizar(agora) { return (await pgVarias('SELECT * FROM integracao_fontes WHERE sincronizar_em > 0 AND sincronizar_em <= $1 ORDER BY sincronizar_em LIMIT 50', [Number(agora)])).map(mapFonte); }
+async function atualizarFonte(id, tenantId, campos) {
+  const vals = [Date.now()];
+  const sets = ['updated_at = $1'];
+  const c = campos || {};
+  const por = (col, v) => { vals.push(v); sets.push(col + ' = $' + vals.length); };
+  if (c.nome !== undefined) por('nome', c.nome);
+  if (c.chave !== undefined) por('chave', c.chave);
+  if (c.config !== undefined) por('config', JSON.stringify(c.config || {}));
+  if (c.estado !== undefined) por('estado', JSON.stringify(c.estado || {}));
+  if (c.sincronizarEm !== undefined) por('sincronizar_em', Number(c.sincronizarEm) || 0);
+  vals.push(String(id), tenantId);
+  return (await pool.query('UPDATE integracao_fontes SET ' + sets.join(', ') + ' WHERE id = $' + (vals.length - 1) + ' AND tenant_id = $' + vals.length, vals)).rowCount;
+}
+async function removerFonte(id, tenantId) {
+  await pool.query('DELETE FROM integracao_arquivos WHERE fonte_id = $1 AND tenant_id = $2', [String(id), tenantId]);
+  return (await pool.query('DELETE FROM integracao_fontes WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rowCount;
+}
+
+async function listarArquivosDaFonte(fonteId, tenantId, comRemovidos) {
+  const sql = 'SELECT * FROM integracao_arquivos WHERE fonte_id = $1 AND tenant_id = $2' + (comRemovidos ? '' : ' AND removido_em = 0') + ' ORDER BY nome';
+  return (await pgVarias(sql, [String(fonteId), tenantId])).map(mapArquivo);
+}
+async function arquivoDaFonte(fonteId, nome) { return mapArquivo(await pgUma('SELECT * FROM integracao_arquivos WHERE fonte_id = $1 AND nome = $2 AND removido_em = 0', [String(fonteId), String(nome)])); }
+async function gravarArquivoDaFonte(tenantId, fonteId, a) {
+  const agora = Number(a.em) || Date.now();
+  const id = 'ina_' + rid(14);
+  return mapArquivo(await emTransacao(async (c) => {
+    await c.query('UPDATE integracao_arquivos SET removido_em = $1 WHERE fonte_id = $2 AND nome = $3 AND removido_em = 0 AND tenant_id = $4', [agora, String(fonteId), String(a.nome), tenantId]);
+    return (await c.query('INSERT INTO integracao_arquivos (id, tenant_id, fonte_id, nome, sha256, tamanho, mime, media_id, url, aviso, em, removido_em) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0) RETURNING *',
+      [id, tenantId, String(fonteId), String(a.nome), a.sha256 || '', Number(a.tamanho) || 0, a.mime || '', a.mediaId || '', a.url || '', a.aviso || '', agora])).rows[0];
+  }));
+}
+async function removerArquivoDaFonte(fonteId, tenantId, nome, agora) {
+  return (await pool.query('UPDATE integracao_arquivos SET removido_em = $1 WHERE fonte_id = $2 AND nome = $3 AND removido_em = 0 AND tenant_id = $4', [Number(agora) || Date.now(), String(fonteId), String(nome), tenantId])).rowCount;
+}
+async function contarArquivosDaFonte(fonteId) {
+  const r = await pgUma('SELECT COUNT(*)::int AS n, COALESCE(SUM(tamanho), 0)::bigint AS bytes FROM integracao_arquivos WHERE fonte_id = $1 AND removido_em = 0', [String(fonteId)]);
+  return { n: Number(r && r.n) || 0, bytes: Number(r && r.bytes) || 0 };
+}
+async function arquivosParaApagar(antes, limite) {
+  return (await pgVarias('SELECT * FROM integracao_arquivos WHERE removido_em > 0 AND removido_em < $1 ORDER BY removido_em LIMIT $2', [Number(antes), Number(limite) || 100])).map(mapArquivo);
+}
+async function apagarArquivoDaFonte(id) { return (await pool.query('DELETE FROM integracao_arquivos WHERE id = $1', [String(id)])).rowCount; }
+async function arquivosDaIntegracao(integracaoId, tenantId) {
+  return (await pgVarias('SELECT a.* FROM integracao_arquivos a JOIN integracao_fontes f ON f.id = a.fonte_id WHERE f.integracao_id = $1 AND a.tenant_id = $2', [String(integracaoId), tenantId])).map(mapArquivo);
+}
+
+async function gravarComunicado(tenantId, integracaoId, idExterno, c) {
+  const agora = Date.now();
+  const antes = await pgUma('SELECT id FROM integracao_comunicados WHERE integracao_id = $1 AND id_externo = $2', [String(integracaoId), String(idExterno)]);
+  const r = await pgUma('INSERT INTO integracao_comunicados (id, tenant_id, integracao_id, id_externo, dados, inicio, fim, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8) '
+    + 'ON CONFLICT (integracao_id, id_externo) DO UPDATE SET dados = EXCLUDED.dados, inicio = EXCLUDED.inicio, fim = EXCLUDED.fim, updated_at = EXCLUDED.updated_at RETURNING *',
+    ['inc_' + rid(14), tenantId, String(integracaoId), String(idExterno), JSON.stringify(c.dados || {}), Number(c.inicio) || 0, Number(c.fim) || 0, agora]);
+  return { comunicado: mapComunicado(r), criado: !antes };
+}
+async function listarComunicados(tenantId, integracaoId) {
+  return (await pgVarias('SELECT * FROM integracao_comunicados WHERE tenant_id = $1 AND integracao_id = $2 ORDER BY updated_at DESC', [tenantId, String(integracaoId)])).map(mapComunicado);
+}
+async function comunicadoPorIdExterno(integracaoId, idExterno) {
+  return mapComunicado(await pgUma('SELECT * FROM integracao_comunicados WHERE integracao_id = $1 AND id_externo = $2', [String(integracaoId), String(idExterno)]));
+}
+async function removerComunicado(tenantId, integracaoId, idExterno) {
+  return (await pool.query('DELETE FROM integracao_comunicados WHERE tenant_id = $1 AND integracao_id = $2 AND id_externo = $3', [tenantId, String(integracaoId), String(idExterno)])).rowCount;
+}
+async function comunicadosVencidos(antes, limite) {
+  return (await pgVarias('SELECT * FROM integracao_comunicados WHERE fim > 0 AND fim < $1 ORDER BY fim LIMIT $2', [Number(antes), Number(limite) || 100])).map(mapComunicado);
+}
+
+async function registrarNaIntegracao(tenantId, integracaoId, r) {
+  await pool.query('INSERT INTO integracao_registro (id, tenant_id, integracao_id, acao, detalhe, quem, em) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    ['inr_' + rid(14), tenantId, String(integracaoId), String(r.acao || '').slice(0, 40), String(r.detalhe || '').slice(0, 300), String(r.quem || '').slice(0, 80), Number(r.em) || Date.now()]);
+  const corte = await pgUma('SELECT em FROM integracao_registro WHERE integracao_id = $1 ORDER BY em DESC LIMIT 1 OFFSET 499', [String(integracaoId)]);
+  if (corte) await pool.query('DELETE FROM integracao_registro WHERE integracao_id = $1 AND em < $2', [String(integracaoId), Number(corte.em)]);
+}
+async function registroDaIntegracao(tenantId, integracaoId, limite) {
+  return (await pgVarias('SELECT acao, detalhe, quem, em FROM integracao_registro WHERE tenant_id = $1 AND integracao_id = $2 ORDER BY em DESC LIMIT $3', [tenantId, String(integracaoId), Number(limite) || 50]))
+    .map((r) => ({ acao: r.acao, detalhe: r.detalhe || '', quem: r.quem || '', em: Number(r.em) || 0 }));
+}
+
 /* ----- Fotos pelo QR (D31) ----- */
 const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, dataId: r.data_id || '', dataAlvo: r.data_alvo || '', guardarAte: r.guardar_ate || '', criadoEm: Number(r.created_at) || 0 } : null);
 const mapFotoPessoa = (r) => (r ? { id: r.id, tenantId: r.tenant_id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', aceiteEm: Number(r.aceite_em) || 0, aprovadaEm: Number(r.aprovada_em) || 0, criadoEm: Number(r.created_at) || 0 } : null);
@@ -2008,6 +2197,12 @@ async function dadosDoTenant(tenantId) {
     conectoresDeIndicadores: await varios('SELECT id, nome, modo, url, auth_tipo, intervalo_min, ultimo_ok, ultimo_erro, created_at FROM conectores_kpi WHERE tenant_id = $1'),
     indicadores: await varios('SELECT id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em FROM indicadores WHERE tenant_id = $1'),
     planilhas: await varios('SELECT id, nome, origem, link, linhas, ultimo_ok, ultimo_erro, created_at FROM planilhas WHERE tenant_id = $1'),
+    // As integrações (o Conector e a intranet): sem o hash do token, que é credencial.
+    integracoes: await varios('SELECT id, nome, token_dica, revogada_em, visto_em, versao, maquina, created_at FROM integracoes WHERE tenant_id = $1'),
+    fontesDasIntegracoes: await varios('SELECT id, integracao_id, tipo, chave, nome, config, estado, created_at FROM integracao_fontes WHERE tenant_id = $1'),
+    arquivosDasIntegracoes: await varios('SELECT id, fonte_id, nome, sha256, tamanho, mime, url, em, removido_em FROM integracao_arquivos WHERE tenant_id = $1'),
+    comunicadosDasIntegracoes: await varios('SELECT id, integracao_id, id_externo, dados, inicio, fim, created_at, updated_at FROM integracao_comunicados WHERE tenant_id = $1'),
+    registroDasIntegracoes: await varios('SELECT integracao_id, acao, detalhe, quem, em FROM integracao_registro WHERE tenant_id = $1'),
     fotosParaAprovar: await varios('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, aprovada_em, created_at FROM fotos_pessoa WHERE tenant_id = $1'),
     midias: await varios('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
@@ -2072,7 +2267,7 @@ async function apagarTenant(tenantId) {
      * consultor; o prazo é do dono com o advogado).
      */
     // As fases 12 e 13 vão na frente (os pedidos, as lojas e a senha): a lista de baixo é a de antes.
-    for (const tabela of ['aprovacoes', 'acesso_lojas', 'senha_filas', 'senha_chamadas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
+    for (const tabela of ['aprovacoes', 'acesso_lojas', 'integracao_registro', 'integracao_comunicados', 'integracao_arquivos', 'integracao_fontes', 'integracoes', 'senha_filas', 'senha_chamadas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'planilhas', 'pacotes_pagos', 'calendario', 'lotes',
       'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
@@ -2316,6 +2511,11 @@ module.exports = {
   pedidosFotoDeData, fotosPendentesAntigas, guardarPedidoFotoAte,
   criarConector, listarConectores, conectorInterno, conectorPorToken, conectoresParaBuscar, atualizarConector, removerConector, gravarIndicadores, listarIndicadores, mapConector,
   criarPlanilha, listarPlanilhas, planilhaInterna, planilhasParaBuscar, atualizarPlanilha, removerPlanilha, mapPlanilha,
+  criarIntegracao, listarIntegracoes, integracaoDaConta, integracaoPorToken, atualizarIntegracao, removerIntegracao,
+  criarFonte, listarFontes, fonteDaConta, fontePorChave, fontesParaSincronizar, atualizarFonte, removerFonte,
+  listarArquivosDaFonte, arquivoDaFonte, gravarArquivoDaFonte, removerArquivoDaFonte, contarArquivosDaFonte, arquivosParaApagar, apagarArquivoDaFonte, arquivosDaIntegracao,
+  gravarComunicado, listarComunicados, comunicadoPorIdExterno, removerComunicado, comunicadosVencidos,
+  registrarNaIntegracao, registroDaIntegracao,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

@@ -324,7 +324,8 @@ export function IndicadoresPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium text-ink">{c.nome}</span>
-                    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-2xs text-ink-2">{c.modo === 'planilha' ? 'Planilha · lê a cada ' + c.intervaloMin + ' min' : c.modo === 'pull' ? 'Busca a cada ' + c.intervaloMin + ' min' : 'Recebe'}</span>
+                    {/* 'conector': a planilha da rede da empresa, que o Conector MultiTelas manda (Integrações). */}
+                    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-2xs text-ink-2">{c.modo === 'planilha' ? 'Planilha · lê a cada ' + c.intervaloMin + ' min' : c.modo === 'pull' ? 'Busca a cada ' + c.intervaloMin + ' min' : c.modo === 'conector' ? 'Planilha da rede, pelo Conector' : 'Recebe'}</span>
                   </div>
                   <div className={'truncate text-xs ' + (c.ultimoErro ? 'text-danger' : 'text-ink-3')}>
                     {c.ultimoErro ? 'Erro: ' + c.ultimoErro + (c.ultimoOk ? ' — a TV continua com os números de ' + haQuanto(c.ultimoOk) : '') : 'Último número ' + haQuanto(c.ultimoOk)}{c.modo === 'pull' && c.url ? ' · ' + c.url : ''}
