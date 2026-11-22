@@ -1474,8 +1474,15 @@
     if (item.qr && item.handle) {
       const qr = document.createElement('img');
       qr.className = 'mt-social-qr';
-      qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' +
-        encodeURIComponent(item.url || item.handle);
+      /*
+       * O QR das redes também sai do NOSSO desenhador (urlQr, abaixo), como o
+       * do tipo QR e o do mural. Era o último que ainda pedia a um gerador de
+       * QR de fora: na rede de uma empresa que só libera os
+       * endereços do MultiTelas (docs/implantacao/PARA-A-TI.md), o QR virava
+       * uma imagem quebrada — e cada exibição contava a terceiros o que a TV
+       * mostrava.
+       */
+      qr.src = urlQr(item.url || item.handle);
       inner.appendChild(qr);
     }
     el.appendChild(inner);

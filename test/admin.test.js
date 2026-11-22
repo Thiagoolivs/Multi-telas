@@ -38,6 +38,43 @@ test('frota: a apagada há mais tempo primeiro; no ar por último; fora do exped
   assert.equal(f.find((t) => t.id === 'no-ar').aparelho, '1920×1080 · Android');
   assert.equal(f.find((t) => t.id === 'mes').offlineHa, 30 * DIA);
   assert.equal(f.find((t) => t.id === 'nunca').nome, 'Tela sem nome');
+  // TV de navegador: nada do app.
+  assert.equal(f.find((t) => t.id === 'no-ar').vigiaDoApp, '');
+  assert.equal(f.find((t) => t.id === 'no-ar').semTelaInicial, false);
+});
+
+test('frota: o que o app da TV contou no pulso (o vigia e a tela inicial) aparece para quem opera', () => {
+  /*
+   * Lançamento de dezembro: a TV que travou e o vigia do app salvou continua
+   * "no ar" e nunca vira aviso de queda. O resumo do vigia e a falta da tela
+   * inicial iam no pulso (js/cloud.js, infoDaTela) e ninguém via.
+   */
+  const info = (x) => JSON.stringify({ w: 1920, h: 1080, app: '1.0.60', appCodigo: 60, ...x });
+  const linhas = [
+    { id: 'salva', name: 'Recepção', tenant_id: 't1', conta: 'Empresa', last_seen: AGORA - 10 * 1000,
+      info: info({ inicial: false, appVigia: 'recargas 1 · webview 1 · pedidos 1 · app 0' }) },
+    { id: 'certa', name: 'Refeitório', tenant_id: 't1', conta: 'Empresa', last_seen: AGORA - 10 * 1000,
+      info: info({ inicial: true, appVigia: 'recargas 0 · webview 0 · pedidos 0 · app 0' }) },
+    // Casca antiga: não conta se é a tela inicial — não se acusa o que não se sabe.
+    { id: 'antiga', name: 'Portaria', tenant_id: 't1', conta: 'Empresa', last_seen: AGORA - 10 * 1000,
+      info: JSON.stringify({ w: 1280, h: 720, app: '1.0.55' }) },
+    // O Postgres devolve o jsonb já como objeto.
+    { id: 'objeto', name: 'Hall', tenant_id: 't1', conta: 'Empresa', last_seen: AGORA - 10 * 1000,
+      info: { w: 1920, h: 1080, app: '1.0.60', inicial: false, appVigia: 'recargas 2 · webview 0 · pedidos 0 · app 0' } },
+  ];
+  const f = A.frota(linhas, AGORA, VIVA);
+  const de = (id) => f.find((t) => t.id === id);
+  assert.equal(de('salva').vigiaDoApp, 'recargas 1 · webview 1 · pedidos 1 · app 0');
+  assert.equal(de('salva').semTelaInicial, true);
+  assert.equal(de('certa').semTelaInicial, false);
+  assert.equal(de('antiga').semTelaInicial, false);
+  assert.equal(de('antiga').vigiaDoApp, '');
+  assert.equal(de('objeto').semTelaInicial, true);
+  assert.equal(de('objeto').vigiaDoApp, 'recargas 2 · webview 0 · pedidos 0 · app 0');
+  // A tela mostra os dois na coluna do aparelho.
+  const tela = ler('web/src/components/platform/Negocio.jsx');
+  assert.match(tela, /t\.semTelaInicial &&/);
+  assert.match(tela, /t\.vigiaDoApp &&/);
 });
 
 const conta = (x) => ({ id: x.id, name: x.id, plan: 'pro', plan_status: 'active', telas: 1, ...x });

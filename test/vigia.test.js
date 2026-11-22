@@ -188,6 +188,87 @@ test('uma conta com falha não impede o aviso das outras', async () => {
   assert.deepEqual(db.marcados[0].ids, ['d2']);
 });
 
+/* ---------------- A cópia para quem opera (ALERTA_OFFLINE_COPIA) ----------------
+ *
+ * O lançamento de dezembro: o aviso ia só para o dono da conta do cliente, e
+ * quem opera o MultiTelas não sabia da TV caída na primeira semana. A cópia
+ * segue a mesma regra do aviso (expediente, uma vez por queda) e nunca
+ * atrapalha o aviso de verdade.
+ */
+
+test('a lista da cópia vem do ambiente, sem lixo e sem repetir', () => {
+  assert.deepEqual(V.copiaDoAmbiente({}), []);
+  assert.deepEqual(V.copiaDoAmbiente({ ALERTA_OFFLINE_COPIA: '' }), []);
+  assert.deepEqual(
+    V.copiaDoAmbiente({ ALERTA_OFFLINE_COPIA: ' Op@MultiTelas.net.br, op@multitelas.net.br;suporte@multitelas.net.br  nao-e-email ' }),
+    ['op@multitelas.net.br', 'suporte@multitelas.net.br']);
+});
+
+test('sem cópia configurada, sai só o aviso do dono (como antes)', async () => {
+  const db = bancoFake([tela()]);
+  const enviados = [];
+  const mail = { async send(m) { enviados.push(m); } };
+  const r = await V.varrer({ db, mail, appUrl: '', agora: AGORA });
+  assert.equal(enviados.length, 1);
+  assert.equal(r.copias, 0);
+});
+
+test('com cópia, quem opera recebe o aviso com a conta no assunto, depois do dono', async () => {
+  const db = bancoFake([tela(), tela({ id: 'd2', name: 'Refeitório' })]);
+  const enviados = [];
+  const mail = { async send(m) { enviados.push(m); } };
+  const r = await V.varrer({ db, mail, appUrl: 'https://app.multitelas.net.br', agora: AGORA, copia: ['op@multitelas.net.br'] });
+  assert.equal(r.enviados, 1);
+  assert.equal(r.copias, 1);
+  // Uma conta, uma queda: um e-mail para o dono e um para quem opera — não um por TV.
+  assert.deepEqual(enviados.map((m) => m.to), ['dono@loja.com', 'op@multitelas.net.br']);
+  const c = enviados[1];
+  assert.match(c.subject, /^\[Loja\] ⚠ 2 telas estão fora do ar/);
+  assert.match(c.text, /Conta: Loja/);
+  assert.match(c.text, /dono@loja\.com/);
+  assert.match(c.text, /Plataforma › Negócio › Frota/);
+  // O botão do operador não leva às "minhas TVs" (seriam as dele, não as do cliente).
+  assert.ok(!/\?ir=screens/.test(c.html));
+  // O aviso do dono continua igual: sem o recado do operador.
+  assert.ok(!/quem opera/i.test(enviados[0].text));
+  assert.match(enviados[0].html, /\?ir=screens/);
+});
+
+test('a cópia não repete o aviso para o dono que também opera', async () => {
+  const db = bancoFake([tela()]);
+  const enviados = [];
+  const mail = { async send(m) { enviados.push(m); } };
+  const r = await V.varrer({ db, mail, appUrl: '', agora: AGORA, copia: ['dono@loja.com'] });
+  assert.deepEqual(enviados.map((m) => m.to), ['dono@loja.com']);
+  assert.equal(r.copias, 0);
+});
+
+test('dono sem aviso (provedor caiu): a cópia também não sai, e a queda fica para a próxima passada', async () => {
+  const db = bancoFake([tela()]);
+  const enviados = [];
+  const mail = { async send(m) { if (m.to === 'dono@loja.com') throw new Error('Resend HTTP 500'); enviados.push(m); } };
+  const r = await V.varrer({ db, mail, appUrl: '', agora: AGORA, copia: ['op@multitelas.net.br'] });
+  assert.equal(enviados.length, 0);
+  assert.equal(r.copias, 0);
+  assert.equal(db.marcados.length, 0);
+});
+
+test('a cópia que falha não desfaz o aviso do dono nem a marca da queda', async () => {
+  const db = bancoFake([tela()]);
+  const mail = { async send(m) { if (m.to === 'op@multitelas.net.br') throw new Error('recusado'); } };
+  const r = await V.varrer({ db, mail, appUrl: '', agora: AGORA, copia: ['op@multitelas.net.br'] });
+  assert.equal(r.enviados, 1);
+  assert.equal(r.copias, 0);
+  assert.deepEqual(db.marcados[0].ids, ['dev1']);
+});
+
+test('nome da conta com HTML não escapa para dentro da cópia', () => {
+  const aviso = V.decidir([tela({ conta: '<b>Loja</b>' })], AGORA)[0];
+  const c = V.mensagem(aviso, '', { copia: true });
+  assert.ok(!c.html.includes('<b>Loja</b>'));
+  assert.ok(c.html.includes('&lt;b&gt;Loja&lt;/b&gt;'));
+});
+
 /* ---------------- Expediente ----------------
  *
  * O defeito: a loja desliga a TV às 22h e às 22h15 saía "Vitrine está fora
