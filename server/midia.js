@@ -39,6 +39,18 @@ async function guardarStream(db, tenantId, req, { mime, max }, meta) {
   return salvo;
 }
 
+/*
+ * Grava um arquivo já recebido no temporário e conferido pelos bytes (o
+ * Conector, server/routes/integracoes.js), e registra. Passa por aqui pelo
+ * mesmo motivo dos outros dois: a cota soma, o Armazenamento sabe, e excluir
+ * a conta apaga o arquivo junto.
+ */
+async function guardarTemp(db, tenantId, tmp, info, meta) {
+  const salvo = await storage.saveTempFile(tenantId, tmp, info);
+  await registrar(db, tenantId, salvo, meta);
+  return salvo;
+}
+
 async function registrar(db, tenantId, salvo, meta) {
   const m = meta || {};
   await db.createMedia({
@@ -96,4 +108,4 @@ async function apagar(db, tenantId, id) {
   return true;
 }
 
-module.exports = { guardarBuffer, guardarStream, apagar };
+module.exports = { guardarBuffer, guardarStream, guardarTemp, apagar };

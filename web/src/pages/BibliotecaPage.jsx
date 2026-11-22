@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Images, BarChart3, Sheet, ChevronRight, Megaphone } from 'lucide-react';
+import { Users, Images, BarChart3, Sheet, ChevronRight, Megaphone, PlugZap } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { usePerfil } from '../lib/perfil.js';
 
@@ -30,6 +30,8 @@ const APPS = [
   { id: 'planilhas', nome: 'Preços da planilha', texto: 'Mudou o preço na planilha, a TV muda junto.', Icone: Sheet },
   // Fase 12: a recepção chama pelo celular e a TV mostra a senha gigante, sem o nome do paciente.
   { id: 'senha', nome: 'Chamada de senha', texto: 'A recepção chama a próxima senha e a TV mostra na hora.', Icone: Megaphone },
+  // A pasta da rede e a intranet, pelo Conector MultiTelas (docs/INTEGRACOES.md).
+  { id: 'integracoes', nome: 'Pasta da rede e intranet', texto: 'O que o RH salva na pasta da rede, ou publica na intranet, vai para a TV sozinho.', Icone: PlugZap },
 ];
 export function AppsPage({ onIr }) {
   const frente = usePerfil();

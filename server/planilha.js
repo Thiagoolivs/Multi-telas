@@ -302,7 +302,12 @@ async function atualizarAgora(linha, { db, agora, politica: pol }) {
   const quando = Number(agora) || Date.now();
   const proxima = quando + INTERVALO_MS;
   let tabela;
-  if (linha.origem === 'csv') tabela = { linhas: lerCsv(linha.csv || '') };
+  /*
+   * 'conector' (docs/INTEGRACOES.md): o Conector MultiTelas leu a planilha na
+   * rede da empresa (o .xlsx vira CSV lá) e empurrou o CSV para nós. Daqui em
+   * diante é a planilha de sempre: só a origem muda.
+   */
+  if (linha.origem === 'csv' || linha.origem === 'conector') tabela = { linhas: lerCsv(linha.csv || '') };
   else tabela = await buscarCsv(linha.url, { politica: pol });
   const falhou = async (erro) => {
     await db.atualizarPlanilha(linha.id, linha.tenant_id, { ultimoErro: corta(erro, 300), proxima });

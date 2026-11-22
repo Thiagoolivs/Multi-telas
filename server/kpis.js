@@ -225,11 +225,7 @@ async function buscarAgora(linha, { db, site, segredo, agora, politica }) {
     const P = require('./planilha');
     const r = await P.buscarCsv(linha.url, { politica });
     if (r.erro) return falhou(r.erro);
-    const { lista, avisos } = P.lerIndicadores(r.linhas);
-    if (!lista.length) return falhou((avisos[0] && avisos[0].aviso) ? 'nenhum indicador na planilha: ' + avisos[0].aviso : 'nenhum indicador na planilha — a primeira coluna é o nome e a segunda, o número');
-    await db.gravarIndicadores(linha.tenant_id, linha.id, lista, quando);
-    await db.atualizarConector(linha.id, linha.tenant_id, { ultimoOk: quando, ultimoErro: '', proxima });
-    return { lista, avisos };
+    return gravarDaPlanilha(linha, r.linhas, { db, agora: quando, proxima });
   }
   const senha = linha.auth_segredo ? segredo.decifrar(linha.auth_segredo) : '';
   if (linha.auth_segredo && !senha) return falhou('não deu para abrir a autenticação guardada — salve de novo');
@@ -244,4 +240,27 @@ async function buscarAgora(linha, { db, site, segredo, agora, politica }) {
   return { lista };
 }
 
-module.exports = { normalizar, normalizarComAviso, daEntrada, daEntradaComAvisos, lerNumero, sentidoDe, daResposta, caminho, numero, chaveDe, mapaLimpo, cabecalhosDe, buscarAgora, MAX_INDICADORES, INTERVALO_MIN, AUTH };
+/*
+ * As linhas de uma planilha (já lidas do CSV) viram os indicadores do
+ * conector `linha`, e o resultado fica nele. Um caminho só para a planilha
+ * do Google (buscarAgora) e para a que o Conector MultiTelas empurra da rede
+ * da empresa (server/routes/integracoes.js): a regra de ler e de gravar é a
+ * mesma, só a origem do CSV muda. Erro não apaga o número de antes.
+ * Devolve { lista, avisos } ou { erro }.
+ */
+async function gravarDaPlanilha(linha, linhasCsv, { db, agora, proxima }) {
+  const P = require('./planilha');
+  const quando = Number(agora) || Date.now();
+  const extra = proxima !== undefined ? { proxima } : {};
+  const { lista, avisos } = P.lerIndicadores(linhasCsv);
+  if (!lista.length) {
+    const erro = (avisos[0] && avisos[0].aviso) ? 'nenhum indicador na planilha: ' + avisos[0].aviso : 'nenhum indicador na planilha — a primeira coluna é o nome e a segunda, o número';
+    await db.atualizarConector(linha.id, linha.tenant_id, Object.assign({ ultimoErro: erro }, extra));
+    return { erro, avisos };
+  }
+  await db.gravarIndicadores(linha.tenant_id, linha.id, lista, quando);
+  await db.atualizarConector(linha.id, linha.tenant_id, Object.assign({ ultimoOk: quando, ultimoErro: '' }, extra));
+  return { lista, avisos };
+}
+
+module.exports = { gravarDaPlanilha, normalizar, normalizarComAviso, daEntrada, daEntradaComAvisos, lerNumero, sentidoDe, daResposta, caminho, numero, chaveDe, mapaLimpo, cabecalhosDe, buscarAgora, MAX_INDICADORES, INTERVALO_MIN, AUTH };

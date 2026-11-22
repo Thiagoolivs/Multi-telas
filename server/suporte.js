@@ -35,6 +35,12 @@ function bloqueio(parts, metodo) {
   // Fase 13: aprovar o que vai ao ar e escolher a loja de cada pessoa é decisão do dono, não do suporte.
   if (muda && (area === 'aprovacoes' || area === 'lojas')) return recusa;
   if (muda && area === 'auth' && (acao === 'password' || acao === 'profile')) return recusa;
+  /*
+   * O token de integração (docs/INTEGRACOES.md) é uma credencial que põe
+   * arquivo nas TVs da conta, de dentro da rede do cliente: criar ou gerar
+   * outro é do dono. Mexer no mapa das pastas e ver o estado, o suporte pode.
+   */
+  if (muda && area === 'integracoes' && (parts.length === 2 || parts[3] === 'token')) return recusa;
   return '';
 }
 

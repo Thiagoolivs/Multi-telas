@@ -510,7 +510,52 @@
     return aplicarConteudo(cfg, { [zonaId]: [itemDoQuiz(quiz)] }, { chave: '_quiz', valor: id }, 'trocar');
   }
 
+  /* ---------------- A integração (a pasta da rede, os comunicados da intranet) ---------------- */
+
+  /*
+   * O CONTEÚDO DE UMA INTEGRAÇÃO (server/routes/integracoes.js): a pasta do
+   * RH na rede ou os comunicados da intranet, empurrados pelo Conector. Os
+   * itens dela levam `_integracao` = o id da origem, e cada sincronização
+   * troca TODOS de uma vez — o que saiu da pasta sai da TV, o que mudou
+   * troca, o que chegou entra. Sem isto a TV acumularia a foto velha ao lado
+   * da nova.
+   *
+   * Entram ONDE ESTAVAM (a posição do primeiro item desta origem na zona):
+   * a pessoa que arrastou a pasta para o meio da playlist não a vê voltar
+   * para o fim a cada foto nova. Na primeira vez, `op.posicao` decide:
+   * 'inicio' (o comunicado, que é notícia) ou 'fim' (a pasta). `op.zona`:
+   * 'principal' ou 'lateral' — sem lateral na TV, vai para a principal.
+   * Lista vazia tira tudo o que era desta origem. Não modifica a recebida.
+   */
+  function aplicarIntegracao(cfg, op) {
+    const next = copia(cfg);
+    if (!next.zonas) next.zonas = {};
+    const id = op && op.id;
+    const dela = (it) => !!it && it._integracao === id;
+    let zonaAntes = null;
+    let posicaoAntes = -1;
+    for (const k of Object.keys(next.zonas)) {
+      const z = next.zonas[k];
+      if (!z || !Array.isArray(z.items)) continue;
+      const i = z.items.findIndex(dela);
+      if (i >= 0 && zonaAntes == null) { zonaAntes = k; posicaoAntes = i; }
+      if (i >= 0) z.items = z.items.filter((it) => !dela(it));
+    }
+    const itens = ((op && op.itens) || []).map((it) => Object.assign({}, it, { _integracao: id }));
+    if (!itens.length) return next;
+    const z = zonasPorPapel(next);
+    const alvo = (op.zona === 'lateral' && z.lateral) || z.principal || z.lateral || zonaPrimaria(next);
+    const atual = next.zonas[alvo];
+    const zona = atual && Array.isArray(atual.items) ? atual : Object.assign({}, atual || {}, { items: [] });
+    const onde = alvo === zonaAntes ? Math.min(posicaoAntes, zona.items.length) : (op.posicao === 'inicio' ? 0 : zona.items.length);
+    next.zonas[alvo] = Object.assign({}, zona, { items: zona.items.slice(0, onde).concat(itens, zona.items.slice(onde)) });
+    return next;
+  }
+  // Tira da TV tudo o que veio de uma origem de integração (a pasta apagada, a TV que saiu do mapa).
+  const tirarIntegracao = (cfg, id) => aplicarIntegracao(cfg, { id, itens: [] });
+
   return {
+    aplicarIntegracao, tirarIntegracao,
     CHAVES_ORIGEM, origemDoItem, aplicarConteudo, removerOrigem,
     FAIXAS, agendarPeca, cobrirODia, distribuirPorZona, diasAte, comQuando,
     zonasDe, zonaPrimaria, zonasPorPapel, LAYOUT_COMPLETO, layoutPara, zonasQueFaltam,

@@ -48,6 +48,8 @@ export const PAGINAS = {
   planilhas: 'Preços da planilha',
   // Fase 12: a chamada de senha (Saúde primeiro, mas aberta a todas as frentes).
   senha: 'Chamada de senha',
+  // A pasta da rede, a planilha e a intranet pelo Conector MultiTelas (docs/INTEGRACOES.md): mora na conta, no avatar.
+  integracoes: 'Integrações',
   billing: 'Plano',
   team: 'Equipe',
   // Fase 13: o sino do topo abre a fila de aprovação.
@@ -96,7 +98,8 @@ export const GRUPOS = [
   // Pessoas: item do menu na Empresas; no Comércio e na Saúde, os Apps da Biblioteca (gruposDa).
   { id: 'extras', label: 'Pessoas', paginas: ['birthdays', 'mural', 'indicadores'] },
   // A conta mora no avatar (Topbar): Plano, Equipe, Ajustes e Ajuda.
-  { id: 'conta', label: 'Conta', menu: false, paginas: ['billing', 'team', 'settings', 'support'], tambem: ['aprovacoes'] },
+  // As Integrações moram na conta (é configuração de uma vez, com token): o avatar abre, e o card dos Apps também.
+  { id: 'conta', label: 'Conta', menu: false, paginas: ['billing', 'team', 'settings', 'support'], tambem: ['aprovacoes', 'integracoes'] },
 ];
 
 /*

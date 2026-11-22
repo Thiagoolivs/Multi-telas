@@ -225,15 +225,16 @@ function Planilha({ p, onTrocar, onPorNaTv, onMudou }) {
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-ink">{p.nome}</div>
           <div className="text-sm text-ink-3">
-            {p.origem === 'csv' ? 'Arquivo CSV enviado' : 'Google Planilhas · a TV confere a cada 5 minutos'}
+            {/* 'conector': o Conector MultiTelas lê a planilha na rede da empresa e manda quando ela muda (docs/INTEGRACOES.md). */}
+            {p.origem === 'csv' ? 'Arquivo CSV enviado' : p.origem === 'conector' ? 'Vem da rede da empresa, pelo Conector (Integrações)' : 'Google Planilhas · a TV confere a cada 5 minutos'}
             {itens.length ? ' · ' + (itens.length === 1 ? '1 item' : itens.length + ' itens') : ''}
             {p.ultimoOk ? (p.ultimoErro ? ' · última leitura boa ' : ' · lida ') + haQuanto(p.ultimoOk) : ''}
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="secondary" icon={MonitorPlay} disabled={!itens.length} onClick={onPorNaTv}>Pôr na TV</Button>
-          {p.origem !== 'csv' && <Button size="sm" variant="ghost" icon={RefreshCw} disabled={lendo} onClick={lerAgora}>{lendo ? 'Lendo…' : 'Ler agora'}</Button>}
-          <Button size="sm" variant="ghost" icon={p.origem === 'csv' ? Upload : Link2} onClick={onTrocar}>{p.origem === 'csv' ? 'Enviar de novo' : 'Trocar o link'}</Button>
+          {p.origem !== 'csv' && p.origem !== 'conector' && <Button size="sm" variant="ghost" icon={RefreshCw} disabled={lendo} onClick={lerAgora}>{lendo ? 'Lendo…' : 'Ler agora'}</Button>}
+          {p.origem !== 'conector' && <Button size="sm" variant="ghost" icon={p.origem === 'csv' ? Upload : Link2} onClick={onTrocar}>{p.origem === 'csv' ? 'Enviar de novo' : 'Trocar o link'}</Button>}
           <Button size="sm" variant="ghost" icon={Trash2} onClick={apagar}>Desligar</Button>
         </div>
       </div>

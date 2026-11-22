@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Sun, Moon, LogOut, ChevronDown, CreditCard, Users, Settings, LifeBuoy, UserPlus, Megaphone } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, ChevronDown, CreditCard, Users, Settings, LifeBuoy, UserPlus, Megaphone, PlugZap } from 'lucide-react';
 import { IconButton } from '../ui/Button.jsx';
 import { SinoAprovacoes } from './SinoAprovacoes.jsx';
 import { usePerfil } from '../../lib/perfil.js';
@@ -109,6 +109,8 @@ function UserMenu({ user, onLogout, onNavigate }) {
           */}
           {onNavigate && [['billing', 'Plano', CreditCard], ['team', 'Equipe', Users],
             ...(user && (user.role === 'owner' || user.role === 'admin') ? [['team', 'Convidar alguém', UserPlus, { convidar: true }]] : []),
+            // As integrações (o Conector da rede e a intranet): configuração da conta, como a Equipe.
+            ['integracoes', 'Integrações', PlugZap],
             ['settings', 'Ajustes', Settings], ['support', 'Ajuda', LifeBuoy]].map(([id, nome, Icone, params]) => (
             <button key={nome} type="button" onClick={() => { setOpen(false); onNavigate(id, params); }}
               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-ink-2 transition hover:bg-surface-2 hover:text-ink">
