@@ -63,8 +63,28 @@ com quem fez).
 corta o token e deixa o que já está nas TVs. **Apagar** tira das TVs tudo o
 que a integração pôs, apaga as planilhas dela e os arquivos.
 
-O instalador fica em `/conector/MultiTelasConector.zip` (o pacote é feito à
-parte; o servidor já serve esse arquivo quando ele existir).
+**O nome curto** (a `chave`) de cada pasta, planilha e feed não muda depois
+de criado (400 `chave-fixa`): o `conector.json` do cliente e os comunicados
+apontam para ele. Para outro nome, crie outra e apague a de antes.
+
+**Apagar** uma pasta tira as fotos dela das TVs na hora; apagar um **feed**
+tira das TVs, na hora, os comunicados que vieram dele (os que chegaram com
+`X-Conector-Feed`, 3.6) e apaga as imagens dele (`_feed-<chave>`, 3.3). O
+Conector não precisa fazer nada: a fonte só some do aperto de mão.
+
+**O instalador** (`/conector/MultiTelasConector.zip`, o link de "Como
+instalar o Conector") vem do Release mais novo do GitHub: o
+`.github/workflows/conector.yml` monta o zip (~38 MB) e, na `main`, publica a
+tag `conector-v<versão>` (a versão do `conector/package.json`) com o zip, um
+`versao.json` (`{ versao, tamanho, sha256 }`) e o `.sha256`. O servidor
+(`server/conector-release.js`) busca pela `server/site.js` (com o
+`GITHUB_TOKEN`, se houver), confere tamanho, sha256 e "PK", guarda **em
+memória** por 30 min e serve com o sha256 no cabeçalho `X-Conector-Sha256`.
+Só baixa quem está **logado como dono ou administrador** (os que criam o
+token; e 38 MB aberto a qualquer um seria banda nossa para quem quisesse
+gastar — não há segredo no zip). Sem login, sem papel ou sem Release, uma
+página explica o que fazer (401, 403, 404). Uma versão nova do Conector só
+vira Release quando a versão do `conector/package.json` sobe.
 
 ---
 
@@ -80,14 +100,19 @@ conta só**; tudo o que ele alcança é dela.
 
 | Status | `code` | Quando |
 |---|---|---|
-| 400 | `nome-invalido`, `sha-invalido`, `sha-diferente`, `json-invalido`, `campo-invalido`, `id-invalido`, `imagem-invalida`, `imagem-nao-encontrada`, `corpo-incompleto` | o pedido não serve; a frase diz o que corrigir |
+| 400 | `sha-invalido`, `sha-diferente`, `json-invalido`, `id-invalido`, `corpo-incompleto`, `imagem-indisponivel`, `chave-fixa` (painel) | o pedido chegou estragado ou o endereço da imagem não respondeu agora: **pode repetir** |
 | 401 | `sem-token`, `token-invalido`, `token-revogado` | sem token, token errado, ou revogado no painel |
-| 404 | `pasta-desconhecida`, `planilha-desconhecida`, `rota-desconhecida` | a pasta/planilha não existe nesta integração (são criadas no painel) |
+| 404 | `pasta-desconhecida`, `planilha-desconhecida`, `feed-desconhecido`, `rota-desconhecida` | a pasta/planilha/feed não existe nesta integração (são criadas no painel; o feed pode ter sido apagado) |
 | 405 | `metodo` | método errado no endereço |
 | 409 | `ocupado` | o mesmo arquivo chegando em dois envios ao mesmo tempo |
 | 413 | `grande-demais`, `pasta-cheia`, `cota-cheia`, `comunicados-demais` | passou de um teto (a frase diz qual) |
 | 415 | `tipo-nao-aceito` | o conteúdo não é foto nem vídeo (ou é PDF/PPTX — ver 3.3) |
-| 422 | `planilha-sem-itens` | o CSV chegou, mas não tem nenhum item legível (a TV continua com o de antes) |
+| 422 | `nome-invalido`, `campo-invalido`, `imagem-invalida`, `imagem-nao-encontrada`, `planilha-sem-itens` | o **conteúdo** não serve (nome de arquivo, campo do comunicado, a imagem, o CSV sem item legível — a TV continua com o de antes) |
+
+**Repetir ou não.** 400, 429 e 5xx: o Conector tenta de novo (o 429 depois
+do `Retry-After`). 413, 415 e 422: recusa pelo conteúdo — o Conector **não**
+manda o mesmo de novo enquanto o arquivo, o item do feed ou a planilha não
+mudarem. Quem integra por conta própria (a intranet) deve fazer igual.
 | 429 | `limite` | passou do limite; o `Retry-After` (segundos) diz quanto esperar |
 
 **Limites (por token):**
@@ -162,6 +187,14 @@ curl "$MT/pastas/avisos-rh" -H "Authorization: Bearer $TOKEN"
 
 ### 3.3 `PUT /pastas/:chave/arquivos/:nome` — um arquivo
 
+**A pasta reservada de um feed.** `:chave` pode ser `_feed-<chave do feed>`
+(GET, PUT e DELETE) enquanto o feed existir na integração: é onde o Conector
+põe a imagem de cada item do feed, baixada da intranet, para o comunicado
+apontar (`"imagemUrl": "pasta:_feed-noticias/<nome>"`). Ela não aparece no
+aperto de mão, só guarda **foto** (JPG, PNG, WEBP; até 200), nunca vai para a
+TV como playlist — a foto aparece pelo comunicado — e some com o feed. A
+imagem que nenhum comunicado usa mais sai sozinha.
+
 O corpo são os **bytes crus** do arquivo.
 
 - `:nome` vai **codificado** (`encodeURIComponent` em cada parte) e pode ter
@@ -180,7 +213,8 @@ O corpo são os **bytes crus** do arquivo.
   ficam **juntos, na ordem do nome**, mesmo com a pasta em "mais novo
   primeiro".
 - Nome com `..`, `.`, `/` no começo, `\`, `:` (unidade), subpasta vazia ou
-  caractere de controle: **400 `nome-invalido`**.
+  caractere de controle: **422 `nome-invalido`** (até 240 caracteres e 8
+  níveis).
 
 ```bash
 F="Avisos/natal.jpg"
@@ -238,6 +272,15 @@ curl -X PUT "$MT/planilhas/cardapio" -H "Authorization: Bearer $TOKEN" \
 nenhum item legível: **422** com o motivo, e a TV continua com os de antes.
 O `.xlsx` cru: 415.
 
+**Os números como o Brasil escreve.** A leitura é a do CSV do Google
+Planilhas e do Excel em português (`server/kpis.js`, `lerNumero`):
+`12,5`, `1.250`, `R$ 1.234,56`, `87,5%`. Com **ponto decimal** e três casas,
+`5.899` é **milhar** (5899). Por isso o Conector converte o `.xlsx` com cada
+célula como o Excel mostra (`"5,899"`, `"87,5%"`, datas em `dd/mm/aaaa`, em
+RFC 4180 com vírgula e aspas), e o `.csv` do Excel brasileiro (`;` e vírgula
+decimal) sobe como está: os dois dão o mesmo número. Data não vira número
+(`22/11/2026` é recusado como valor).
+
 ### 3.6 `PUT /comunicados/:idExterno` — cria ou troca um comunicado
 
 Usado pelo Conector (os itens dos feeds) e **direto pela intranet**. O
@@ -283,8 +326,30 @@ curl -X PUT "$MT/comunicados/festa-2026" \
 ```
 
 `situacao`: `agendado` (o início ainda não chegou), `no-ar` ou `encerrado`.
-O Conector pode mandar o cabeçalho opcional **`X-Conector-Feed: <chave>`**
-para o painel contar as notícias de cada feed.
+
+O Conector manda o cabeçalho **`X-Conector-Feed: <chave>`** nos itens de um
+feed: o painel conta as notícias de cada feed, e apagar o feed tira os
+comunicados dele. Feed que não existe mais (apagado no painel) responde
+**404 `feed-desconhecido`** — o comunicado não fica órfão. Um PUT sem o
+cabeçalho deixa o comunicado sem feed (a intranet não precisa dele). No
+Conector, o `idExterno` de um item de feed é um hash (40 letras hexa) da
+chave do feed com o guid ou o link do item, e o `inicio` é a data de
+publicação do item.
+
+### 3.6b `GET /comunicados[?feed=<chave>]` — o que já está guardado
+
+```bash
+curl "$MT/comunicados?feed=noticias" -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{ "comunicados": [ { "idExterno": "9b1f…", "situacao": "no-ar", "atualizadoEm": "2026-12-01T11:02:13.000Z", "feed": "noticias" } ] }
+```
+
+Para quem perdeu a memória do que mandou (o `estado.json` do Conector
+apagado, o PC trocado): o Conector pergunta uma vez por processo e passa a
+cuidar desses também — o que saiu do feed sai das TVs. Sem `?feed`, todos os
+desta integração.
 
 ### 3.7 `DELETE /comunicados/:idExterno`
 
@@ -360,6 +425,13 @@ lugar do envio. O tipo é interno: o painel não o manda.
   volta sozinho: a próxima mudança da pasta faz um pedido novo.
 - **A planilha** não mexe na programação: ela alimenta *Preços da planilha*
   ou *Indicadores*, e de lá vai para a TV como hoje.
+- **Os slides de uma apresentação** (`Apresentacao.pptx/01.png`, `02.png`…,
+  ou `Documento.pdf/…`) passam juntos e em ordem (pelo número, `2` antes de
+  `10`), mesmo com a pasta em "mais novo primeiro": a apresentação conta
+  como um bloco, na data do slide mais novo.
+- **Apagar no painel** (a pasta, o feed, a integração) tira das TVs na hora,
+  pela sessão de quem apagou (sem pedido de aprovação), e depois apaga os
+  arquivos.
 
 ---
 
@@ -405,7 +477,12 @@ lugar do envio. O tipo é interno: o painel não o manda.
 | Campos a mais nas respostas: `mudou`, `aviso` (vídeo pesado), `removido`, `criado`, `situacao`, `itens`/`indicadores` | informação para o Conector e o log dele; nada que já estava mudou |
 | `em` é ISO 8601 em UTC | o contrato não dizia o formato |
 | A planilha sem item legível responde **422** `planilha-sem-itens` | o CSV chegou, o conteúdo é que não serve — e a TV fica com o de antes |
-| Cabeçalho **opcional** `X-Conector-Feed` no comunicado | o painel contar as notícias de cada feed |
+| Cabeçalho `X-Conector-Feed` no comunicado (o Conector manda; feed apagado = 404 `feed-desconhecido`) | apagar o feed no painel tira os comunicados dele; o Conector não fica sabendo |
+| Pasta reservada `_feed-<chave>` (GET, PUT, DELETE), só foto, até 200, nunca playlist | a imagem do item do feed mora na intranet: o Conector baixa e sobe, e o comunicado aponta com `pasta:_feed-<chave>/<nome>` |
+| `GET /comunicados[?feed=<chave>]` | o Conector que perdeu o `estado.json` ainda tira das TVs o que saiu do feed |
+| Recusa do conteúdo é **422** (`nome-invalido`, `campo-invalido`, `imagem-invalida`, `imagem-nao-encontrada`), e não 400 | o Conector repete 400 e não repete 413/415/422: o nome que não serve não pode ser mandado de novo a cada minuto |
+| O nome curto (`chave`) não muda depois de criado (400 `chave-fixa`) | o `conector.json` e os comunicados apontam para ele |
+| O Conector manda o `.xlsx` com vírgula decimal e o percentual como o Excel mostra | `5.899` com ponto é milhar na leitura brasileira das planilhas |
 | Erros com `code` (lista na seção 2) e `Retry-After` no 429 | o contrato pedia `{ error, code }`; os códigos são estes |
 
 ## 8. Testar localmente
@@ -417,6 +494,16 @@ node --test test/integracoes.test.js
 TEST_DATABASE_URL='postgresql://mt@/multitelas?host=/caminho/do/socket' node --test test/integracoes.test.js
 ```
 
+O Conector de verdade contra o servidor de verdade, de ponta a ponta
+(pasta, subpasta, `.xlsx`, `.csv`, RSS com imagem, o que sai, o
+compartilhamento fora do ar, o `estado.json` perdido, o feed apagado no
+painel e o token revogado): `node --test test/conector-ponta-a-ponta.test.js`.
+O download do instalador, com um "GitHub" local:
+`node --test test/conector-download.test.js`.
+
 `MT_INTEGRACAO_ESPERA_MS` encurta a espera antes de ir às TVs (padrão 10 s).
+`MT_CONECTOR_REPO=desligado` tira do ar a busca do instalador no GitHub;
+`MT_CONECTOR_GITHUB_TESTE=http://127.0.0.1:<porta>` troca a API do GitHub por
+um servidor local (ignorado em produção).
 `INTEGRACAO_HOST_TESTE=127.0.0.1:6161` deixa o teste servir a imagem de um
 comunicado sem tocar a internet; é ignorado em produção.

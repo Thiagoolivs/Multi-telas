@@ -46,6 +46,8 @@ const LIMITES = {
   // Token errado por IP: o token tem 256 bits (não se adivinha), isto só poupa o banco de um laço.
   tokensErradosPorIp: 60,
   comunicadosPorIntegracao: 300,
+  // A pasta reservada das imagens de um feed ("_feed-<chave>"): só fotos, e poucas (um feed mostra até 50 itens).
+  imagensPorFeed: 200,
 };
 // De quanto em quanto tempo o Conector deve bater o ponto e conferir as pastas (a resposta do aperto de mão).
 const INTERVALO_SEGUNDOS = 60;
@@ -324,6 +326,36 @@ function diaEmBrasilia(ms) {
   catch (e) { return new Date(ms - 3 * 60 * 60 * 1000).toISOString().slice(0, 10); }
 }
 
+/*
+ * A PASTA RESERVADA DE UM FEED. O Conector baixa a imagem de cada item do
+ * feed (ela mora na intranet, que o servidor não alcança) e sobe para
+ * "_feed-<chave do feed>"; o comunicado aponta para lá. O "_" não existe
+ * nas chaves que o painel cria (chaveLimpa), então não colide com pasta
+ * nenhuma. Devolve a chave do feed, ou '' se não for a reservada.
+ */
+const PREFIXO_FEED = '_feed-';
+function feedDaPasta(chave) {
+  const s = String(chave || '');
+  if (!s.startsWith(PREFIXO_FEED)) return '';
+  const k = chaveLimpa(s.slice(PREFIXO_FEED.length));
+  return k && k === s.slice(PREFIXO_FEED.length) ? k : '';
+}
+// A chave de uma pasta como aparece no "pasta:" do comunicado: a do painel, ou a reservada de um feed.
+function chaveDaPasta(bruta) {
+  const f = feedDaPasta(bruta);
+  return f ? PREFIXO_FEED + f : chaveLimpa(bruta);
+}
+
+/*
+ * O STATUS DE UMA RECUSA. O Conector repete o 400 (pedido estragado no
+ * caminho: o arquivo chegou cortado, o sha não bate) e NÃO repete 413, 415
+ * nem 422 enquanto o conteúdo não mudar. Então o que é do conteúdo — um nome
+ * de arquivo que não serve, um campo do comunicado, a imagem que não existe —
+ * é 422; repetir o mesmo pedido a cada minuto só encheria o log dos dois lados.
+ */
+const RECUSA_DO_CONTEUDO = ['nome-invalido', 'campo-invalido', 'imagem-invalida', 'imagem-nao-encontrada'];
+const statusDaRecusa = (code) => (RECUSA_DO_CONTEUDO.indexOf(code) >= 0 ? 422 : 400);
+
 // O id que a intranet dá ao comunicado: o que for, curto e sem caractere de controle.
 function idExternoLimpo(bruto) {
   const s = String(bruto == null ? '' : bruto).normalize('NFC');
@@ -366,7 +398,8 @@ function lerComunicado(b, opcoes) {
     if (/^pasta:/i.test(s)) {
       const resto = s.slice(6);
       const barra = resto.indexOf('/');
-      const chave = barra > 0 ? chaveLimpa(resto.slice(0, barra)) : '';
+      // "_feed-<chave do feed>": a pasta reservada onde o Conector põe as imagens dos itens de um feed.
+      const chave = barra > 0 ? chaveDaPasta(resto.slice(0, barra)) : '';
       const n = barra > 0 ? nomeDoArquivo(resto.slice(barra + 1)) : { erro: 'x' };
       if (!chave || n.erro) return { erro: 'imagemUrl de pasta é "pasta:<chave da pasta>/<nome do arquivo>"', code: 'imagem-invalida' };
       imagem = { pasta: chave, nome: n.nome };
@@ -451,6 +484,7 @@ function textoDoCsv(buf, contentType) {
 }
 
 module.exports = {
+  PREFIXO_FEED, feedDaPasta, chaveDaPasta, RECUSA_DO_CONTEUDO, statusDaRecusa,
   LIMITES, INTERVALO_SEGUNDOS, RETENCAO_MS, ENCERRADO_FICA_MS, PREFIXO_TOKEN, TIPOS_FONTE, ZONAS, TIPOS_ACEITOS, SLIDES_COMO_IMAGEM, ACEITO,
   novoToken, hashToken, dicaDoToken, tokenComFormato,
   corta, chaveLimpa, nomeDoArquivo, nomeVisivel, nomeNaTv, deckDe, tipoPelosBytes, tetoDo, tetoDoCorpo, emMB,

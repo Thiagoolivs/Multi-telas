@@ -45,6 +45,7 @@ const I = require('../integracoes');
 const P = require('../planilha');
 const K = require('../kpis');
 const MTVideo = require('../../js/video.js');
+const conectorRelease = require('../conector-release');
 
 module.exports = function (ctx) {
   const { db, sendJson, readBody, rateLimit, security, clientIp, safeEqual, canManageTeam, avisarTelas, baseUrl, midia, plans, site, log, erros } = ctx;
@@ -137,11 +138,12 @@ module.exports = function (ctx) {
     if (recurso === 'pastas' && crus.length === 4 && m === 'GET') return listarPasta(req, res, integ, decodificar(crus[3]));
     if (recurso === 'pastas' && crus[4] === 'arquivos' && crus.length >= 6 && (m === 'PUT' || m === 'DELETE')) {
       const nomeCru = crus.slice(5).map(decodificar);
-      if (nomeCru.some((x) => x == null)) return erro(res, 400, 'nome-invalido', 'O nome do arquivo veio mal codificado no endereço (use encodeURIComponent em cada parte).');
+      if (nomeCru.some((x) => x == null)) return erro(res, 422, 'nome-invalido', 'O nome do arquivo veio mal codificado no endereço (use encodeURIComponent em cada parte).');
       const chave = decodificar(crus[3]);
       return m === 'PUT' ? receberArquivo(req, res, integ, chave, nomeCru.join('/')) : apagarArquivo(req, res, integ, chave, nomeCru.join('/'));
     }
     if (recurso === 'planilhas' && crus.length === 4 && m === 'PUT') return receberPlanilha(req, res, integ, decodificar(crus[3]));
+    if (recurso === 'comunicados' && crus.length === 3 && m === 'GET') return listarComunicadosDaApi(req, res, integ);
     if (recurso === 'comunicados' && crus.length === 4 && (m === 'PUT' || m === 'DELETE')) {
       const id = I.idExternoLimpo(decodificar(crus[3]));
       if (id.erro) return erro(res, 400, 'id-invalido', id.erro);
@@ -174,11 +176,35 @@ module.exports = function (ctx) {
     });
   }
 
+  /*
+   * A pasta de um endereço: a do painel, ou a reservada de um feed
+   * ("_feed-<chave>", que só existe enquanto o feed existe). A reservada é a
+   * própria fonte do feed: os arquivos ficam presos a ela, e apagar o feed
+   * no painel apaga as imagens junto. Ela nunca vai para a TV como playlist:
+   * só a pasta (tipo 'pasta') sincroniza, e a imagem do feed aparece pelo
+   * comunicado que aponta para ela.
+   */
+  async function fonteDaPasta(integ, chave) {
+    const feed = I.feedDaPasta(chave);
+    if (feed) return db.fontePorChave(integ.id, 'feed', feed);
+    return chave ? db.fontePorChave(integ.id, 'pasta', chave) : null;
+  }
   async function pastaDoPedido(res, integ, chaveCrua) {
     const chave = chaveCrua == null ? '' : String(chaveCrua);
-    const fonte = chave ? await db.fontePorChave(integ.id, 'pasta', chave) : null;
-    if (!fonte) { erro(res, 404, 'pasta-desconhecida', 'A pasta "' + I.corta(chave, 40) + '" não existe nesta integração. As pastas são criadas no painel, em Integrações.'); return null; }
+    const fonte = await fonteDaPasta(integ, chave);
+    if (!fonte) {
+      erro(res, 404, 'pasta-desconhecida', I.feedDaPasta(chave)
+        ? 'O feed "' + I.feedDaPasta(chave) + '" não existe nesta integração (a pasta "' + I.corta(chave, 50) + '" é a das imagens dele).'
+        : 'A pasta "' + I.corta(chave, 40) + '" não existe nesta integração. As pastas são criadas no painel, em Integrações.');
+      return null;
+    }
     return fonte;
+  }
+  const ehDeFeed = (fonte) => fonte.tipo === 'feed';
+  // A imagem de um feed mudou: os comunicados conferem (a TV mostra a foto pelo comunicado).
+  async function cutucarComunicados(integ) {
+    const com = await db.fontePorChave(integ.id, 'comunicados', '_');
+    if (com) await mudou(com, integ);
   }
 
   /* ----- GET /api/v1/pastas/:chave ----- */
@@ -254,8 +280,9 @@ module.exports = function (ctx) {
     const fonte = await pastaDoPedido(res, integ, chave);
     if (!fonte) return;
     const n = I.nomeDoArquivo(nomeCru);
-    if (n.erro) return erro(res, 400, 'nome-invalido', 'Nome de arquivo recusado: ' + n.erro + '.');
+    if (n.erro) { req.resume(); return erro(res, 422, 'nome-invalido', 'Nome de arquivo recusado: ' + n.erro + '.'); }
     const nome = n.nome;
+    const doFeed = ehDeFeed(fonte);
     const sha = String(req.headers['x-sha256'] || '').trim().toLowerCase();
     if (!/^[0-9a-f]{64}$/.test(sha)) return erro(res, 400, 'sha-invalido', 'Falta o cabeçalho X-Sha256 (o sha256 do arquivo, 64 letras e números em hexadecimal).');
     const atual = await db.arquivoDaFonte(fonte.id, nome);
@@ -270,7 +297,13 @@ module.exports = function (ctx) {
     }
     if (declarado > teto) { req.resume(); return erro(res, 413, 'grande-demais', 'O arquivo tem ' + I.emMB(declarado) + ': o máximo é ' + I.emMB(I.tetoDo('video')) + ' para vídeo e ' + I.emMB(I.tetoDo('imagem')) + ' para foto.'); }
     const contagem = await db.contarArquivosDaFonte(fonte.id);
-    if (!atual && contagem.n >= LIM.arquivosPorPasta) { req.resume(); return erro(res, 413, 'pasta-cheia', 'A pasta "' + fonte.nome + '" já tem ' + LIM.arquivosPorPasta + ' arquivos, o máximo. Tire os antigos do compartilhamento ou divida em outra pasta.'); }
+    const maxArquivos = doFeed ? LIM.imagensPorFeed : LIM.arquivosPorPasta;
+    if (!atual && contagem.n >= maxArquivos) {
+      req.resume();
+      return erro(res, 413, 'pasta-cheia', doFeed
+        ? 'As imagens do feed "' + fonte.nome + '" já são ' + maxArquivos + ', o máximo. Apague as que nenhum comunicado usa.'
+        : 'A pasta "' + fonte.nome + '" já tem ' + maxArquivos + ' arquivos, o máximo. Tire os antigos do compartilhamento ou divida em outra pasta.');
+    }
     const orc = orcamentoDeBytes(integ.id);
     if (orc.bytes >= LIM.bytesPorHora) {
       const espera = Math.max(1, Math.ceil((orc.ate - Date.now()) / 1000));
@@ -295,6 +328,8 @@ module.exports = function (ctx) {
       const tipo = I.tipoPelosBytes(cabeca, cauda);
       if (tipo && !I.ACEITO[tipo.tipo]) return erro(res, 415, 'tipo-nao-aceito', '"' + I.nomeVisivel(nome) + '" é ' + (/pdf/.test(tipo.mime) ? 'um PDF' : 'uma apresentação PPTX') + ', que não vai direto para a TV. ' + I.SLIDES_COMO_IMAGEM + '.');
       if (!tipo) return erro(res, 415, 'tipo-nao-aceito', 'O conteúdo de "' + I.nomeVisivel(nome) + '" não é ' + I.TIPOS_ACEITOS + ' (o tipo é conferido pelo conteúdo, não pelo nome).');
+      // A pasta das imagens de um feed guarda só foto (é a imagem do comunicado).
+      if (doFeed && tipo.tipo !== 'imagem') return erro(res, 415, 'tipo-nao-aceito', 'A pasta das imagens do feed só guarda foto (JPG, PNG ou WEBP).');
       if (rec.size > I.tetoDo(tipo.tipo)) return erro(res, 413, 'grande-demais', '"' + I.nomeVisivel(nome) + '" tem ' + I.emMB(rec.size) + ': o máximo para ' + (tipo.tipo === 'video' ? 'vídeo' : 'foto') + ' é ' + I.emMB(I.tetoDo(tipo.tipo)) + '.');
       if (contagem.bytes - (atual ? atual.tamanho : 0) + rec.size > LIM.bytesPorPasta) return erro(res, 413, 'pasta-cheia', 'A pasta "' + fonte.nome + '" passou de ' + I.emMB(LIM.bytesPorPasta) + ', o máximo.');
       const c1 = await cotaDa(t);
@@ -308,8 +343,9 @@ module.exports = function (ctx) {
       // O temporário sai no finally: no disco o rename já o levou (o unlink não acha nada); no R2 ele ficaria.
       const salvo = await midia.guardarTemp(db, t, tmp, { mime: tipo.mime, size: rec.size, sha256: rec.sha256 }, { nome: I.nomeVisivel(nome), origem: 'conector' });
       await db.gravarArquivoDaFonte(t, fonte.id, { nome, sha256: rec.sha256, tamanho: rec.size, mime: tipo.mime, mediaId: salvo.id, url: salvo.url, aviso });
-      await registrar(t, integ.id, atual ? 'arquivo.trocado' : 'arquivo.novo', 'Pasta "' + fonte.nome + '": ' + nome + ' (' + I.emMB(rec.size).replace(/^0 MB$/, 'menos de 1 MB') + ')', quemDoToken(integ));
-      await mudou(fonte, integ);
+      await registrar(t, integ.id, atual ? 'arquivo.trocado' : 'arquivo.novo', (doFeed ? 'Imagem do feed "' : 'Pasta "') + fonte.nome + '": ' + nome + ' (' + I.emMB(rec.size).replace(/^0 MB$/, 'menos de 1 MB') + ')', quemDoToken(integ));
+      if (doFeed) await cutucarComunicados(integ);
+      else await mudou(fonte, integ);
       return sendJson(res, 200, Object.assign({ ok: true, nome, sha256: rec.sha256, mudou: true }, aviso ? { aviso } : {}));
     } finally {
       recebendo.delete(trava);
@@ -322,12 +358,13 @@ module.exports = function (ctx) {
     const fonte = await pastaDoPedido(res, integ, chave);
     if (!fonte) return;
     const n = I.nomeDoArquivo(nomeCru);
-    if (n.erro) return erro(res, 400, 'nome-invalido', 'Nome de arquivo recusado: ' + n.erro + '.');
+    if (n.erro) return erro(res, 422, 'nome-invalido', 'Nome de arquivo recusado: ' + n.erro + '.');
     // O arquivo não some na hora: sai da TV pela sincronização, e a mídia espera a faxina (o Desfazer e a aprovação ainda a usam).
     const tirados = await db.removerArquivoDaFonte(fonte.id, integ.tenantId, n.nome, Date.now());
     if (tirados) {
-      await registrar(integ.tenantId, integ.id, 'arquivo.apagado', 'Pasta "' + fonte.nome + '": ' + n.nome, quemDoToken(integ));
-      await mudou(fonte, integ);
+      await registrar(integ.tenantId, integ.id, 'arquivo.apagado', (ehDeFeed(fonte) ? 'Imagem do feed "' : 'Pasta "') + fonte.nome + '": ' + n.nome, quemDoToken(integ));
+      if (ehDeFeed(fonte)) await cutucarComunicados(integ);
+      else await mudou(fonte, integ);
     }
     return sendJson(res, 200, { ok: true, nome: n.nome, removido: !!tirados });
   }
@@ -450,6 +487,22 @@ module.exports = function (ctx) {
   }
   const nomeDaImagemDo = (idExterno) => 'comunicado:' + idExterno;
 
+  /*
+   * A IMAGEM DE FEED QUE NINGUÉM USA MAIS sai (para a faxina). O Conector
+   * também apaga as dele, mas um Conector que perdeu a memória não sabe quais
+   * mandou, e a pasta "_feed-" encheria até o teto. Só a pasta reservada: a
+   * foto de uma pasta do RH é do RH, e fica.
+   */
+  const mesmaImagem = (a, b) => !!a && !!b && a.tipo === b.tipo && a.pasta === b.pasta && a.nome === b.nome && a.origem === b.origem;
+  async function soltarImagemDeFeed(integ, img) {
+    if (!img || img.tipo !== 'pasta' || !I.feedDaPasta(img.pasta)) return;
+    const usada = (await db.listarComunicados(integ.tenantId, integ.id))
+      .some((c) => c.dados.imagem && c.dados.imagem.tipo === 'pasta' && c.dados.imagem.pasta === img.pasta && c.dados.imagem.nome === img.nome);
+    if (usada) return;
+    const f = await fonteDaPasta(integ, img.pasta);
+    if (f) await db.removerArquivoDaFonte(f.id, integ.tenantId, img.nome, Date.now());
+  }
+
   // A fonte dos comunicados de uma integração (o mapa das TVs deles), criada junto com ela.
   async function fonteDosComunicados(integ) {
     const t = integ.tenantId;
@@ -464,19 +517,29 @@ module.exports = function (ctx) {
     return readBody(req, res, async (b) => {
       if (b == null) return erro(res, 400, 'json-invalido', 'O corpo não é um JSON válido. Exemplo: {"titulo": "Festa de fim de ano", "fim": "2026-12-20"}');
       const c = I.lerComunicado(b, { httpDeTeste: (u) => { try { return !!hostDeTeste() && new URL(u).host.toLowerCase() === hostDeTeste(); } catch (e) { return false; } } });
-      if (c.erro) return erro(res, 400, c.code, c.erro + '.');
+      // 422: o conteúdo não serve, e mandar igual de novo não vai servir (o Conector não repete; veja I.statusDaRecusa).
+      if (c.erro) return erro(res, I.statusDaRecusa(c.code), c.code, c.erro + '.');
       const existente = await db.comunicadoPorIdExterno(integ.id, idExterno);
       if (!existente && (await db.listarComunicados(t, integ.id)).length >= LIM.comunicadosPorIntegracao) {
         return erro(res, 413, 'comunicados-demais', 'Esta integração já tem ' + LIM.comunicadosPorIntegracao + ' comunicados guardados, o máximo. Apague os antigos (DELETE) ou ponha "fim" neles.');
       }
+      /*
+       * O feed de onde veio (o Conector manda X-Conector-Feed; a intranet não
+       * precisa). Com ele, apagar o feed no painel tira os comunicados dele. Um
+       * feed que não existe mais (apagado no painel, e o Conector ainda não
+       * soube) é recusado: senão o comunicado ficaria órfão, sem feed que o tire.
+       */
+      const feedChave = I.corta(req.headers['x-conector-feed'], 64);
+      const feed = feedChave ? await db.fontePorChave(integ.id, 'feed', feedChave) : null;
+      if (feedChave && !feed) return erro(res, 404, 'feed-desconhecido', 'O feed "' + feedChave + '" não existe mais nesta integração (foi apagado no painel).');
       const fonteCom = await fonteDosComunicados(integ);
       const imagemAntes = existente && existente.dados.imagem;
       let imagem = null;
       if (c.imagem && c.imagem.pasta) {
-        const fp = await db.fontePorChave(integ.id, 'pasta', c.imagem.pasta);
+        const fp = await fonteDaPasta(integ, c.imagem.pasta);
         const arq = fp ? await db.arquivoDaFonte(fp.id, c.imagem.nome) : null;
-        if (!arq) return erro(res, 400, 'imagem-nao-encontrada', 'A imagem "' + c.imagem.nome + '" não está na pasta "' + c.imagem.pasta + '". Mande o arquivo para a pasta antes do comunicado.');
-        if (!/^image\//.test(arq.mime)) return erro(res, 400, 'imagem-invalida', '"' + c.imagem.nome + '" não é uma foto (JPG, PNG ou WEBP).');
+        if (!arq) return erro(res, 422, 'imagem-nao-encontrada', 'A imagem "' + c.imagem.nome + '" não está na pasta "' + c.imagem.pasta + '". Mande o arquivo para a pasta antes do comunicado.');
+        if (!/^image\//.test(arq.mime)) return erro(res, 422, 'imagem-invalida', '"' + c.imagem.nome + '" não é uma foto (JPG, PNG ou WEBP).');
         imagem = { tipo: 'pasta', pasta: c.imagem.pasta, nome: c.imagem.nome };
       } else if (c.imagem && c.imagem.url) {
         const guardada = imagemAntes && imagemAntes.tipo === 'baixada' && imagemAntes.origem === c.imagem.url
@@ -484,7 +547,11 @@ module.exports = function (ctx) {
         if (guardada) imagem = imagemAntes;
         else {
           const r = await baixarImagem(c.imagem.url);
-          if (r.erro) return erro(res, 400, 'imagem-invalida', 'Não deu para usar a imagem: ' + r.erro + '.');
+          // O endereço que não respondeu agora pode responder depois (400, repete); o que respondeu outra coisa, não (422).
+          if (r.erro) {
+            const passageiro = /demorou|não respondeu|cortou|respondeu 5\d\d|não consegui encontrar/.test(r.erro);
+            return erro(res, passageiro ? 400 : 422, passageiro ? 'imagem-indisponivel' : 'imagem-invalida', 'Não deu para usar a imagem: ' + r.erro + '.');
+          }
           const salvo = await midia.guardarBuffer(db, t, r.bytes, r.mime, { nome: 'Comunicado: ' + c.dados.titulo, origem: 'conector' });
           await db.gravarArquivoDaFonte(t, fonteCom.id, { nome: nomeDaImagemDo(idExterno), sha256: nodeCrypto.createHash('sha256').update(r.bytes).digest('hex'), tamanho: r.bytes.length, mime: r.mime, mediaId: salvo.id, url: salvo.url });
           imagem = { tipo: 'baixada', origem: c.imagem.url };
@@ -493,10 +560,9 @@ module.exports = function (ctx) {
       // A imagem baixada que não é mais usada sai para a faxina.
       if (imagemAntes && imagemAntes.tipo === 'baixada' && (!imagem || imagem.tipo !== 'baixada')) await db.removerArquivoDaFonte(fonteCom.id, t, nomeDaImagemDo(idExterno), Date.now());
       // O feed de onde veio (opcional: o Conector diz no cabeçalho; a intranet não precisa).
-      const feedChave = I.corta(req.headers['x-conector-feed'], 40);
-      const feed = feedChave ? await db.fontePorChave(integ.id, 'feed', feedChave) : null;
       const dados = Object.assign({}, c.dados, imagem ? { imagem } : {}, feed ? { feed: feed.chave } : {});
       const { comunicado, criado } = await db.gravarComunicado(t, integ.id, idExterno, { dados, inicio: c.inicio, fim: c.fim });
+      if (imagemAntes && !mesmaImagem(imagemAntes, imagem)) await soltarImagemDeFeed(integ, imagemAntes);
       if (feed) {
         const e = Object.assign({}, feed.estado, { ultimoItemEm: Date.now(), itens: (Number(feed.estado.itens) || 0) + (criado ? 1 : 0) });
         await db.atualizarFonte(feed.id, t, { estado: e });
@@ -505,6 +571,20 @@ module.exports = function (ctx) {
       await mudou(fonteCom, integ);
       return sendJson(res, 200, { ok: true, id: idExterno, criado, situacao: I.situacao(comunicado, Date.now()) });
     });
+  }
+
+  /*
+   * ----- GET /api/v1/comunicados[?feed=<chave>] -----
+   * Os ids externos guardados (de um feed, com ?feed=): o Conector que perdeu
+   * a memória (estado.json apagado, PC trocado) confere o que já mandou e
+   * consegue tirar o que saiu do feed.
+   */
+  async function listarComunicadosDaApi(req, res, integ) {
+    let feed = '';
+    try { feed = I.corta(new URL(req.url, 'http://x').searchParams.get('feed'), 64); } catch (e) { feed = ''; }
+    const lista = (await db.listarComunicados(integ.tenantId, integ.id)).filter((c) => !feed || c.dados.feed === feed);
+    const agora = Date.now();
+    return sendJson(res, 200, { comunicados: lista.map((c) => Object.assign({ idExterno: c.idExterno, situacao: I.situacao(c, agora), atualizadoEm: new Date(c.atualizadoEm).toISOString() }, c.dados.feed ? { feed: c.dados.feed } : {})) });
   }
 
   /* ----- DELETE /api/v1/comunicados/:idExterno ----- */
@@ -517,6 +597,7 @@ module.exports = function (ctx) {
     const c = await db.comunicadoPorIdExterno(integ.id, idExterno);
     if (!c) return false;
     await db.removerComunicado(t, integ.id, idExterno);
+    await soltarImagemDeFeed(integ, c.dados.imagem);
     const fonteCom = await fonteDosComunicados(integ);
     if (c.dados.imagem && c.dados.imagem.tipo === 'baixada') await db.removerArquivoDaFonte(fonteCom.id, t, nomeDaImagemDo(idExterno), Date.now());
     await registrar(t, integ.id, 'comunicado.apagado', '"' + (c.dados.titulo || idExterno) + '"', quem);
@@ -562,7 +643,7 @@ module.exports = function (ctx) {
     const img = c.dados && c.dados.imagem;
     if (!img) return '';
     if (img.tipo === 'pasta') {
-      const fp = await db.fontePorChave(integ.id, 'pasta', img.pasta);
+      const fp = await fonteDaPasta(integ, img.pasta);
       const arq = fp ? await db.arquivoDaFonte(fp.id, img.nome) : null;
       return arq && /^image\//.test(arq.mime) ? arq.url : '';
     }
@@ -625,7 +706,8 @@ module.exports = function (ctx) {
     // As TVs do mapa recebem a lista (entrada 0); as que saíram do mapa, a vazia (entrada 1): o que era daqui sai delas.
     const telas = alvo.map((id) => ({ id, entrada: 0 })).concat(antes.filter((id) => alvo.indexOf(id) < 0).map((id) => ({ id, entrada: 1 })));
     const r = telas.length
-      ? await ctx.publicar.operacao(sessaoDaIntegracao(integ, fonte), {
+      // `o.sessao`: quem apagou o feed no painel tira os comunicados dele direto (como apagar a pasta).
+      ? await ctx.publicar.operacao(o.sessao || sessaoDaIntegracao(integ, fonte), {
         operacao: { tipo: 'integracao', id: origemDa(fonte, integ), titulo: vai.titulo, zona: fonte.config.zona, posicao: vai.posicao, entradas: [{ itens: vai.itens }, { itens: [] }] },
         telas,
       }, { soQuemMuda: true })
@@ -707,7 +789,7 @@ module.exports = function (ctx) {
       const lista = [];
       for (const f of minhas.filter((x) => I.TIPOS_FONTE.indexOf(x.tipo) >= 0)) {
         const extra = {};
-        if (f.tipo === 'pasta') {
+        if (f.tipo === 'pasta' || f.tipo === 'feed') {
           extra.arquivos = await db.contarArquivosDaFonte(f.id);
           extra.avisos = (await db.listarArquivosDaFonte(f.id, t)).filter((a) => a.aviso).length;
         }
@@ -730,7 +812,8 @@ module.exports = function (ctx) {
     return sendJson(res, 200, {
       integracoes: saida,
       podeMexer: canManageTeam(sess.role),
-      api: { base: baseUrl(req) + '/api/v1', download: '/conector/MultiTelasConector.zip', intervaloSegundos: I.INTERVALO_SEGUNDOS },
+      // conector: a versão publicada do instalador, se já se sabe (sem esperar o GitHub; server/conector-release.js).
+      api: { base: baseUrl(req) + '/api/v1', download: '/conector/' + conectorRelease.NOME_ZIP, intervaloSegundos: I.INTERVALO_SEGUNDOS, conector: conectorRelease.conhecida() },
       limites: {
         integracoes: LIM.integracoesPorConta, fontesPorTipo: LIM.fontesPorTipo, arquivosPorPasta: LIM.arquivosPorPasta,
         imagemMB: Math.round(I.tetoDo('imagem') / 1048576), videoMB: Math.round(I.tetoDo('video') / 1048576),
@@ -862,10 +945,13 @@ module.exports = function (ctx) {
         if (!ehObjeto(b)) return erro(res, 400, 'json-invalido', 'pedido inválido');
         const campos = {};
         if (b.nome !== undefined) campos.nome = I.corta(b.nome, 60) || fonte.nome;
-        if (b.chave !== undefined) {
-          const k = await chaveNova(integ, fonte.tipo, b.chave, campos.nome || fonte.nome, fonte.id);
-          if (k.erro) return erro(res, 409, 'chave-repetida', k.erro);
-          campos.chave = k.chave;
+        /*
+         * O nome curto não muda depois de criado: o conector.json do cliente
+         * diz onde fica cada chave, e os comunicados apontam para
+         * "pasta:<chave>/…" e "_feed-<chave>". Trocar quebraria os dois em silêncio.
+         */
+        if (b.chave !== undefined && b.chave !== '' && I.chaveLimpa(b.chave) !== fonte.chave) {
+          return erro(res, 400, 'chave-fixa', 'O nome curto ("' + fonte.chave + '") não muda depois de criado: o Conector e os comunicados usam. Para outro nome, crie outra e apague esta.');
         }
         const ids = (await db.listDevices(t)).map((d) => d.id);
         const c = I.configDaFonte(fonte.tipo, b, fonte.config, ids);
@@ -893,11 +979,30 @@ module.exports = function (ctx) {
       if (fonte.tipo === 'pasta') {
         const r = await tirarDasTvs(sess, fonte, integ);
         if (r.status !== 200) return sendJson(res, r.status, Object.assign({}, r.corpo, { error: 'Não deu para tirar a pasta das TVs: ' + ((r.corpo && r.corpo.error) || 'tente de novo') }));
-        for (const a of await db.listarArquivosDaFonte(fonte.id, t, true)) if (a.mediaId) await midia.apagar(db, t, a.mediaId).catch(() => false);
       }
+      if (fonte.tipo === 'feed') {
+        /*
+         * O FEED APAGADO NO PAINEL leva junto os comunicados dele: o Conector
+         * para de ler o feed (some do aperto de mão) e não apaga nada. Saem
+         * das TVs agora, pela sessão de quem apagou (sem pedido de aprovação),
+         * como a pasta.
+         */
+        const dele = (await db.listarComunicados(t, integ.id)).filter((c) => c.dados.feed === fonte.chave);
+        for (const c of dele) await db.removerComunicado(t, integ.id, c.idExterno);
+        const com = await db.fontePorChave(integ.id, 'comunicados', '_');
+        if (dele.length && com) {
+          const r = await sincronizar(com.id, t, { forcar: true, sessao: sess });
+          if (r.ok === false) return sendJson(res, r.status || 409, Object.assign({}, r.corpo, { error: 'Os comunicados do feed saíram, mas não deu para atualizar as TVs agora: ' + ((r.corpo && r.corpo.error) || 'tente de novo') }));
+        }
+        await registrar(t, integ.id, 'feed.comunicados', 'Feed "' + fonte.nome + '": ' + dele.length + (dele.length === 1 ? ' comunicado saiu' : ' comunicados saíram'), quemDaSessao(sess));
+      }
+      // A mídia (as fotos da pasta, as imagens do feed) sai junto, agora que nenhuma TV aponta para ela.
+      for (const a of await db.listarArquivosDaFonte(fonte.id, t, true)) if (a.mediaId) await midia.apagar(db, t, a.mediaId).catch(() => false);
       if (fonte.tipo === 'planilha') await apagarDestino(fonte, t);
       await db.removerFonte(fonte.id, t);
       await registrar(t, integ.id, 'fonte.apagada', '"' + fonte.nome + '"', quemDaSessao(sess));
+      // Um comunicado podia mostrar uma foto desta pasta: confere de novo (sai sem a foto).
+      if (fonte.tipo === 'pasta') await cutucarComunicados(integ);
       return sendJson(res, 200, { ok: true });
     }
     return erro(res, 405, 'metodo', 'método inválido');

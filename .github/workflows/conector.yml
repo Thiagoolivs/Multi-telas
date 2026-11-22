@@ -1,0 +1,80 @@
+# Monta o Conector MultiTelas (conector/) e publica o MultiTelasConector.zip.
+#
+# O .exe sai daqui mesmo, de um Linux: o build baixa o node.exe oficial e o
+# Node do Linux da mesma versão (sha256 fixado em conector/build/build.js),
+# monta o .exe com `node --build-sea` e, como prova, monta e EXECUTA o mesmo
+# pacote como binário Linux. O .exe em si só roda num Windows.
+#
+# Na main, cada versão nova (conector/package.json) vira um Release
+# `conector-v<versão>` com o MultiTelasConector.zip, o versao.json
+# ({ versao, tamanho, sha256 }) e o .sha256. O servidor busca o mais novo e
+# serve em /conector/MultiTelasConector.zip para o dono e o administrador
+# logados (server/conector-release.js), como o APK da TV (android.yml,
+# server/apk.js). A mesma versão de novo não publica outra vez: suba a
+# versão no conector/package.json quando o conector mudar.
+
+name: Conector
+
+on:
+  push:
+    paths: ['conector/**', 'docs/implantacao/CONECTOR.md', '.github/workflows/conector.yml']
+  pull_request:
+    paths: ['conector/**', 'docs/implantacao/CONECTOR.md', '.github/workflows/conector.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: conector-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Publicar o Release precisa escrever no repositório.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Os testes do conector não dependem de nada instalado.
+      - name: Testes do conector
+        run: node --test test/conector.test.js
+
+      - name: Montar o .exe e o .zip
+        run: npm run conector:build
+
+      - name: MultiTelasConector.zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: MultiTelasConector
+          path: conector/dist/MultiTelasConector.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publicar a versão para o painel (Release)
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSAO=$(node -p "require('./conector/package.json').version")
+          TAG="conector-v$VERSAO"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "::notice title=Conector $VERSAO já publicado::Suba a versão em conector/package.json para publicar outro zip."
+            exit 0
+          fi
+          mkdir -p publicar
+          cp conector/dist/MultiTelasConector.zip publicar/MultiTelasConector.zip
+          TAMANHO=$(stat -c%s publicar/MultiTelasConector.zip)
+          SHA=$(sha256sum publicar/MultiTelasConector.zip | cut -d' ' -f1)
+          printf '{"versao":"%s","tamanho":%s,"sha256":"%s"}\n' "$VERSAO" "$TAMANHO" "$SHA" > publicar/versao.json
+          printf '%s  MultiTelasConector.zip\n' "$SHA" > publicar/MultiTelasConector.zip.sha256
+          cat publicar/versao.json
+          gh release create "$TAG" publicar/MultiTelasConector.zip publicar/versao.json publicar/MultiTelasConector.zip.sha256 \
+            --target "$GITHUB_SHA" \
+            --title "Conector MultiTelas $VERSAO" \
+            --notes "O instalador do Conector MultiTelas (Windows). O painel serve em /conector/MultiTelasConector.zip para o dono e o administrador; confira o sha256 no .sha256."
