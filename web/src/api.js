@@ -671,6 +671,27 @@ export const planilhas = {
   remover: (id) => api('DELETE', '/api/planilhas/' + encodeURIComponent(id)),
 };
 
+/*
+ * As integrações (docs/INTEGRACOES.md): o Conector MultiTelas, na rede da
+ * empresa, e a intranet. O token sai uma vez só (na criação e no "token novo").
+ */
+const ig = (id) => '/api/integracoes/' + encodeURIComponent(id);
+export const integracoes = {
+  list: () => api('GET', '/api/integracoes'),
+  criar: (nome) => api('POST', '/api/integracoes', { nome }),
+  atualizar: (id, c) => api('PUT', ig(id), c),
+  token: (id) => api('POST', ig(id) + '/token'),
+  revogar: (id) => api('POST', ig(id) + '/revogar'),
+  remover: (id) => api('DELETE', ig(id)),
+  criarFonte: (id, f) => api('POST', ig(id) + '/fontes', f),
+  atualizarFonte: (id, fonte, f) => api('PUT', ig(id) + '/fontes/' + encodeURIComponent(fonte), f),
+  removerFonte: (id, fonte) => api('DELETE', ig(id) + '/fontes/' + encodeURIComponent(fonte)),
+  arquivos: (id, fonte) => api('GET', ig(id) + '/fontes/' + encodeURIComponent(fonte) + '/arquivos'),
+  sincronizar: (id, fonte) => api('POST', ig(id) + '/fontes/' + encodeURIComponent(fonte) + '/sincronizar'),
+  tirarComunicado: (id, idExterno) => api('DELETE', ig(id) + '/comunicados/' + encodeURIComponent(idExterno)),
+  registro: (id) => api('GET', ig(id) + '/registro'),
+};
+
 /* A foto da pessoa pelo QR, com o RH aprovando (D31). */
 export const fotoqr = {
   list: () => api('GET', '/api/fotoqr'),

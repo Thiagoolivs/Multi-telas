@@ -247,6 +247,45 @@ db.exec(`
     aviso TEXT, ultimo_ok INTEGER, ultimo_erro TEXT, proxima INTEGER, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_planilhas_tenant ON planilhas(tenant_id);
+  -- Integrações (docs/INTEGRACOES.md): o Conector MultiTelas, que mora num PC
+  -- da rede do cliente e EMPURRA para nós, e a intranet, que chama a API
+  -- direto. O token é guardado só como hash; a dica são os 4 últimos caracteres.
+  CREATE TABLE IF NOT EXISTS integracoes (
+    id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, token_hash TEXT, token_dica TEXT,
+    revogada_em INTEGER, visto_em INTEGER, chamada_em INTEGER, versao TEXT, maquina TEXT,
+    created_at INTEGER, updated_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_integracoes_tenant ON integracoes(tenant_id);
+  CREATE INDEX IF NOT EXISTS idx_integracoes_token ON integracoes(token_hash);
+  -- O que cada integração manda (pasta, planilha, feed e os comunicados), com
+  -- o mapa das TVs em config e o resultado da última ida às TVs em estado.
+  -- sincronizar_em > 0: há mudança esperando para ir às TVs (o relógio pega).
+  CREATE TABLE IF NOT EXISTS integracao_fontes (
+    id TEXT PRIMARY KEY, tenant_id TEXT, integracao_id TEXT, tipo TEXT, chave TEXT, nome TEXT,
+    config TEXT, estado TEXT, sincronizar_em INTEGER, created_at INTEGER, updated_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_integracao_fontes_int ON integracao_fontes(integracao_id);
+  CREATE INDEX IF NOT EXISTS idx_integracao_fontes_sinc ON integracao_fontes(sincronizar_em);
+  -- Os arquivos de cada pasta (e a imagem baixada de um comunicado). Trocado
+  -- ou apagado, a linha ganha removido_em e o arquivo fica uns dias: a TV
+  -- que ainda não recebeu a lista nova, o pedido de aprovação e o Desfazer
+  -- continuam achando a foto (server/routes/integracoes.js, faxina).
+  CREATE TABLE IF NOT EXISTS integracao_arquivos (
+    id TEXT PRIMARY KEY, tenant_id TEXT, fonte_id TEXT, nome TEXT, sha256 TEXT, tamanho INTEGER, mime TEXT,
+    media_id TEXT, url TEXT, aviso TEXT, em INTEGER, removido_em INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_integracao_arquivos_fonte ON integracao_arquivos(fonte_id, removido_em);
+  -- Os comunicados (do Conector ou da intranet): um por id externo, por integração — o upsert não duplica.
+  CREATE TABLE IF NOT EXISTS integracao_comunicados (
+    id TEXT PRIMARY KEY, tenant_id TEXT, integracao_id TEXT, id_externo TEXT, dados TEXT, inicio INTEGER, fim INTEGER,
+    created_at INTEGER, updated_at INTEGER
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_integracao_comunicados_ext ON integracao_comunicados(integracao_id, id_externo);
+  -- A auditoria de cada integração: o que mudou, por quem (o token ou a pessoa do painel) e quando.
+  CREATE TABLE IF NOT EXISTS integracao_registro (
+    id TEXT PRIMARY KEY, tenant_id TEXT, integracao_id TEXT, acao TEXT, detalhe TEXT, quem TEXT, em INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_integracao_registro_int ON integracao_registro(integracao_id, em);
   -- O calendário da empresa (D23): cada data vira um evento, com a peça
   -- dele e as TVs em que entrou. item é a peça (JSON) para editar depois.
   CREATE TABLE IF NOT EXISTS calendario (
@@ -1860,6 +1899,167 @@ async function atualizarPlanilha(id, tenantId, campos) {
 }
 async function removerPlanilha(id, tenantId) { return db.prepare('DELETE FROM planilhas WHERE id = ? AND tenant_id = ?').run(String(id), tenantId).changes; }
 
+/* ----- Integrações: o Conector MultiTelas e a intranet (docs/INTEGRACOES.md) ----- */
+const jsonDe = (txt, padrao) => { try { const v = JSON.parse(txt || ''); return v && typeof v === 'object' ? v : padrao; } catch (e) { return padrao; } };
+// Sem o hash do token: é o que o servidor usa por dentro e o painel lê.
+const mapIntegracao = (r) => (r ? {
+  id: r.id, tenantId: r.tenant_id, nome: r.nome || '', tokenDica: r.token_dica || '', revogadaEm: Number(r.revogada_em) || 0,
+  vistoEm: Number(r.visto_em) || 0, chamadaEm: Number(r.chamada_em) || 0, versao: r.versao || '', maquina: r.maquina || '',
+  criadoEm: Number(r.created_at) || 0, atualizadoEm: Number(r.updated_at) || 0,
+} : null);
+const mapFonte = (r) => (r ? {
+  id: r.id, tenantId: r.tenant_id, integracaoId: r.integracao_id, tipo: r.tipo, chave: r.chave || '', nome: r.nome || '',
+  config: jsonDe(r.config, {}), estado: jsonDe(r.estado, {}), sincronizarEm: Number(r.sincronizar_em) || 0,
+  criadoEm: Number(r.created_at) || 0, atualizadoEm: Number(r.updated_at) || 0,
+} : null);
+const mapArquivo = (r) => (r ? {
+  id: r.id, tenantId: r.tenant_id, fonteId: r.fonte_id, nome: r.nome, sha256: r.sha256 || '', tamanho: Number(r.tamanho) || 0,
+  mime: r.mime || '', mediaId: r.media_id || '', url: r.url || '', aviso: r.aviso || '', em: Number(r.em) || 0, removidoEm: Number(r.removido_em) || 0,
+} : null);
+const mapComunicado = (r) => (r ? {
+  id: r.id, tenantId: r.tenant_id, integracaoId: r.integracao_id, idExterno: r.id_externo, dados: jsonDe(r.dados, {}),
+  inicio: Number(r.inicio) || 0, fim: Number(r.fim) || 0, criadoEm: Number(r.created_at) || 0, atualizadoEm: Number(r.updated_at) || 0,
+} : null);
+async function criarIntegracao(tenantId, i) {
+  const id = 'int_' + rid(14);
+  const agora = Date.now();
+  db.prepare("INSERT INTO integracoes (id, tenant_id, nome, token_hash, token_dica, revogada_em, visto_em, chamada_em, versao, maquina, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, 0, 0, '', '', ?, ?)")
+    .run(id, tenantId, i.nome || '', i.tokenHash || '', i.tokenDica || '', agora, agora);
+  return mapIntegracao(db.prepare('SELECT * FROM integracoes WHERE id = ?').get(id));
+}
+async function listarIntegracoes(tenantId) { return db.prepare('SELECT * FROM integracoes WHERE tenant_id = ? ORDER BY created_at').all(tenantId).map(mapIntegracao); }
+async function integracaoDaConta(id, tenantId) { return mapIntegracao(db.prepare('SELECT * FROM integracoes WHERE id = ? AND tenant_id = ?').get(String(id), tenantId)); }
+// Pelo hash do token, com o hash junto (quem chama confere em tempo constante, server/routes/integracoes.js).
+async function integracaoPorToken(hash) {
+  const r = db.prepare("SELECT * FROM integracoes WHERE token_hash = ? AND token_hash <> ''").get(String(hash));
+  return r ? Object.assign(mapIntegracao(r), { tokenHash: r.token_hash }) : null;
+}
+const CAMPOS_INTEGRACAO = { nome: 'nome', tokenHash: 'token_hash', tokenDica: 'token_dica', revogadaEm: 'revogada_em', vistoEm: 'visto_em', chamadaEm: 'chamada_em', versao: 'versao', maquina: 'maquina' };
+async function atualizarIntegracao(id, tenantId, campos) {
+  const sets = ['updated_at = ?'];
+  const vals = [Date.now()];
+  for (const k of Object.keys(campos || {})) if (CAMPOS_INTEGRACAO[k]) { sets.push(CAMPOS_INTEGRACAO[k] + ' = ?'); vals.push(campos[k]); }
+  return db.prepare('UPDATE integracoes SET ' + sets.join(', ') + ' WHERE id = ? AND tenant_id = ?').run(...vals, String(id), tenantId).changes;
+}
+// Apaga a integração e o que é dela no banco; a mídia dos arquivos quem chama apaga antes.
+async function removerIntegracao(id, tenantId) {
+  const fontes = db.prepare('SELECT id FROM integracao_fontes WHERE integracao_id = ? AND tenant_id = ?').all(String(id), tenantId).map((r) => r.id);
+  db.exec('BEGIN');
+  try {
+    for (const f of fontes) db.prepare('DELETE FROM integracao_arquivos WHERE fonte_id = ? AND tenant_id = ?').run(f, tenantId);
+    db.prepare('DELETE FROM integracao_fontes WHERE integracao_id = ? AND tenant_id = ?').run(String(id), tenantId);
+    db.prepare('DELETE FROM integracao_comunicados WHERE integracao_id = ? AND tenant_id = ?').run(String(id), tenantId);
+    db.prepare('DELETE FROM integracao_registro WHERE integracao_id = ? AND tenant_id = ?').run(String(id), tenantId);
+    const n = db.prepare('DELETE FROM integracoes WHERE id = ? AND tenant_id = ?').run(String(id), tenantId).changes;
+    db.exec('COMMIT');
+    return n;
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+
+async function criarFonte(tenantId, integracaoId, f) {
+  const id = 'inf_' + rid(14);
+  const agora = Date.now();
+  db.prepare("INSERT INTO integracao_fontes (id, tenant_id, integracao_id, tipo, chave, nome, config, estado, sincronizar_em, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, '{}', 0, ?, ?)")
+    .run(id, tenantId, String(integracaoId), f.tipo, f.chave || '', f.nome || '', JSON.stringify(f.config || {}), agora, agora);
+  return mapFonte(db.prepare('SELECT * FROM integracao_fontes WHERE id = ?').get(id));
+}
+async function listarFontes(tenantId, integracaoId) {
+  if (integracaoId) return db.prepare('SELECT * FROM integracao_fontes WHERE tenant_id = ? AND integracao_id = ? ORDER BY created_at').all(tenantId, String(integracaoId)).map(mapFonte);
+  return db.prepare('SELECT * FROM integracao_fontes WHERE tenant_id = ? ORDER BY created_at').all(tenantId).map(mapFonte);
+}
+async function fonteDaConta(id, tenantId) { return mapFonte(db.prepare('SELECT * FROM integracao_fontes WHERE id = ? AND tenant_id = ?').get(String(id), tenantId)); }
+async function fontePorChave(integracaoId, tipo, chave) {
+  return mapFonte(db.prepare('SELECT * FROM integracao_fontes WHERE integracao_id = ? AND tipo = ? AND chave = ?').get(String(integracaoId), String(tipo), String(chave)));
+}
+// As que têm mudança esperando a hora de ir às TVs (o relógio de server/routes/integracoes.js).
+async function fontesParaSincronizar(agora) { return db.prepare('SELECT * FROM integracao_fontes WHERE sincronizar_em > 0 AND sincronizar_em <= ? ORDER BY sincronizar_em LIMIT 50').all(Number(agora)).map(mapFonte); }
+async function atualizarFonte(id, tenantId, campos) {
+  const sets = ['updated_at = ?'];
+  const vals = [Date.now()];
+  const c = campos || {};
+  if (c.nome !== undefined) { sets.push('nome = ?'); vals.push(c.nome); }
+  if (c.chave !== undefined) { sets.push('chave = ?'); vals.push(c.chave); }
+  if (c.config !== undefined) { sets.push('config = ?'); vals.push(JSON.stringify(c.config || {})); }
+  if (c.estado !== undefined) { sets.push('estado = ?'); vals.push(JSON.stringify(c.estado || {})); }
+  if (c.sincronizarEm !== undefined) { sets.push('sincronizar_em = ?'); vals.push(Number(c.sincronizarEm) || 0); }
+  return db.prepare('UPDATE integracao_fontes SET ' + sets.join(', ') + ' WHERE id = ? AND tenant_id = ?').run(...vals, String(id), tenantId).changes;
+}
+async function removerFonte(id, tenantId) {
+  db.prepare('DELETE FROM integracao_arquivos WHERE fonte_id = ? AND tenant_id = ?').run(String(id), tenantId);
+  return db.prepare('DELETE FROM integracao_fontes WHERE id = ? AND tenant_id = ?').run(String(id), tenantId).changes;
+}
+
+// Os arquivos de agora de uma pasta (`comRemovidos`: também os que esperam a faxina).
+async function listarArquivosDaFonte(fonteId, tenantId, comRemovidos) {
+  const sql = 'SELECT * FROM integracao_arquivos WHERE fonte_id = ? AND tenant_id = ?' + (comRemovidos ? '' : ' AND removido_em = 0') + ' ORDER BY nome';
+  return db.prepare(sql).all(String(fonteId), tenantId).map(mapArquivo);
+}
+async function arquivoDaFonte(fonteId, nome) { return mapArquivo(db.prepare('SELECT * FROM integracao_arquivos WHERE fonte_id = ? AND nome = ? AND removido_em = 0').get(String(fonteId), String(nome))); }
+// Grava a versão nova de um arquivo; a de antes (mesmo nome) sai para a faxina, na mesma transação.
+async function gravarArquivoDaFonte(tenantId, fonteId, a) {
+  const agora = Number(a.em) || Date.now();
+  const id = 'ina_' + rid(14);
+  db.exec('BEGIN');
+  try {
+    db.prepare('UPDATE integracao_arquivos SET removido_em = ? WHERE fonte_id = ? AND nome = ? AND removido_em = 0 AND tenant_id = ?').run(agora, String(fonteId), String(a.nome), tenantId);
+    db.prepare('INSERT INTO integracao_arquivos (id, tenant_id, fonte_id, nome, sha256, tamanho, mime, media_id, url, aviso, em, removido_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)')
+      .run(id, tenantId, String(fonteId), String(a.nome), a.sha256 || '', Number(a.tamanho) || 0, a.mime || '', a.mediaId || '', a.url || '', a.aviso || '', agora);
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  return mapArquivo(db.prepare('SELECT * FROM integracao_arquivos WHERE id = ?').get(id));
+}
+async function removerArquivoDaFonte(fonteId, tenantId, nome, agora) {
+  return db.prepare('UPDATE integracao_arquivos SET removido_em = ? WHERE fonte_id = ? AND nome = ? AND removido_em = 0 AND tenant_id = ?').run(Number(agora) || Date.now(), String(fonteId), String(nome), tenantId).changes;
+}
+async function contarArquivosDaFonte(fonteId) {
+  const r = db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(tamanho), 0) AS bytes FROM integracao_arquivos WHERE fonte_id = ? AND removido_em = 0').get(String(fonteId));
+  return { n: Number(r.n) || 0, bytes: Number(r.bytes) || 0 };
+}
+// Os que saíram antes de `antes`: a faxina apaga a mídia e depois a linha.
+async function arquivosParaApagar(antes, limite) {
+  return db.prepare('SELECT * FROM integracao_arquivos WHERE removido_em > 0 AND removido_em < ? ORDER BY removido_em LIMIT ?').all(Number(antes), Number(limite) || 100).map(mapArquivo);
+}
+async function apagarArquivoDaFonte(id) { return db.prepare('DELETE FROM integracao_arquivos WHERE id = ?').run(String(id)).changes; }
+// Todos os arquivos de uma integração, com os que esperam a faxina (apagar a integração apaga a mídia deles).
+async function arquivosDaIntegracao(integracaoId, tenantId) {
+  return db.prepare('SELECT a.* FROM integracao_arquivos a JOIN integracao_fontes f ON f.id = a.fonte_id WHERE f.integracao_id = ? AND a.tenant_id = ?').all(String(integracaoId), tenantId).map(mapArquivo);
+}
+
+// O upsert pelo id externo: o mesmo id troca o de antes, nunca duplica. Devolve { comunicado, criado }.
+async function gravarComunicado(tenantId, integracaoId, idExterno, c) {
+  const agora = Date.now();
+  const antes = db.prepare('SELECT id FROM integracao_comunicados WHERE integracao_id = ? AND id_externo = ?').get(String(integracaoId), String(idExterno));
+  db.prepare('INSERT INTO integracao_comunicados (id, tenant_id, integracao_id, id_externo, dados, inicio, fim, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) '
+    + 'ON CONFLICT(integracao_id, id_externo) DO UPDATE SET dados = excluded.dados, inicio = excluded.inicio, fim = excluded.fim, updated_at = excluded.updated_at')
+    .run('inc_' + rid(14), tenantId, String(integracaoId), String(idExterno), JSON.stringify(c.dados || {}), Number(c.inicio) || 0, Number(c.fim) || 0, agora, agora);
+  return { comunicado: mapComunicado(db.prepare('SELECT * FROM integracao_comunicados WHERE integracao_id = ? AND id_externo = ?').get(String(integracaoId), String(idExterno))), criado: !antes };
+}
+async function listarComunicados(tenantId, integracaoId) {
+  return db.prepare('SELECT * FROM integracao_comunicados WHERE tenant_id = ? AND integracao_id = ? ORDER BY updated_at DESC').all(tenantId, String(integracaoId)).map(mapComunicado);
+}
+async function comunicadoPorIdExterno(integracaoId, idExterno) {
+  return mapComunicado(db.prepare('SELECT * FROM integracao_comunicados WHERE integracao_id = ? AND id_externo = ?').get(String(integracaoId), String(idExterno)));
+}
+async function removerComunicado(tenantId, integracaoId, idExterno) {
+  return db.prepare('DELETE FROM integracao_comunicados WHERE tenant_id = ? AND integracao_id = ? AND id_externo = ?').run(tenantId, String(integracaoId), String(idExterno)).changes;
+}
+// Os que acabaram antes de `antes` (a faxina tira do banco; da TV, já saíram no fim deles).
+async function comunicadosVencidos(antes, limite) {
+  return db.prepare('SELECT * FROM integracao_comunicados WHERE fim > 0 AND fim < ? ORDER BY fim LIMIT ?').all(Number(antes), Number(limite) || 100).map(mapComunicado);
+}
+
+// A auditoria: guarda os últimos 500 de cada integração.
+async function registrarNaIntegracao(tenantId, integracaoId, r) {
+  db.prepare('INSERT INTO integracao_registro (id, tenant_id, integracao_id, acao, detalhe, quem, em) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run('inr_' + rid(14), tenantId, String(integracaoId), String(r.acao || '').slice(0, 40), String(r.detalhe || '').slice(0, 300), String(r.quem || '').slice(0, 80), Number(r.em) || Date.now());
+  const corte = db.prepare('SELECT em FROM integracao_registro WHERE integracao_id = ? ORDER BY em DESC LIMIT 1 OFFSET 499').get(String(integracaoId));
+  if (corte) db.prepare('DELETE FROM integracao_registro WHERE integracao_id = ? AND em < ?').run(String(integracaoId), Number(corte.em));
+}
+async function registroDaIntegracao(tenantId, integracaoId, limite) {
+  return db.prepare('SELECT acao, detalhe, quem, em FROM integracao_registro WHERE tenant_id = ? AND integracao_id = ? ORDER BY em DESC LIMIT ?')
+    .all(tenantId, String(integracaoId), Number(limite) || 50).map((r) => ({ acao: r.acao, detalhe: r.detalhe || '', quem: r.quem || '', em: Number(r.em) || 0 }));
+}
+
 /* ----- Fotos pelo QR (D31) ----- */
 const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, dataId: r.data_id || '', dataAlvo: r.data_alvo || '', guardarAte: r.guardar_ate || '', criadoEm: Number(r.created_at) || 0 } : null);
 const mapFotoPessoa = (r) => (r ? { id: r.id, tenantId: r.tenant_id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', aceiteEm: Number(r.aceite_em) || 0, aprovadaEm: Number(r.aprovada_em) || 0, criadoEm: Number(r.created_at) || 0 } : null);
@@ -2017,6 +2217,12 @@ async function dadosDoTenant(tenantId) {
     conectoresDeIndicadores: pega('SELECT id, nome, modo, url, auth_tipo, intervalo_min, ultimo_ok, ultimo_erro, created_at FROM conectores_kpi WHERE tenant_id = ?'),
     indicadores: pega('SELECT id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em FROM indicadores WHERE tenant_id = ?'),
     planilhas: pega('SELECT id, nome, origem, link, linhas, ultimo_ok, ultimo_erro, created_at FROM planilhas WHERE tenant_id = ?'),
+    // As integrações (o Conector e a intranet): sem o hash do token, que é credencial.
+    integracoes: pega('SELECT id, nome, token_dica, revogada_em, visto_em, versao, maquina, created_at FROM integracoes WHERE tenant_id = ?'),
+    fontesDasIntegracoes: pega('SELECT id, integracao_id, tipo, chave, nome, config, estado, created_at FROM integracao_fontes WHERE tenant_id = ?'),
+    arquivosDasIntegracoes: pega('SELECT id, fonte_id, nome, sha256, tamanho, mime, url, em, removido_em FROM integracao_arquivos WHERE tenant_id = ?'),
+    comunicadosDasIntegracoes: pega('SELECT id, integracao_id, id_externo, dados, inicio, fim, created_at, updated_at FROM integracao_comunicados WHERE tenant_id = ?'),
+    registroDasIntegracoes: pega('SELECT integracao_id, acao, detalhe, quem, em FROM integracao_registro WHERE tenant_id = ?'),
     fotosParaAprovar: pega('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, aprovada_em, created_at FROM fotos_pessoa WHERE tenant_id = ?'),
     midias: pega('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ?'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
@@ -2082,7 +2288,7 @@ async function apagarTenant(tenantId) {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
     // As fases 12 e 13 vão na frente (os pedidos, as lojas e a senha): a lista de baixo é a de antes.
-    for (const tabela of ['aprovacoes', 'acesso_lojas', 'senha_filas', 'senha_chamadas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
+    for (const tabela of ['aprovacoes', 'acesso_lojas', 'integracao_registro', 'integracao_comunicados', 'integracao_arquivos', 'integracao_fontes', 'integracoes', 'senha_filas', 'senha_chamadas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'planilhas', 'pacotes_pagos', 'calendario', 'lotes',
       'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
@@ -2342,6 +2548,11 @@ module.exports = {
   pedidosFotoDeData, fotosPendentesAntigas, guardarPedidoFotoAte,
   criarConector, listarConectores, conectorInterno, conectorPorToken, conectoresParaBuscar, atualizarConector, removerConector, gravarIndicadores, listarIndicadores, mapConector,
   criarPlanilha, listarPlanilhas, planilhaInterna, planilhasParaBuscar, atualizarPlanilha, removerPlanilha, mapPlanilha,
+  criarIntegracao, listarIntegracoes, integracaoDaConta, integracaoPorToken, atualizarIntegracao, removerIntegracao,
+  criarFonte, listarFontes, fonteDaConta, fontePorChave, fontesParaSincronizar, atualizarFonte, removerFonte,
+  listarArquivosDaFonte, arquivoDaFonte, gravarArquivoDaFonte, removerArquivoDaFonte, contarArquivosDaFonte, arquivosParaApagar, apagarArquivoDaFonte, arquivosDaIntegracao,
+  gravarComunicado, listarComunicados, comunicadoPorIdExterno, removerComunicado, comunicadosVencidos,
+  registrarNaIntegracao, registroDaIntegracao,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

@@ -53,6 +53,8 @@ const PlaceholderPage = pagina(() => import('./pages/PlaceholderPage.jsx'), 'Pla
 const RelatorioPage = pagina(() => import('./pages/RelatorioPage.jsx'), 'RelatorioPage');
 const IndicadoresPage = pagina(() => import('./pages/IndicadoresPage.jsx'), 'IndicadoresPage');
 const PlanilhasPage = pagina(() => import('./pages/PlanilhasPage.jsx'), 'PlanilhasPage');
+// As integrações: o Conector MultiTelas na rede da empresa e a intranet (docs/INTEGRACOES.md).
+const IntegracoesPage = pagina(() => import('./pages/IntegracoesPage.jsx'), 'IntegracoesPage');
 const CriarPage = pagina(() => import('./pages/CriarPage.jsx'), 'CriarPage');
 const CriacaoRapidaPage = pagina(() => import('./pages/CriacaoRapidaPage.jsx'), 'CriacaoRapidaPage');
 const CampanhasPage = pagina(() => import('./pages/CampanhasPage.jsx'), 'CampanhasPage');
@@ -97,6 +99,7 @@ const META = {
   relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
   indicadores: { title: 'Indicadores', subtitle: 'Os números da empresa na TV, sempre atualizados.' },
   planilhas: { title: 'Preços da planilha', subtitle: 'O preço muda na planilha e a TV muda junto.' },
+  integracoes: { title: 'Integrações', subtitle: 'A pasta da rede, a planilha e a intranet mandando para as TVs sozinhas.' },
   senha: { title: 'Chamada de senha' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
   // Mídias por propósito (item 34). 'storage' segue como endereço: é Fotos e vídeos.
@@ -156,7 +159,7 @@ function useTheme() {
  */
 // campanhas, pecas, musicas e ia entraram no D3: recarregar nessas páginas caía na Visão geral.
 // Fase 10: 'seus' saiu (não é mais aba); o endereço antigo abre as Campanhas (lib/menu.js, APELIDOS).
-const ATALHOS = ['prontos', 'apps', 'criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores', 'senha', 'planilhas',
+const ATALHOS = ['prontos', 'apps', 'criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores', 'senha', 'planilhas', 'integracoes',
   'team', 'aprovacoes', 'storage', 'pecas', 'telasprontas', 'calendario', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
@@ -415,6 +418,7 @@ export default function App() {
       case 'relatorio': return <RelatorioPage onIrParaPlano={() => go('billing')} />;
       case 'indicadores': return <IndicadoresPage />;
       case 'planilhas': return <PlanilhasPage />;
+      case 'integracoes': return <IntegracoesPage />;
       case 'senha': return <SenhaPage onIr={go} />;
       case 'billing': return <BillingPage onFalarComVendas={() => go('support')} />;
       case 'system': return <SystemPage />;
