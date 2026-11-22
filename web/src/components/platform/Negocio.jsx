@@ -72,7 +72,12 @@ function Frota({ frota }) {
               <TD className="font-medium text-ink">{t.nome}</TD>
               <TD>{t.conta}</TD>
               <TD className="whitespace-nowrap">{t.ultimoSinal ? relativeTime(t.ultimoSinal) : 'nunca deu sinal'}</TD>
-              <TD className="whitespace-nowrap text-ink-3">{t.aparelho || '—'}</TD>
+              <TD className="whitespace-nowrap text-ink-3">
+                {t.aparelho || '—'}
+                {/* Lançamento de dezembro: o que o app da TV conta no pulso — a TV salva pelo vigia segue "no ar" e não vira aviso de queda. */}
+                {t.semTelaInicial && <div className="text-warn">não é a tela inicial</div>}
+                {t.vigiaDoApp && <div className="text-2xs" title="O que o vigia do app fez desde que o app abriu: recargas e WebViews novos por travamento, pedidos da página (madrugada e painel) e reinícios do app">vigia: {t.vigiaDoApp}</div>}
+              </TD>
               <TD>
                 {t.online ? <Badge tone="ok">no ar</Badge>
                   : t.foraDoExpediente ? <Badge tone="neutral">fora do expediente</Badge>

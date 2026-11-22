@@ -176,15 +176,25 @@ function faz(ms) {
  * Texto do aviso. Fica aqui, e não em mail.js, porque é conteúdo de produto:
  * o que a pessoa lê às sete da manhã tem que dizer QUAL tela, HÁ QUANTO
  * TEMPO, e o que fazer — nessa ordem, e sem jargão.
+ *
+ * `opcoes.copia`: a mesma queda, para quem opera o MultiTelas (abaixo,
+ * copiaDoAmbiente). Quem opera cuida de várias contas: o assunto começa pela
+ * conta, o texto diz de quem é a TV e quem já foi avisado, e o botão não leva
+ * às "minhas TVs" — as do operador não são as do cliente.
  */
-function mensagem(aviso, appUrl) {
+function mensagem(aviso, appUrl, opcoes) {
+  const copia = !!(opcoes && opcoes.copia);
   const n = aviso.telas.length;
   const nomeadas = aviso.telas.slice(0, MAX_NOMEADAS);
   const resto = n - nomeadas.length;
   const titulo = n === 1
     ? aviso.telas[0].nome + ' está fora do ar'
     : n + ' telas estão fora do ar';
-  const subject = (n === 1 ? '⚠ ' : '⚠ ') + titulo + ' · MultiTelas';
+  const conta = String(aviso.conta || '').trim() || 'conta sem nome';
+  const subject = (copia ? '[' + conta + '] ' : '') + '⚠ ' + titulo + ' · MultiTelas';
+  const paraQuemOpera = copia
+    ? 'Cópia para quem opera o MultiTelas. Conta: ' + conta + '. O dono da conta (' + aviso.email + ') recebeu este mesmo aviso.'
+    : '';
 
   const linhas = nomeadas.map((t) => '  • ' + t.nome + ' — sem sinal ' + faz(t.parada));
   if (resto > 0) linhas.push('  • e mais ' + resto + (resto === 1 ? ' tela' : ' telas'));
@@ -193,11 +203,14 @@ function mensagem(aviso, appUrl) {
     ? 'Quando várias caem juntas, quase sempre é a internet do local ou a energia.'
     : 'Na maioria das vezes é a TV desligada no botão, o cabo de rede solto ou o Wi-Fi caído.';
 
-  const text = titulo + '.\n\n' + linhas.join('\n') + '\n\n' + causas +
+  const text = (paraQuemOpera ? paraQuemOpera + '\n\n' : '') +
+    titulo + '.\n\n' + linhas.join('\n') + '\n\n' + causas +
     '\n\nVocê não precisa fazer nada no MultiTelas: assim que a tela voltar a ' +
     'ter internet, ela volta a exibir sozinha o que já estava programado.\n\n' +
-    // QA de 03/11: "frota" é palavra de operador; o cliente tem TVs.
-    (appUrl ? 'Ver minhas TVs: ' + appUrl + '/app/?ir=screens\n\n' : '') +
+    // QA de 03/11: "frota" é palavra de operador; o cliente tem TVs. A cópia é do operador: lá, a Frota.
+    (copia
+      ? 'Todas as TVs de todas as contas: Plataforma › Negócio › Frota' + (appUrl ? ' (' + appUrl + '/app/)' : '') + '.\n\n'
+      : (appUrl ? 'Ver minhas TVs: ' + appUrl + '/app/?ir=screens\n\n' : '')) +
     'Este aviso é enviado uma vez por queda.';
 
   const itens = nomeadas.map((t) =>
@@ -209,11 +222,12 @@ function mensagem(aviso, appUrl) {
 
   // Na moldura de todo e-mail (server/mail.js): a marca em cima e quem manda embaixo (reteste da fase 10).
   const html = require('./mail').moldura(
+    (paraQuemOpera ? '<p style="font-size:13px;line-height:1.6;margin:0 0 16px;padding:8px 12px;border-radius:8px;background:#f1f5f9;color:#334155">' + escapar(paraQuemOpera) + '</p>' : '') +
     '<h1 style="font-size:18px;margin:0 0 12px">' + escapar(titulo) + '</h1>' +
     '<ul style="font-size:14px;line-height:1.6;margin:0 0 20px;padding-left:20px;color:#334155">' + itens + extra + '</ul>' +
     '<p style="font-size:14px;line-height:1.6;margin:0 0 20px;color:#334155">' + causas + '</p>' +
     '<p style="font-size:14px;line-height:1.6;margin:0 0 20px;color:#334155">Você não precisa fazer nada aqui: quando a tela voltar a ter internet, ela volta a exibir sozinha o que já estava programado.</p>' +
-    (appUrl ? '<p style="margin:0 0 24px"><a href="' + appUrl + '/app/?ir=screens" style="display:inline-block;background:#5B2EFF;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">Ver minhas TVs</a></p>' : '') +
+    (appUrl ? '<p style="margin:0 0 24px"><a href="' + appUrl + (copia ? '/app/' : '/app/?ir=screens') + '" style="display:inline-block;background:#5B2EFF;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">' + (copia ? 'Abrir a Frota (Plataforma › Negócio)' : 'Ver minhas TVs') + '</a></p>' : '') +
     '<p style="font-size:12px;line-height:1.6;color:#64748b;margin:0">Este aviso é enviado uma vez por queda.</p>',
     { base: appUrl });
 
@@ -232,15 +246,22 @@ function escapar(s) {
  * foi avisada — o defeito exato que este arquivo existe para não ter. Um
  * aviso duplicado é chato; um aviso que não sai é a tela preta que o cliente
  * descobre sozinho.
+ *
+ * `copia`: endereços de quem opera o MultiTelas (copiaDoAmbiente). A cópia
+ * sai DEPOIS que o dono recebeu e a queda foi marcada, para ser uma por queda
+ * como o aviso dele; e falhar na cópia não desfaz nada nem repete o aviso do
+ * dono — a cópia é para quem acompanha, o aviso que conta é o do cliente.
  */
-async function varrer({ db, mail, appUrl, agora }) {
+async function varrer({ db, mail, appUrl, agora, copia }) {
   const t0 = typeof agora === 'number' ? agora : Date.now();
   // A busca volta mais que a janela: a janela conta horas de EXPEDIENTE, e
   // uma TV que caiu sábado às 22h só completa 15 minutos de expediente
   // fora do ar na segunda às 7h15.
   const linhas = await db.telasCaidas(t0 - BUSCA_MS, t0 - LIMITE_MS);
   const avisos = decidir(linhas, t0);
+  const paraQuemOpera = Array.isArray(copia) ? copia : [];
   let enviados = 0;
+  let copias = 0;
 
   for (const aviso of avisos) {
     const { subject, text, html } = mensagem(aviso, appUrl);
@@ -252,11 +273,48 @@ async function varrer({ db, mail, appUrl, agora }) {
       // Falha de provedor não pode derrubar a varredura das outras contas, e
       // não marca: a próxima passada tenta de novo.
       log.aviso('vigia.envio-falhou', { conta: aviso.tenantId, motivo: e.message });
+      continue;
+    }
+    // O dono que também opera (a conta de teste do próprio operador) não recebe o mesmo aviso duas vezes.
+    const outros = paraQuemOpera.filter((e) => e !== String(aviso.email || '').trim().toLowerCase());
+    if (!outros.length) continue;
+    const c = mensagem(aviso, appUrl, { copia: true });
+    for (const para of outros) {
+      try {
+        await mail.send({ to: para, subject: c.subject, html: c.html, text: c.text });
+        copias++;
+      } catch (e) {
+        log.aviso('vigia.copia-falhou', { conta: aviso.tenantId, motivo: e.message });
+      }
     }
   }
 
-  if (enviados) log.info('vigia.avisos', { contas: enviados });
-  return { avisos: avisos.length, enviados };
+  if (enviados) log.info('vigia.avisos', { contas: enviados, copias });
+  return { avisos: avisos.length, enviados, copias };
+}
+
+/*
+ * QUEM OPERA TAMBÉM QUER SABER (lançamento de dezembro, 8 TVs numa empresa).
+ *
+ * O aviso vai para o dono da CONTA do cliente — quem paga e cuida das TVs
+ * dele. Quem opera o MultiTelas não ficava sabendo de nada: na primeira
+ * semana de um cliente novo, a TV que cai às 9h só aparecia para o operador
+ * se ele abrisse a Frota, ou quando o cliente ligasse. ALERTA_OFFLINE_COPIA
+ * (e-mails separados por vírgula) recebe uma cópia de cada aviso, com a mesma
+ * regra: só no expediente da TV, uma vez por queda, nunca TV abandonada.
+ *
+ * Vazia por padrão, e não ADMIN_EMAILS: com muitas contas, a cópia de toda
+ * queda de todo cliente é ruído — é coisa de ligar para acompanhar um
+ * lançamento e desligar depois.
+ */
+function copiaDoAmbiente(env) {
+  const e = env || process.env;
+  const vistos = new Set();
+  for (const bruto of String(e.ALERTA_OFFLINE_COPIA || '').split(/[,;\s]+/)) {
+    const v = bruto.trim().toLowerCase();
+    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) vistos.add(v);
+  }
+  return [...vistos];
 }
 
 /*
@@ -266,8 +324,8 @@ async function varrer({ db, mail, appUrl, agora }) {
  * não pulsou, e varrer nesse instante acusaria de offline metade das telas que
  * estão vivas esperando o primeiro heartbeat depois do deploy.
  */
-function ligar({ db, mail, appUrl }) {
-  const passada = () => varrer({ db, mail, appUrl })
+function ligar({ db, mail, appUrl, copia }) {
+  const passada = () => varrer({ db, mail, appUrl, copia })
     .catch((e) => log.aviso('vigia.varredura-falhou', { motivo: e.message }));
   const inicio = setTimeout(passada, 60 * 1000);
   if (inicio.unref) inicio.unref();
@@ -277,6 +335,6 @@ function ligar({ db, mail, appUrl }) {
 }
 
 module.exports = {
-  decidir, mensagem, varrer, ligar, faz, LIMITE_MS, JANELA_MS, INTERVALO_MS, MAX_NOMEADAS,
+  decidir, mensagem, varrer, ligar, copiaDoAmbiente, faz, LIMITE_MS, JANELA_MS, INTERVALO_MS, MAX_NOMEADAS,
   EXPEDIENTE_PADRAO, normalizarExpediente, dentroDoExpediente, tempoDeExpediente,
 };

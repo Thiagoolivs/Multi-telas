@@ -3695,8 +3695,10 @@ db.init()
         aviso: 'sem RESEND_API_KEY/BREVO_API_KEY o alerta de tela offline não sai.',
       });
     } else {
-      vigia.ligar({ db, mail, appUrl: (process.env.APP_URL || '').replace(/\/$/, '') });
-      log.info('vigia.ligado', { minutos: vigia.LIMITE_MS / 60000 });
+      // ALERTA_OFFLINE_COPIA: quem opera recebe cópia de cada queda (server/vigia.js, copiaDoAmbiente).
+      const copia = vigia.copiaDoAmbiente();
+      vigia.ligar({ db, mail, appUrl: (process.env.APP_URL || '').replace(/\/$/, ''), copia });
+      log.info('vigia.ligado', { minutos: vigia.LIMITE_MS / 60000, copias: copia.length });
     }
     // Lembretes de fim do teste (server/lembretes.js). Sem provedor de e-mail
     // iriam só para o log; em desenvolvimento é o que se quer ver.

@@ -37,6 +37,7 @@ function frota(linhas, agora, vivaMs) {
     const exp = json(d.expediente);
     let fora = false;
     if (exp && !online) { try { fora = !E.dentro(t, E.normalizar(exp)); } catch (e) { fora = false; } }
+    const info = json(d.info) || {};
     return {
       id: d.id,
       nome: d.name || 'Tela sem nome',
@@ -48,6 +49,17 @@ function frota(linhas, agora, vivaMs) {
       foraDoExpediente: fora,
       // O mesmo resumo que o cliente vê no cartão da tela (js/aparelho.js).
       aparelho: A.descrever(d.info),
+      /*
+       * O que o app da TV conta no pulso e ninguém via (lançamento de
+       * dezembro): a TV que travou e o vigia do app recuperou continua "no
+       * ar" e nunca vira aviso de queda — só o resumo do vigia mostra que ela
+       * precisou ser salva ("recargas 1 · webview 0 · pedidos 1 · app 0",
+       * android/README.md). E a TV com o app fora da tela inicial é a que não
+       * volta sozinha depois de o Android fechar o app. Só o que o app disse:
+       * TV de navegador e casca antiga não têm nem um nem outro.
+       */
+      vigiaDoApp: info.app && typeof info.appVigia === 'string' ? info.appVigia.slice(0, 60) : '',
+      semTelaInicial: !!info.app && info.inicial === false,
     };
   }).sort((a, b) => {
     // Apagada de verdade primeiro; depois a que dorme no horário do dono; no ar por último.
