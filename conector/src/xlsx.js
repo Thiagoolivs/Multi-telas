@@ -74,7 +74,9 @@ function analisarFormato(codigo) {
   // "m" sozinho é mês; ao lado de h/s ("h:mm") é minuto.
   const hora = /[hs]/i.test(limpo);
   const data = /[dy]/i.test(limpo) || (/m/i.test(limpo) && !hora);
-  return { data: data || hora, temData: data, temHora: hora, segundos: /s/i.test(limpo) };
+  // "0%", "0.0%": o Excel guarda 0,875 e mostra 87,5%.
+  const percentual = !data && !hora && /%/.test(limpo);
+  return { data: data || hora, temData: data, temHora: hora, segundos: /s/i.test(limpo), percentual };
 }
 
 function estilosDeData(stylesXml) {
@@ -87,7 +89,9 @@ function estilosDeData(stylesXml) {
     const id = Number((/\bnumFmtId="(\d+)"/.exec(m[1]) || [])[1] || 0);
     if (personalizados[id] != null) {
       const a = analisarFormato(personalizados[id]);
-      estilos.push(a.data ? a : null);
+      estilos.push(a.data || a.percentual ? a : null);
+    } else if (id === 9 || id === 10) {
+      estilos.push({ data: false, percentual: true });
     } else if (FORMATOS_DATA.has(id)) {
       estilos.push({ data: true, temData: !FORMATOS_HORA.has(id) || id === 22, temHora: FORMATOS_HORA.has(id) || id === 22, segundos: [19, 21, 46, 47].includes(id) });
     } else estilos.push(null);
@@ -96,6 +100,24 @@ function estilosDeData(stylesXml) {
 }
 
 const dd = (n) => String(n).padStart(2, '0');
+
+/*
+ * O NÚMERO COMO O EXCEL MOSTRA NO BRASIL: vírgula decimal ("12,5") e o
+ * percentual multiplicado ("87,5%"). O servidor lê a planilha como lê o CSV
+ * do Google ou o do Excel em português (server/planilha.js, kpis.js
+ * lerNumero): ali "0.875" ou "1.234" com ponto é milhar brasileiro, e o
+ * cardápio de R$ 5.899 viraria 5899. Com vírgula não há o que adivinhar.
+ */
+function numeroDoExcel(v, percentual) {
+  const bruto = String(v == null ? '' : v).trim();
+  const n = Number(bruto);
+  if (!bruto || !Number.isFinite(n)) return texto(v);
+  // toPrecision(15): o 0.30000000000000004 da conta binária volta a ser 0,3.
+  const x = Number((percentual ? n * 100 : n).toPrecision(15));
+  let s = String(x);
+  if (/e/i.test(s)) s = Math.abs(x) < 1 ? x.toFixed(20).replace(/0+$/, '').replace(/\.$/, '') : s;
+  return s.replace('.', ',') + (percentual ? '%' : '');
+}
 
 // O número de série do Excel → como ele mostra no Brasil.
 function dataDoExcel(serie, formato, base1904) {
@@ -145,7 +167,7 @@ function lerXlsx(buf) {
       else if (tipo === 'str') valor = texto(v);
       else if (tipo === 'b') valor = v === '1' ? 'VERDADEIRO' : 'FALSO';
       else if (tipo === 'e') valor = '';
-      else if (v != null && v !== '') valor = estilo ? dataDoExcel(v, estilo, base1904) : texto(v);
+      else if (v != null && v !== '') valor = estilo && estilo.data ? dataDoExcel(v, estilo, base1904) : numeroDoExcel(v, !!(estilo && estilo.percentual));
       if (i >= 0 && i < 16384) linha[i] = valor;
     }
     for (let j = 0; j < linha.length; j++) if (linha[j] == null) linha[j] = '';
@@ -182,4 +204,4 @@ function decodificar(buf) {
   }
 }
 
-module.exports = { abrirZip, lerXlsx, paraCsv, decodificar, dataDoExcel, analisarFormato, estilosDeData };
+module.exports = { abrirZip, lerXlsx, paraCsv, decodificar, dataDoExcel, numeroDoExcel, analisarFormato, estilosDeData };

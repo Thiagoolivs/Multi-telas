@@ -189,7 +189,7 @@ test('o servidor: token, pasta, planilha, comunicado, a TV pelo envio em lote, a
   const servidor = spawn(process.execPath, ['server.js'], {
     cwd: RAIZ, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: process.env.TEST_DATABASE_URL || '', DATA_DIR: dados, MEDIA_DIR: dados, AI_PROVIDER: 'dev',
-      MT_INTEGRACAO_ESPERA_MS: '150', INTEGRACAO_HOST_TESTE: '127.0.0.1:' + PORTA_IMAGEM, LOG_FORMATO: 'json' },
+      MT_INTEGRACAO_ESPERA_MS: '150', INTEGRACAO_HOST_TESTE: '127.0.0.1:' + PORTA_IMAGEM, LOG_FORMATO: 'json', MT_CONECTOR_REPO: 'desligado', MT_APK_REPO: 'desligado' },
   });
   servidor.stdout.on('data', (c) => { saida += c; });
   servidor.stderr.on('data', (c) => { saida += c; });
@@ -307,7 +307,7 @@ test('o servidor: token, pasta, planilha, comunicado, a TV pelo envio em lote, a
   // O atalho para fora da pasta.
   for (const ruim of ['..%2F..%2Fetc%2Fpasswd', '%2E%2E%2Fx.jpg', 'a%5Cb.jpg', 'C%3A%2Fx.jpg', 'a%2F%2Fb.jpg', '%00.jpg']) {
     const r = await subir(ruim, JPG());
-    assert.deepEqual([r.status, r.json && r.json.code], [400, 'nome-invalido'], ruim);
+    assert.deepEqual([r.status, r.json && r.json.code], [422, 'nome-invalido'], ruim);
   }
 
   /* ----- a pasta vai às TVs pelo envio em lote ----- */
@@ -387,7 +387,7 @@ test('o servidor: token, pasta, planilha, comunicado, a TV pelo envio em lote, a
   assert.equal((await comunicar('c2', { titulo: 'x', imagemUrl: 'pasta:avisos/nao-existe.jpg' })).json.code, 'imagem-nao-encontrada');
   assert.equal((await comunicar('c2', { titulo: 'x', imagemUrl: 'pasta:avisos/boas-vindas.mp4' })).json.code, 'imagem-invalida');
   const interna = await comunicar('c2', { titulo: 'x', imagemUrl: 'https://127.0.0.1:9/foto.png' });
-  assert.deepEqual([interna.status, interna.json.code], [400, 'imagem-invalida']);
+  assert.deepEqual([interna.status, interna.json.code], [422, 'imagem-invalida']);
   assert.match(interna.json.error, /rede interna/);
   assert.equal((await comunicar('c2', { titulo: 'x', imagemUrl: 'http://intranet.local/foto.png' })).json.code, 'imagem-invalida');
   assert.match((await comunicar('c2', { titulo: 'x', imagemUrl: 'http://127.0.0.1:' + PORTA_IMAGEM + '/mentira.png' })).json.error, /conferido pelo conteúdo/);
@@ -412,6 +412,38 @@ test('o servidor: token, pasta, planilha, comunicado, a TV pelo envio em lote, a
   assert.deepEqual((await pedir('/api/v1/comunicados/depois', { method: 'DELETE', token })).json, { ok: true, id: 'depois', removido: true });
   assert.equal((await pedir('/api/integracoes/' + integ.id + '/comunicados/c2', { method: 'DELETE', cookie: c })).status, 200);
   assert.ok(await esperar(async () => { const a = await avisosNa(tv1); return !a.includes('Começa daqui a pouco') && !a.includes('Natal'); }), 'o comunicado apagado ficou na TV');
+  // Recusa do conteúdo é 422 (o Conector não repete); JSON estragado é 400.
+  assert.deepEqual([(await comunicar('ruim', { titulo: '' })).status, (await pedir('/api/v1/comunicados/ruim', { method: 'PUT', token, corpo: '{x', headers: { 'Content-Type': 'application/json' } })).status], [422, 400]);
+
+  /* ----- a pasta reservada das imagens do feed ("_feed-<chave>") ----- */
+  const fotoDoFeed = PNG(1500);
+  const nomeDoFeed = sha(fotoDoFeed).slice(0, 32) + '.png';
+  const pastaDoFeed = '_feed-' + feed.chave;
+  const naPastaDoFeed = (nome, corpo, cab) => pedir('/api/v1/pastas/' + pastaDoFeed + '/arquivos/' + nome, { method: 'PUT', token, corpo, headers: Object.assign({ 'Content-Type': 'image/png', 'X-Sha256': sha(corpo) }, cab || {}) });
+  assert.equal((await naPastaDoFeed(nomeDoFeed, fotoDoFeed)).status, 200);
+  const videoNoFeed = MP4();
+  assert.equal((await naPastaDoFeed('v.mp4', videoNoFeed, { 'Content-Type': 'video/mp4' })).status, 415, 'a pasta do feed só guarda foto');
+  assert.deepEqual((await pedir('/api/v1/pastas/' + pastaDoFeed, { token })).json.arquivos.map((a) => a.nome), [nomeDoFeed]);
+  assert.equal((await pedir('/api/v1/pastas/_feed-nao-existe', { token })).json.code, 'pasta-desconhecida');
+  assert.equal((await pedir('/api/v1/conector', { token })).json.pastas.some((p) => p.chave.startsWith('_feed')), false, 'a pasta do feed apareceu no aperto de mão');
+  const doFeed = await comunicar('feed-item-1', { titulo: 'Notícia com foto', imagemUrl: 'pasta:' + pastaDoFeed + '/' + nomeDoFeed }, { 'X-Conector-Feed': feed.chave });
+  assert.equal(doFeed.status, 200, doFeed.txt);
+  const fotoNaTv = await esperar(async () => (await daIntegracao(tv1, 'comunicados:')).find((i) => i.type === 'image' && i._comunicado === 'feed-item-1'));
+  assert.ok(fotoNaTv, 'a foto do feed não chegou à TV');
+  assert.equal((await pedir(fotoNaTv.src)).status, 200);
+  assert.equal((await daIntegracao(tv1, 'pasta:')).some((i) => i.src === fotoNaTv.src), false, 'a imagem do feed virou item de playlist');
+  assert.deepEqual((await pedir('/api/v1/comunicados?feed=' + feed.chave, { token })).json.comunicados.map((x) => x.idExterno).sort(), ['feed-item-1'], 'o "noticia/1" foi trocado sem o X-Conector-Feed: deixou de ser do feed');
+  assert.equal((await comunicar('orfao', { titulo: 'x' }, { 'X-Conector-Feed': 'feed-apagado' })).json.code, 'feed-desconhecido');
+  // O nome curto não muda (o conector.json e os comunicados apontam para ele).
+  assert.equal((await pedir('/api/integracoes/' + integ.id + '/fontes/' + feed.id, { method: 'PUT', cookie: c, json: { chave: 'outro' } })).json.code, 'chave-fixa');
+  // Apagar o feed no painel: os comunicados dele saem das TVs agora, e as imagens dele somem.
+  assert.equal((await pedir('/api/integracoes/' + integ.id + '/fontes/' + feed.id, { method: 'DELETE', cookie: c })).status, 200);
+  const semFeed = (await daIntegracao(tv1, 'comunicados:')).map((i) => i.titulo);
+  assert.equal(semFeed.includes('Notícia com foto'), false, 'o comunicado do feed apagado ficou na TV');
+  assert.ok(semFeed.includes('Festa de fim de ano (mudou o horário)'), 'saiu também o comunicado que não é mais do feed');
+  assert.equal((await pedir(fotoNaTv.src)).status, 404, 'a imagem do feed apagado ficou guardada');
+  assert.deepEqual((await pedir('/api/v1/comunicados?feed=' + feed.chave, { token })).json.comunicados, []);
+  assert.deepEqual((await pedir('/api/v1/conector', { token })).json.feeds, []);
 
   /* ----- o escopo: o token é de uma conta só ----- */
   const deOutra = (await pedir('/api/integracoes', { method: 'POST', cookie: outra, json: { nome: 'Intranet' } })).json;
@@ -486,8 +518,8 @@ test('o painel: Integrações no avatar e nos Apps, o token uma vez, o passo a p
   assert.match(p, /curl -X PUT/);
   assert.match(p, /Precisa de aprovação/);
   assert.doesNotMatch(p, /window\.(confirm|prompt|alert)/);
-  // O instalador é servido como arquivo público (só ele, e não a pasta inteira).
-  assert.match(ler('server.js'), /'\/conector\/MultiTelasConector\.zip',/);
+  // O instalador vem do Release (server/conector-release.js), só para quem está logado (test/conector-download.test.js).
+  assert.match(ler('server.js'), /if \(urlPath === '\/conector\/' \+ conectorRelease\.NOME_ZIP\)/);
   // A documentação existe, em português, com o curl.
   const doc = ler('docs/INTEGRACOES.md');
   for (const trecho of ['GET /conector', 'PUT /pastas/:chave/arquivos/:nome', 'PUT /planilhas/:chave', 'PUT /comunicados/:idExterno', 'Salve os slides como imagem', '120 pedidos por minuto', 'curl -X PUT']) {

@@ -27,15 +27,14 @@ const { registrarErro, fonte } = require('./estado');
 const { ErroDoServidor, TokenRevogado, SemConexao } = require('./rede');
 const { ConversorIndisponivel } = require('./conversor');
 
-// Vão como estão.
+// Vão como estão: o que a TV mostra (o servidor confere pelos bytes e recusa o resto com 415).
+// Planilha (.xlsx, .csv) não entra numa pasta: ela é uma "planilha" no painel, e vai por outro caminho.
 const TIPOS = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
   webp: 'image/webp',
   mp4: 'video/mp4',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  csv: 'text/csv',
 };
 // Viram uma imagem por slide/página aqui (a TV não toca PowerPoint nem PDF;
 // o servidor recusa os dois). Veja conversor.js.
@@ -91,8 +90,12 @@ function motivoParaIgnorar(nome) {
  * absoluto, sem caractere de controle. Vem da listagem da pasta (não de
  * fora), mas é conferido de novo: é ele que vira a URL do PUT.
  */
+// Os tetos do servidor (server/integracoes.js, nomeDoArquivo): 240 caracteres e 8 níveis. Passou, fica aqui com o motivo.
+const NOME_MAX = 240;
+const NIVEIS_MAX = 8;
 function nomeSeguro(rel) {
-  if (typeof rel !== 'string' || !rel || rel.length > 400) return false;
+  if (typeof rel !== 'string' || !rel || rel.length > NOME_MAX) return false;
+  if (rel.split('/').length > NIVEIS_MAX) return false;
   if (/[\u0000-\u001f\u007f\\]/.test(rel)) return false;
   if (rel.startsWith('/') || /^[A-Za-z]:/.test(rel)) return false;
   return rel.split('/').every((p) => p && p !== '.' && p !== '..' && p.length <= 255 && !/[<>:"|?*]/.test(p));
@@ -192,7 +195,7 @@ async function lerPasta(raiz, op = {}) {
       presentes.add(relNome);
       const conversao = conversaoDe(nome);
       if (!tipoDe(nome) && !conversao) { ignorados.push({ nome: relNome, motivo: 'extensão não permitida (só ' + EXTENSOES.join(', ') + ')' }); continue; }
-      if (!nomeSeguro(relNome)) { ignorados.push({ nome: relNome, motivo: 'nome com caractere que não dá para enviar' }); continue; }
+      if (!nomeSeguro(relNome)) { ignorados.push({ nome: relNome, motivo: 'nome que não dá para enviar (caractere proibido, mais de ' + NOME_MAX + ' letras ou mais de ' + NIVEIS_MAX + ' subpastas)' }); continue; }
       arquivos.push({ nome: relNome, caminho: alvo, tamanho: st.size, mtimeMs: st.mtimeMs, conversao });
       if (arquivos.length >= maxArquivos) {
         completa = false;

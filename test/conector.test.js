@@ -516,10 +516,11 @@ test('planilha: a primeira aba do .xlsx vira CSV (datas como no Excel, vírgula 
   const arq = escrever(m.raiz, 'Cardapio.xlsx', zip(CARDAPIO));
   m.gravarConfig({ planilhas: { cardapio: arq } });
   await ciclo(m.ctx);
+  // O número sai como o Excel mostra no Brasil (vírgula decimal): no servidor, "12.5" com ponto seria lido como milhar.
   const esperado = 'Prato,Preço,Data,Disponível\r\n'
-    + '"Arroz, feijão",12.5,22/11/2026,VERDADEIRO\r\n'
+    + '"Arroz, feijão","12,5",22/11/2026,VERDADEIRO\r\n'
     + '"Peixe\nfrito","9,90",22/11/2026 12:00,FALSO\r\n'
-    + '"Diz ""olá""",,22.4,\r\n';
+    + '"Diz ""olá""",,"22,4",\r\n';
   assert.equal(srv.planilhas.cardapio.csv, esperado);
   assert.equal(srv.planilhas.cardapio.tipo, 'text/csv; charset=utf-8');
   srv.pedidos.length = 0;
@@ -531,7 +532,7 @@ test('planilha: a primeira aba do .xlsx vira CSV (datas como no Excel, vírgula 
   assert.deepEqual(srv.escritas(), []);
   fs.utimesSync(arq, new Date(Date.now() - 60000), new Date(Date.now() - 60000));
   await ciclo(m.ctx);
-  assert.match(srv.planilhas.cardapio.csv, /^Prato,Preço,Data,Disponível\r\nLasanha,12\.5/);
+  assert.match(srv.planilhas.cardapio.csv, /^Prato,Preço,Data,Disponível\r\nLasanha,"12,5"/);
 
   // CSV do Excel brasileiro (Windows-1252) sobe como UTF-8; .xls antigo é recusado com recado.
   const csv = escrever(m.raiz, 'metas.csv', Buffer.from([...Buffer.from('setor;meta\nProdu'), 0xe7, 0xe3, ...Buffer.from('o;95%\n')]));

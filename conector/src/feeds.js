@@ -24,8 +24,9 @@ const { registrarErro, fonte } = require('./estado');
 const MAX_ITENS = 50;
 const MAX_FEED = 5 * 1024 * 1024;
 const MAX_IMAGEM = 15 * 1024 * 1024;
-const MAX_TITULO = 200;
-const MAX_TEXTO = 2000;
+// Os tetos do servidor (o comunicado guarda 120 no título e 600 no texto): cortar AQUI põe as reticências no lugar certo.
+const MAX_TITULO = 120;
+const MAX_TEXTO = 600;
 
 /* ---------------- texto ---------------- */
 
@@ -330,6 +331,30 @@ async function sincronizarFeed(ctx, feed) {
   }
   log.esquecer(id + '|erro');
 
+  /*
+   * A MEMÓRIA DO SERVIDOR. Sem o estado.json (apagado, PC trocado), o
+   * conector não saberia o que já mandou, e o item que saísse do feed ficaria
+   * na TV para sempre. Uma vez por processo, pergunta ao servidor os
+   * comunicados deste feed e passa a cuidar deles também: o que ainda está no
+   * feed é mandado de novo (o PUT é idempotente), o que saiu é apagado como
+   * qualquer outro.
+   */
+  const memoria = ctx.memoria || {};
+  const conferidos = memoria.feedsConferidos || (memoria.feedsConferidos = {});
+  if (!ctx.simular && !conferidos[feed.chave] && api.listarComunicados) {
+    try {
+      const r = await api.listarComunicados(feed.chave);
+      for (const c of (r && Array.isArray(r.comunicados) ? r.comunicados : [])) {
+        if (c && typeof c.idExterno === 'string' && !est.itens[c.idExterno]) est.itens[c.idExterno] = { hash: '', titulo: 'comunicado ' + c.idExterno.slice(0, 8), imagem: '', faltando: 0 };
+      }
+      conferidos[feed.chave] = true;
+    } catch (e) {
+      if (e instanceof TokenRevogado || e instanceof SemConexao) throw e;
+      // Servidor sem a lista (versão antiga): segue só com a memória local. Erro passageiro (5xx): pergunta de novo no próximo ciclo.
+      conferidos[feed.chave] = !(e instanceof ErroDoServidor && e.status >= 500);
+    }
+  }
+
   const vistos = new Set();
   for (const item of itens.slice(0, MAX_ITENS)) {
     const idExterno = idDoItem(feed.chave, item);
@@ -343,13 +368,20 @@ async function sincronizarFeed(ctx, feed) {
     if (anterior && anterior.hash === hash) { if (!ctx.simular) anterior.faltando = 0; continue; }
     if (ctx.simular) { resumo.salvos.push(dados.titulo); continue; }
     try {
-      await api.salvarComunicado(idExterno, dados);
+      await api.salvarComunicado(idExterno, dados, feed.chave);
       est.itens[idExterno] = { hash, titulo: dados.titulo, imagem: nomeImagem || '', faltando: 0 };
       resumo.salvos.push(dados.titulo);
       log.info(rotulo + ': comunicado ' + (anterior ? 'atualizado' : 'novo') + ': "' + dados.titulo + '".');
     } catch (e) {
       if (e instanceof TokenRevogado || e instanceof SemConexao) throw e;
       const msg = e instanceof ErroDoServidor ? e.message + ' (' + e.status + ')' : e.message;
+      if (e instanceof ErroDoServidor && (e.status === 413 || e.status === 415 || e.status === 422)) {
+        // Recusado pelo CONTEÚDO (como na pasta): não manda de novo enquanto o item não mudar.
+        est.itens[idExterno] = { hash, titulo: dados.titulo, imagem: nomeImagem || '', faltando: 0, recusado: e.message };
+        log.erro(rotulo + ': o servidor recusou o comunicado "' + dados.titulo + '": ' + msg + '. Não tento de novo enquanto o item não mudar.');
+        registrarErro(estado, id, '"' + dados.titulo + '" recusado: ' + e.message, agora);
+        continue;
+      }
       log.erro(rotulo + ': o servidor não aceitou o comunicado "' + dados.titulo + '": ' + msg + '.');
       registrarErro(estado, id, '"' + dados.titulo + '": ' + msg, agora);
       resumo.erros.push(msg);

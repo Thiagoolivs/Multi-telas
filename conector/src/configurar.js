@@ -87,7 +87,7 @@ async function configurar(ctx) {
   let tokenNovo = '';
   if (env[VARIAVEL_TOKEN]) p.escrever('Token: usando a variável de ambiente ' + VARIAVEL_TOKEN + ' (não vai para o arquivo).');
   else {
-    tokenNovo = await p.segredo('Token do conector (copie do painel; ' + (cfg.token ? 'Enter mantém o atual' : 'obrigatório') + ')');
+    tokenNovo = await p.segredo('Token do conector (no painel: menu do avatar › Integrações; ' + (cfg.token ? 'Enter mantém o atual' : 'obrigatório') + ')');
     if (tokenNovo) cfg.token = tokenNovo;
   }
 
@@ -106,7 +106,7 @@ async function configurar(ctx) {
       plano = await api.handshake();
       p.escrever('  OK: conta "' + ((plano.conta && plano.conta.nome) || '?') + '", integração "' + ((plano.integracao && plano.integracao.nome) || '?') + '".');
     } catch (e) {
-      p.escrever('  FALHOU: ' + (e instanceof TokenRevogado ? 'o token foi recusado (revogado ou copiado errado). Gere outro no painel.' : e.message));
+      p.escrever('  FALHOU: ' + (e instanceof TokenRevogado ? 'o token foi recusado (revogado ou copiado errado). Gere outro no painel: menu do avatar › Integrações › Token novo.' : e.message));
     }
   } else p.escrever('Sem token não dá para testar a conexão.');
 

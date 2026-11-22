@@ -157,7 +157,7 @@ function validar(cfg) {
   const p = [];
   const s = servidorValido(cfg.servidor);
   if (s) p.push(s);
-  if (!cfg.token) p.push('falta o token (copie do painel do MultiTelas e rode "MultiTelasConector.exe configurar")');
+  if (!cfg.token) p.push('falta o token (copie do painel do MultiTelas, menu do avatar › Integrações, e rode "MultiTelasConector.exe configurar")');
   else if (/\s/.test(cfg.token)) p.push('o token tem espaço no meio: copie de novo do painel');
   for (const tipo of ['pastas', 'planilhas']) {
     for (const chave of Object.keys(cfg[tipo])) {

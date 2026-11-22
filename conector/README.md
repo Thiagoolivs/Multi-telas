@@ -14,7 +14,7 @@ Aqui vai o resumo.
 - Windows 10/11 ou Server 2016+, 64 bits.
 - Saída HTTPS (443) para `app.multitelas.net.br`, direta ou por proxy.
 - Uma **conta** do Windows que consiga ler a pasta de rede e a planilha.
-- O token do conector, gerado no painel.
+- O token do conector, gerado no painel (menu do avatar › Integrações).
 - PowerPoint instalado, só se a pasta tiver `.pptx` (os slides viram imagens).
 
 ## A conta (o ponto que mais dá problema)

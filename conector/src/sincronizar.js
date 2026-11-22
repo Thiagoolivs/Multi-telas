@@ -31,7 +31,7 @@ class ConfigInvalida extends Error { constructor(problemas) { super(problemas.jo
 
 const MENSAGEM_401 = 'O servidor do MultiTelas recusou o token (401): ele foi revogado no painel ou está errado. '
   + 'O conector PAROU de sincronizar e não vai tentar de novo com este token. Para voltar: gere um token novo no painel '
-  + '(na tela do Conector) e rode "MultiTelasConector.exe configurar" (ou troque "token" no conector.json; o conector percebe sozinho).';
+  + '(menu do avatar › Integrações › Token novo) e rode "MultiTelasConector.exe configurar" (ou troque "token" no conector.json; o conector percebe sozinho).';
 
 const impressao = (token) => crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 16);
 

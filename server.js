@@ -52,6 +52,8 @@ const pessoas = require('./js/pessoas.js');
 const fotoQr = require('./server/foto-qr');
 const guarda = require('./server/guarda');
 const apk = require('./server/apk');
+// O instalador do Conector MultiTelas, do Release do GitHub (docs/INTEGRACOES.md).
+const conectorRelease = require('./server/conector-release');
 const esbocoDoPedido = require('./server/esboco');
 const qualidade = require('./server/qualidade');
 const kpis = require('./server/kpis');
@@ -3262,6 +3264,39 @@ async function handleStatic(req, res, urlPath) {
     return res.end(req.method === 'HEAD' ? undefined : pub.bytes);
   }
   /*
+   * O INSTALADOR DO CONECTOR (docs/INTEGRACOES.md, server/conector-release.js):
+   * o zip do Release mais novo, guardado em memória. Só para o dono e o
+   * administrador logados — são eles que criam o token, e um zip de 38 MB
+   * aberto a qualquer um é banda nossa para quem quiser gastar (não há
+   * segredo nele: sem o token da conta, o Conector não faz nada). Quem não
+   * pode, ou quando ainda não há Release, recebe uma página que diz o que
+   * fazer, e não um erro cru.
+   */
+  if (urlPath === '/conector/' + conectorRelease.NOME_ZIP) {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return sendJson(res, 405, { error: 'só GET' });
+    const html = (status, titulo, texto) => {
+      res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(req.method === 'HEAD' ? undefined : conectorRelease.pagina(titulo, texto));
+    };
+    const sess = await auth.currentSession(req).catch(() => null);
+    if (!sess) return html(401, 'Entre no painel para baixar', 'O Conector MultiTelas é baixado pelo painel, por quem é dono ou administrador da conta.');
+    if (!canManageTeam(sess.role)) return html(403, 'Só o dono ou um administrador baixa', 'Peça para o dono da conta (ou um administrador) baixar o Conector em Integrações e criar o token.');
+    const rl = rateLimit('conector:zip:' + sess.user_id, 20, 60 * 60 * 1000);
+    if (!rl.ok) return html(429, 'Muitos downloads agora', 'Espere ' + Math.ceil(rl.retryAfter / 60) + ' minutos e tente de novo.');
+    const pub = await conectorRelease.obter().catch(() => null);
+    if (!pub) return html(404, 'O instalador ainda não está disponível', 'A versão do Conector MultiTelas ainda não foi publicada. Tente de novo mais tarde ou fale com o suporte.');
+    res.writeHead(200, {
+      'Content-Type': 'application/zip',
+      'Content-Length': String(pub.bytes.length),
+      'Content-Disposition': 'attachment; filename="MultiTelasConector-' + pub.versao.versao + '.zip"',
+      ETag: '"' + pub.versao.sha256 + '"',
+      'X-Conector-Sha256': pub.versao.sha256,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return res.end(req.method === 'HEAD' ? undefined : pub.bytes);
+  }
+  /*
    * Foto pelo QR (D31): a página do pedido do RH. Fora do período ou
    * pausado, a página diz isso em vez de um formulário que não vai funcionar.
    */
@@ -3339,8 +3374,6 @@ const ARQUIVOS_PUBLICOS = new Set([
   '/player.html', '/bancada.html', '/experimento.html',
   '/sw.js', '/player.webmanifest', '/manifest.webmanifest',
   '/favicon.ico', '/robots.txt',
-  // O instalador do Conector MultiTelas (docs/INTEGRACOES.md): um arquivo, e não a pasta inteira.
-  '/conector/MultiTelasConector.zip',
 ]);
 
 function ehPublico(urlPath) {

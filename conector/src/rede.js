@@ -190,10 +190,17 @@ function criarApi(o) {
       cabecalhos: { 'content-type': 'text/csv; charset=utf-8' },
       timeoutMs: timeoutEnvio,
     }),
-    salvarComunicado: (id, dados) => pedir('PUT', '/api/v1/comunicados/' + enc(id), {
+    /*
+     * `feed`: a chave do feed de onde o item veio. O servidor guarda junto e,
+     * quando alguém apaga o feed no painel, tira os comunicados dele das TVs
+     * (o conector não fica sabendo: o feed só some do aperto de mão).
+     */
+    salvarComunicado: (id, dados, feed) => pedir('PUT', '/api/v1/comunicados/' + enc(id), {
       corpo: JSON.stringify(dados),
-      cabecalhos: { 'content-type': 'application/json' },
+      cabecalhos: Object.assign({ 'content-type': 'application/json' }, feed ? { 'x-conector-feed': feed } : {}),
     }),
+    // Os comunicados que o servidor tem deste feed (para quem perdeu o estado.json conseguir tirar o que saiu do feed).
+    listarComunicados: (feed) => pedir('GET', '/api/v1/comunicados' + (feed ? '?feed=' + enc(feed) : '')),
     apagarComunicado: (id) => pedir('DELETE', '/api/v1/comunicados/' + enc(id)),
   };
 }

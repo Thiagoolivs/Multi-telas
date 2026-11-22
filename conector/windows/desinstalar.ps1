@@ -53,5 +53,5 @@ if ($ApagarArquivos) {
 }
 
 Write-Host ''
-Write-Host 'Feito. Lembre de REVOGAR o token no painel do MultiTelas: ele continua válido até alguém revogar.' -ForegroundColor Yellow
+Write-Host 'Feito. Lembre de REVOGAR o token no painel do MultiTelas (menu do avatar > Integrações > Revogar): ele continua válido até alguém revogar.' -ForegroundColor Yellow
 Write-Host 'O que já foi enviado continua nas TVs; tire pelo painel, se for o caso.'

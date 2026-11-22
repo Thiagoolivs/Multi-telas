@@ -31,7 +31,7 @@ cada minuto e volta sozinho se cair.
 | Windows | Windows 10 ou 11, ou Windows Server 2016 ou mais novo, **64 bits**. Pode ser um PC comum que fique ligado no horário em que as TVs mostram conteúdo. |
 | Rede | Saída **HTTPS (porta 443)** para `app.multitelas.net.br`, direto ou por proxy. Nenhuma porta de entrada. |
 | Conta | Uma conta do Windows que consiga **ler** a pasta de rede e a planilha (veja a seção 2). |
-| Token | O token do conector, gerado no painel do MultiTelas (na tela do Conector). |
+| Token | O token do conector, gerado no painel do MultiTelas: **menu do avatar (canto de cima, à direita) › Integrações › Nova integração** (ou **Token novo**, numa que já existe). Só o dono ou um administrador da conta. |
 | PowerPoint | Só se o RH usar `.pptx`/`.ppt` na pasta: Office desktop com PowerPoint instalado e ativado neste PC. |
 | PDF | Nada a instalar: o próprio Windows converte (API `Windows.Data.Pdf`). |
 | Disco | ~250 MB (o programa tem ~100 MB; o resto é para as imagens convertidas de PowerPoint/PDF). |
@@ -119,10 +119,16 @@ estavam nas TVs ficam lá.
 
 ## 3. Instalar
 
-1. Baixe o `MultiTelasConector.zip`. Clique com o botão direito ›
-   **Propriedades** › marque **Desbloquear** › OK. Depois **Extrair tudo**.
-2. No painel do MultiTelas, gere o **token do conector** e deixe à mão (ele
-   aparece uma vez só).
+1. Baixe o `MultiTelasConector.zip` no painel do MultiTelas: **menu do avatar
+   › Integrações › Como instalar o Conector** (o link baixa a versão mais nova;
+   só o dono ou um administrador da conta, logado). Clique com o botão direito
+   › **Propriedades** › marque **Desbloquear** › OK. Depois **Extrair tudo**.
+   Quem quiser conferir: o sha256 do zip vem no cabeçalho `X-Conector-Sha256`
+   do download e no `MultiTelasConector.zip.sha256` do Release.
+2. No mesmo lugar (**Integrações**), gere o **token do conector** — **Nova
+   integração**, ou **Token novo** numa que já existe — e deixe à mão (ele
+   aparece uma vez só). Ali também se criam as pastas, as planilhas e os
+   feeds, com as TVs de cada um: o conector só lê o que o painel lista.
 3. Abra o **PowerShell como Administrador**, entre na pasta extraída e rode:
 
    ```powershell
@@ -232,8 +238,19 @@ português, ao lado do `.exe`.
 - Lê a pasta e as subpastas a cada ciclo (o painel define o intervalo, em geral
   1 minuto). A leitura periódica é a fonte da verdade; aviso de mudança do
   Windows só adianta o ciclo (em pasta de rede ele falha com frequência).
-- Envia: `jpg`, `jpeg`, `png`, `webp`, `mp4`, `xlsx`, `csv`. Converte em
-  imagens: `pptx`, `ppt`, `pdf`. O resto é ignorado (e aparece no `testar`).
+- Envia: `jpg`, `jpeg`, `png`, `webp`, `mp4` (o servidor confere o tipo pelo
+  conteúdo). Converte em imagens: `pptx`, `ppt`, `pdf` — cada slide/página vai
+  como `Apresentacao.pptx/01.png`, `02.png`…, e na TV os slides de uma
+  apresentação passam **juntos e em ordem**, mesmo com a pasta em "mais novo
+  primeiro". O `.pptx`/`.pdf` cru o servidor recusa (a TV não toca). Planilha
+  (`.xlsx`, `.csv`) numa pasta é ignorada: ela entra como **planilha** no
+  painel. O resto é ignorado (e aparece no `testar`).
+- O nome vai como está na pasta, com as subpastas (`Avisos/natal.jpg`): até
+  240 caracteres e 8 níveis de subpasta (o que passar fica de fora, com o
+  motivo no `testar`). No MultiTelas, cada pasta guarda até **200 arquivos**.
+- Arquivo que o servidor **recusa** (tipo, tamanho, nome: respostas 413, 415
+  ou 422) não é mandado de novo enquanto não mudar; falha de envio (rede,
+  400, 5xx) é tentada de novo no ciclo seguinte.
 - Ignora temporários e ocultos: `~$arquivo` (Office aberto), `~*`, `*.tmp`,
   `*.part`, `.*`, `Thumbs.db`, `desktop.ini`.
 - Só envia o que **mudou** (compara o SHA-256 com o que está no servidor).
@@ -246,15 +263,30 @@ português, ao lado do `.exe`.
 - Nunca sai da pasta configurada: atalho (link simbólico, junção) que aponta
   para fora é ignorado.
 
-**Planilha**: a primeira aba do `.xlsx` vira CSV (datas como o Excel mostra,
-dd/mm/aaaa) e sobe quando muda. CSV sobe como está (o do Excel brasileiro é
-convertido para UTF-8). `.xls` antigo não: salve como `.xlsx`.
+**Planilha**: a primeira aba do `.xlsx` vira CSV (RFC 4180: vírgula, aspas
+quando precisa, CRLF, UTF-8) com cada célula **como o Excel mostra no
+Brasil**: datas em dd/mm/aaaa, número com **vírgula decimal** (`12,5`,
+`5,899`) e percentual multiplicado (`87,5%`). Com ponto, o MultiTelas leria
+`5.899` como cinco mil oitocentos e noventa e nove. CSV sobe como está — o do
+Excel brasileiro, com `;` e vírgula decimal, é só convertido para UTF-8 —, e
+o servidor lê os dois do mesmo jeito. Sobe quando muda. `.xls` antigo não:
+salve como `.xlsx`.
 
-**Feed da intranet**: cada item vira um comunicado. A imagem do item é baixada
-pela intranet e enviada junto (o servidor não alcança a intranet). Item que
-sai do feed sai das TVs. Feed fora do ar, ou que devolve uma página de login,
-não apaga nada. Só os hosts de `intranet.hostsPermitidos` são lidos, inclusive
-em redirecionamento.
+**Feed da intranet**: cada item vira um comunicado (título até 120
+caracteres, texto até 600, com reticências), que entra na TV a partir da
+**data de publicação** do item e fica enquanto o item estiver no feed. A
+imagem do item é baixada pela intranet e enviada para a pasta reservada
+`_feed-<chave do feed>` no MultiTelas (o servidor não alcança a intranet);
+ela não aparece no painel como pasta e só vai para a TV junto do comunicado.
+Item que sai do feed sai das TVs (depois de 2 leituras sem ele), e a imagem
+dele também. Feed fora do ar, ou que devolve uma página de login, não apaga
+nada. Só os hosts de `intranet.hostsPermitidos` são lidos, inclusive em
+redirecionamento. Se o `estado.json` se perder, o conector pergunta ao
+MultiTelas o que já mandou daquele feed e continua tirando o que sai.
+
+**Apagar no painel**: apagar um feed no painel tira das TVs, na hora, os
+comunicados que vieram dele e as imagens; apagar uma pasta tira as fotos
+dela. O conector não precisa fazer nada (a fonte só some da lista dele).
 
 ---
 
@@ -312,9 +344,10 @@ powershell -ExecutionPolicy Bypass -File .\desinstalar.ps1               # remov
 powershell -ExecutionPolicy Bypass -File .\desinstalar.ps1 -ApagarArquivos  # remove tudo
 ```
 
-Depois **revogue o token no painel** do MultiTelas: ele continua válido até
-alguém revogar. O que já foi enviado continua nas TVs até ser tirado pelo
-painel.
+Depois **revogue o token no painel** do MultiTelas (menu do avatar ›
+Integrações › **Revogar**): ele continua válido até alguém revogar. O que já
+foi enviado continua nas TVs até ser tirado pelo painel (apagar a pasta, o
+feed ou a integração tira).
 
 ---
 
@@ -342,7 +375,9 @@ Comece sempre pelo `status` e pelo `conector.log`.
 | `Rodando agora: NÃO` | Abra o **Agendador de Tarefas** › "MultiTelas Conector" › *Histórico*. "Falha de logon" = senha errada ou trocada: rode o `instalar.ps1 -SemConfigurar` de novo com a senha nova. "Logon como lote negado" = falta o direito "Fazer logon como trabalho em lotes" (GPO). |
 | `sem permissão para ler "\\servidor\..."` | A conta da tarefa não tem leitura no compartilhamento ou no NTFS. Teste com `runas` (seção 2). |
 | `"Z:\..." não existe ou o servidor não respondeu` | Letra de unidade mapeada não existe para a tarefa: use `\\servidor\pasta`. Ou o servidor de arquivos está fora do ar (nada foi apagado). |
-| `recusou o token (401)` / `PARADO` | O token foi revogado ou copiado errado. Gere outro no painel e rode `configurar`. |
+| `recusou o token (401)` / `PARADO` | O token foi revogado ou copiado errado. Gere outro no painel (menu do avatar › Integrações › **Token novo**) e rode `configurar`. |
+| `o servidor recusou "X" (413/415/422)` | O arquivo não serve para a TV (tipo, tamanho, nome longo demais). Ele não é mandado de novo enquanto não mudar. O motivo vem escrito no log e no painel. |
+| `A pasta "X" já tem 200 arquivos, o máximo` | Tire os antigos do compartilhamento, ou divida em duas pastas no painel. |
 | `não achei o endereço app.multitelas.net.br (DNS)` / `conexão recusada` | Esta máquina não sai para a internet: firewall ou proxy (seção 7). |
 | `o proxy pediu usuário e senha (407)` | Ponha usuário e senha no `proxy`, ou peça exceção no proxy. |
 | `o certificado HTTPS … não foi aceito` | Proxy inspecionando HTTPS: veja "certificadoCA" na seção 7. |
@@ -360,11 +395,21 @@ Comece sempre pelo `status` e pelo `conector.log`.
 - **A validar no Windows:** conversão de PowerPoint (automação do Office) e de
   PDF (`Windows.Data.Pdf`), a tarefa agendada e o `.exe` em si foram montados
   e testados a partir do Linux, com simulação nas partes que só existem no
-  Windows. Confira o "Primeiro teste" na primeira instalação.
+  Windows. Confira o "Primeiro teste" na primeira instalação. Também a
+  conferir lá: a leitura de `\\servidor\pasta` pela conta de serviço (o
+  teste de ponta a ponta usa pastas locais), o proxy embutido do Node com o
+  proxy da empresa, o certificado da empresa (`certificadoCA`) e os acentos
+  dos `.ps1` no PowerShell 5.1 (o zip leva os scripts com BOM e CRLF).
+- O conector e o servidor foram testados juntos, de ponta a ponta, no Linux
+  (`test/conector-ponta-a-ponta.test.js`): a pasta, a subpasta, a planilha
+  `.xlsx` e a `.csv`, o RSS com imagem, o que sai, o compartilhamento fora do
+  ar e o token revogado.
 - Arquivo marcado como "oculto" no Windows (atributo), mas com nome comum, é
   enviado; só nomes começando com `.` ou `~` são tratados como ocultos.
 - Proxy com login do Windows (NTLM/Kerberos) e feed que exige login do Windows
   não são suportados.
-- Até 5.000 arquivos por pasta e 200 páginas por apresentação/PDF.
+- O conector lê até 5.000 arquivos por pasta e 200 páginas por
+  apresentação/PDF; o MultiTelas guarda até **200 arquivos por pasta**
+  (somando os slides) e 200 imagens por feed.
 - O `.exe` não é assinado digitalmente: o Windows SmartScreen pode avisar no
   primeiro uso ("Desbloquear", no passo 1, evita isso).
