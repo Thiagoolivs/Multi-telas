@@ -17,3 +17,6 @@ test_out*.txt
 experimento/
 pecas-ouro/fotos/experimento/
 regua-fotos/
+
+# Conector MultiTelas: o .exe, o .zip e o Node baixado para montar (npm run conector:build)
+conector/dist/
