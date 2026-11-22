@@ -58,7 +58,7 @@ Nada aqui foi testado num box de verdade. O teste é na TV piloto (seção 5).
 | A página manda `X-Frame-Options: DENY` ou `SAMEORIGIN`, ou `frame-ancestors 'self'` | **Não abre** (quadro em branco) | A própria intranet proíbe ser mostrada dentro de outro site | Na página das TVs: `Content-Security-Policy: frame-ancestors https://tv.multitelas.net.br https://app.multitelas.net.br`, e tirar o `X-Frame-Options` (o WebView mais velho pode não entender o `frame-ancestors` e respeitar o `X-Frame-Options`) |
 | Página que pede **login** (formulário e cookie) | **Não** | Ninguém digita senha na TV. E mesmo logada, o cookie de dentro do quadro é de terceiros: o WebView bloqueia, e os navegadores mandam só com `SameSite=None; Secure` | Uma página própria para as TVs, **sem login e só de leitura**, liberada no servidor da intranet só para os IPs das TVs |
 | **Login do Windows** (autenticação integrada, NTLM ou Kerberos) ou Basic | **Não** | O app cancela o pedido de senha | Igual à linha de cima |
-| SharePoint, Teams, Microsoft 365 | **Não**, em geral | Pedem login e não deixam ser mostrados em quadro de outro site | Exportar o conteúdo, ou o Conector (em breve) |
+| SharePoint, Teams, Microsoft 365 | **Não**, em geral | Pedem login e não deixam ser mostrados em quadro de outro site | Exportar o conteúdo, ou o Conector ([CONECTOR.md](CONECTOR.md)) |
 | Página https que puxa coisas em http por dentro (imagem, script) | Abre **pela metade** | Conteúdo misto dentro da própria página da intranet | Tudo em https |
 | Nome terminado em **`.local`** | Pode **não achar** | O Android pode tratar `.local` como rede local (mDNS) e não perguntar ao DNS da empresa. Não conferido | Usar um nome do domínio de verdade da empresa |
 | A intranet fora do ar, ou a rede caída | **Erro do navegador dentro do quadro**, na parede | A página da intranet não fica guardada para tocar sem rede: o *service worker* só guarda o que é do nosso endereço | Aceitar o risco, ou não usar a página no lugar de mais destaque |
@@ -82,11 +82,12 @@ responde.
    aviso, o slide como imagem, os aniversariantes pela planilha do Excel e os
    números pelos Indicadores. Em Indicadores › Receber, um servidor interno
    manda os números para `app.multitelas.net.br`, só saída.
-3. **Em breve, o Conector MultiTelas:** um programa dentro da rede leva a
-   pasta de rede e o feed da intranet até as TVs, sem quadro, sem
-   certificado e sem login na TV.
-4. **Em breve, a API pública (`/api/v1/`):** o sistema da intranet publica
-   direto na TV.
+3. **O Conector MultiTelas** ([CONECTOR.md](CONECTOR.md)): um programa
+   dentro da rede leva a pasta de rede, a planilha e o feed da intranet até
+   as TVs, sem quadro, sem certificado e sem login na TV. É o caminho
+   recomendado para esta empresa.
+4. **A API pública (`/api/v1/`,** [../INTEGRACOES.md](../INTEGRACOES.md)**):**
+   o sistema da intranet publica comunicados direto na TV.
 
 ## 4. Mudanças possíveis no app e no player (propostas, não feitas)
 

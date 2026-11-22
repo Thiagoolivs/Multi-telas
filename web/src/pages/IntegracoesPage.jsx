@@ -132,7 +132,8 @@ function FonteDialog({ integ, fonte, tipo, telas, onFechar, onSalvo }) {
       <div className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Nome"><Input value={f.nome} onChange={(e) => set('nome', e.target.value)} maxLength={60} placeholder={t === 'pasta' ? 'Ex.: Avisos do RH' : t === 'planilha' ? 'Ex.: Cardápio do refeitório' : 'Ex.: Notícias da intranet'} /></Field>
-          <Field label="Nome curto (o Conector usa)" hint="Letras, números e traço. Vazio: sai do nome."><Input value={f.chave} onChange={(e) => set('chave', e.target.value)} maxLength={40} placeholder={t === 'pasta' ? 'avisos-rh' : t === 'planilha' ? 'cardapio' : 'noticias'} /></Field>
+          {/* O nome curto não muda depois de criado: o conector.json e os comunicados apontam para ele. */}
+          <Field label="Nome curto (o Conector usa)" hint={novo ? 'Letras, números e traço. Vazio: sai do nome. Não muda depois.' : 'Não muda depois de criado (o Conector usa).'}><Input value={f.chave} disabled={!novo} onChange={(e) => set('chave', e.target.value)} maxLength={40} placeholder={t === 'pasta' ? 'avisos-rh' : t === 'planilha' ? 'cardapio' : 'noticias'} /></Field>
         </div>
         {t === 'pasta' && (
           <>
@@ -291,7 +292,7 @@ function LinhaDaFonte({ integ, f, telas, podeMexer, onEditar, onArquivos, onMudo
   const detalhe = f.tipo === 'pasta'
     ? [(f.arquivos ? (f.arquivos.n === 1 ? '1 arquivo' : f.arquivos.n + ' arquivos') : ''), descreverAlvo(f.config.alvo, telas), f.config.zona === 'lateral' ? 'lateral' : 'área principal', f.config.segundos + ' s por foto', f.config.ordem === 'data' ? 'mais novo primeiro' : 'pelo nome', f.config.aprovacao ? 'com aprovação' : ''].filter(Boolean).join(' · ')
     : f.tipo === 'planilha' ? (f.config.uso === 'indicadores' ? 'Indicadores' : 'Preços da planilha')
-      : (f.config.formato === 'json' ? 'JSON' : 'RSS') + ' · ' + f.config.url;
+      : (f.config.formato === 'json' ? 'JSON' : 'RSS') + ' · ' + f.config.url + (f.arquivos && f.arquivos.n ? ' · ' + (f.arquivos.n === 1 ? '1 imagem' : f.arquivos.n + ' imagens') : '');
   async function porAgora() {
     setIndo(true);
     try { const r = await integracoes.sincronizar(integ.id, f.id); aviso.ok(r.pendente ? 'Mandado para aprovação.' : 'Pronto: a TV está com a pasta de agora.'); onMudou(); }
@@ -415,13 +416,16 @@ function CartaoDaIntegracao({ integ, telas, podeMexer, onMudou, onToken, abrir }
   );
 }
 
-function ComoInstalar({ download }) {
+function ComoInstalar({ download, versao, podeBaixar }) {
   return (
     <Panel className="mb-4 p-4">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink"><Download size={16} className="text-accent" /> Como instalar o Conector</div>
       <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-2">
-        <li>Num computador da empresa que fica ligado e enxerga a pasta da rede, baixe o <a className="font-medium text-accent underline" href={download}>Conector MultiTelas</a> e abra.</li>
-        <li>Cole o token desta integração (ele aparece quando você cria a integração ou gera um novo).</li>
+        {/* O download é só do dono e do administrador (server.js): são eles que criam o token. */}
+        <li>Num computador da empresa que fica ligado e enxerga a pasta da rede, {podeBaixar
+          ? <>baixe o <a className="font-medium text-accent underline" href={download}>Conector MultiTelas{versao ? ' ' + versao.versao : ''}</a> e siga o LEIA-ME que vem nele.</>
+          : <>o dono ou um administrador da conta baixa o Conector MultiTelas aqui mesmo.</>}</li>
+        <li>Cole o token desta integração. Ele aparece uma vez só, quando você cria a integração ou toca em “Token novo” (aqui, em Integrações, no menu da sua conta).</li>
         <li>Pronto: o Conector mostra as pastas, planilhas e feeds daqui. Para cada pasta, aponte a pasta do compartilhamento.</li>
       </ol>
       <p className="mt-2 text-xs text-ink-3">O Conector só manda para o MultiTelas; nada da nuvem entra na rede da empresa. Ele confere tudo a cada minuto.</p>
@@ -482,7 +486,7 @@ export function IntegracoesPage() {
             </Panel>
           ) : lista.map((i) => <CartaoDaIntegracao key={i.id} integ={i} telas={telas} podeMexer={podeMexer} onMudou={reload} onToken={setToken} abrir={abrir} />)}
 
-      <ComoInstalar download={download} />
+      <ComoInstalar download={download} versao={data && data.api && data.api.conector} podeBaixar={podeMexer} />
       <ApiDaIntranet base={base} />
 
       {aberto && aberto.integ && 'fonte' in aberto && (

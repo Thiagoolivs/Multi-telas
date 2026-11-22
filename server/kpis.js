@@ -38,6 +38,12 @@ const chaveDe = (s) => String(s == null ? '' : s).normalize('NFD').replace(MARCA
 const AMBIGUO = 'não deu para ler o número sem adivinhar — mande como 1234.56 (ponto decimal, sem separador de milhar)';
 function lerNumero(v) {
   if (typeof v === 'number') return { valor: Number.isFinite(v) ? v : null, aviso: Number.isFinite(v) ? '' : 'número inválido' };
+  /*
+   * A data como o Excel mostra ("22/11/2026", que o Conector manda da
+   * planilha da rede) não é número: sem isto as barras sumiam e ela virava
+   * 22112026. Fração ("1/2") também não se lê sem adivinhar.
+   */
+  if (/\d\s*\/\s*\d/.test(String(v == null ? '' : v))) return { valor: null, aviso: 'parece uma data ou uma fração, não um número' };
   let s = String(v == null ? '' : v).replace(/[^\d,.-]/g, '');
   if (!s || !/\d/.test(s)) return { valor: null, aviso: v == null || v === '' ? 'sem valor' : 'o valor não é um número' };
   const virgulas = (s.match(/,/g) || []).length;

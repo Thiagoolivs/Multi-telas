@@ -1,0 +1,16 @@
+{
+  "servidor": "https://app.multitelas.net.br",
+  "token": "COLE_AQUI_O_TOKEN_DO_PAINEL",
+  "pastas": {
+    "comunicacao": "\\\\servidor\\Comunicacao\\TV"
+  },
+  "planilhas": {
+    "cardapio": "C:\\Dados\\Cardapio.xlsx"
+  },
+  "intranet": {
+    "hostsPermitidos": ["intranet.empresa.local"]
+  },
+  "proxy": "",
+  "tamanhoMaximoMB": 200,
+  "segundosParaEstabilizar": 10
+}

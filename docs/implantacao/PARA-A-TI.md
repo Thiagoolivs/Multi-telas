@@ -117,13 +117,15 @@ A TV abre a página dentro de um quadro (iframe) de uma página
 - nomes terminados em **`.local`** podem não ser achados pelo Android. Teste
   no box piloto.
 
-**Em breve:**
+**Sem página na TV:**
 
-- o **Conector MultiTelas** vai levar arquivos da pasta de rede e o feed da
-  intranet até as TVs, sem nada disso. A TI recebe uma folha própria quando
-  ele sair;
-- a **API pública** (`/api/v1/`) vai deixar os sistemas da empresa
-  publicarem na TV.
+- o **Conector MultiTelas** leva os arquivos da pasta de rede, a planilha do
+  Excel e o feed da intranet até as TVs. É um programa num PC da rede que só
+  faz **saída 443** para o nosso servidor, sem porta de entrada. A instalação,
+  a conta com acesso à pasta, o proxy e o certificado estão em
+  [CONECTOR.md](CONECTOR.md);
+- a **API pública** (`/api/v1/`, em [../INTEGRACOES.md](../INTEGRACOES.md))
+  deixa o sistema da intranet publicar comunicados direto na TV.
 
 ## 6. Para a TI responder
 

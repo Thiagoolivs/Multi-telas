@@ -259,13 +259,12 @@ data errada, nada que dependa de um sistema que ainda não foi testado.
 - **Páginas da intranet:** não no dia 1. Primeiro o teste na TV piloto, pelo
   [INTRANET-NA-TV.md](INTRANET-NA-TV.md).
 - **Indicadores:** só se já houver planilha do Google ou um sistema que mande
-  os números (Indicadores › Receber). A pasta de rede e a intranet ainda não
-  entram sozinhas:
-  - **em breve, Conector MultiTelas:** um programa dentro da rede da
-    empresa que leva arquivos da pasta de rede e o feed da intranet até as
-    TVs;
-  - **em breve, API pública (`/api/v1/`):** para o sistema da empresa
-    publicar na TV sem ninguém abrir o painel.
+  os números (Indicadores › Receber).
+- **Pasta de rede, planilha e intranet:** o **Conector MultiTelas**
+  ([CONECTOR.md](CONECTOR.md)), num PC da rede, leva a pasta, o Excel e o
+  feed da intranet até as TVs. Configure em menu da conta › Integrações e
+  instale até o D-5, para ter dias de teste. A **API pública**
+  ([../INTEGRACOES.md](../INTEGRACOES.md)) deixa a intranet publicar direto.
 - **Antes de mexer, guarde:** em cada TV, Mais opções › Backup e cópia ›
   Guardar. É o ponto de volta se o dia 1 der errado.
 
