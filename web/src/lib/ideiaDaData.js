@@ -6,12 +6,17 @@
  * a data vira uma ideia — no Criar (a primeira das "Ideias para hoje") e no
  * Início —, e a campanha dela passa pelo mesmo caminho de todas as outras.
  */
-export function ideiaDaData(hoje) {
+/*
+ * Reteste 4: `lugar` é o da frente (a loja, a empresa, a clínica): a fábrica
+ * recebia "uma campanha … para a loja". E a data é "da vez", não "de hoje":
+ * a janela começa dias antes (a Black Friday aparecia em 22/11 como hoje).
+ */
+export function ideiaDaData(hoje, lugar = 'loja') {
   if (!hoje || !hoje.label) return null;
   return {
     titulo: (hoje.emoji ? hoje.emoji + ' ' : '') + hoje.label,
-    porque: 'É a data de hoje: uma campanha com a cara dela.',
-    brief: 'Uma campanha de ' + hoje.label + ' para a loja',
+    porque: 'É a data da vez: uma campanha com a cara dela.',
+    brief: 'Uma campanha de ' + hoje.label + ' para a ' + lugar,
     imagens: 'nenhuma',
     daData: true,
   };

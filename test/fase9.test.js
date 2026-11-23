@@ -127,7 +127,8 @@ test('o painel filtra pela frente e põe o exemplo dela; o botão mostra os outr
   assert.match(p, /const usaveis = modelos\.filter\(\(m\) => !faltaLinkParaOQr\(m, marca\)\);/);
   assert.match(p, /const daMinhaFrente = ordenarPorPerfil\(daFrente\(usaveis, perfil\.id\), perfil\.id\);/);
   assert.match(p, /separarPorRamo\(daMinhaFrente, marca\.ramo, perfil\.id\)/);
-  assert.match(p, /itemDoModelo\(m, marca, perfil\.id\)/);
+  // Reteste 4: o mesmo itemDoModelo, sem a empresa de exemplo (lib/telasProntas.js, pecaDoProntos).
+  assert.match(p, /pecaDoProntos\(m, marca, perfil\.id, dados\.exemplos\)/);
   assert.match(p, /'Ver também os de outros negócios'/);
   void pathToFileURL;
 });

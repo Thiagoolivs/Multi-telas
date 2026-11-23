@@ -65,7 +65,9 @@ test('desenho: a mesma mensagem em outra peça do mesmo lugar, com os textos que
   // O texto do exemplo também conta (a peça pronta chega só com a marca nos campos) — menos o nome da empresa de exemplo.
   assert.match(e, /textos\.filter\(\(c\) => c\.nome !== 'marca'\)\.map\(\(c\) => \[c\.nome, c\.exemplo\]\)/);
   // Só os campos que o desenho novo declara (a porta recusaria os outros), e o nome da conta onde ele escreve a marca.
-  assert.match(e, /const novo = Object\.fromEntries\(Object\.entries\(efetivos\)\.filter\(\(\[k\]\) => nomes\.has\(k\)\)\);/);
+  // Reteste 4: o campo que só o desenho novo tem nasce com o texto da frente da conta, sem a empresa de exemplo.
+  assert.match(e, /const novo = \{ \.\.\.base, \.\.\.Object\.fromEntries\(Object\.entries\(efetivos\)\.filter\(\(\[k\]\) => nomes\.has\(k\)\)\) \};/);
+  assert.match(e, /pecaDoProntos\(m, contaPronta, perfil\.id, exemplos\)\.campos/);
   assert.match(e, /if \(nomes\.has\('marca'\) && !novo\.marca && daConta && daConta\.nome\) novo\.marca = daConta\.nome;/);
   assert.match(e, /\(m\.papeis \|\| \[\]\)\.includes\(papel\)/, 'desenho de outro lugar (faixa no lugar do destaque) não pode aparecer');
   assert.match(e, /setDesenho\(\{ html: m\.arq\.html, css: m\.arq\.css, base: m\.id \}\);/);

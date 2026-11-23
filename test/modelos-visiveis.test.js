@@ -48,7 +48,7 @@ test('Peças prontas mostra os modelos; com eles, a página nunca fica vazia', (
    * aparece quando o filtro ou a busca não deixam nada — nunca "Nenhuma peça
    * pronta ainda" com os modelos guardados.
    */
-  assert.match(p, /const item = itemDoModelo\(m, marca, perfil\.id\);/);
+  assert.match(p, /const item = pecaDoProntos\(m, marca, perfil\.id, dados\.exemplos\);/);
   assert.match(p, /telasProntas\.meus\.map\(daTela\)\.concat\(grupos\.meus\.map\(doModelo\),/);
   assert.doesNotMatch(p, /Nenhuma peça pronta ainda/);
   assert.match(p, /title="Nada neste filtro" description="Troque o filtro ou a busca\."/);

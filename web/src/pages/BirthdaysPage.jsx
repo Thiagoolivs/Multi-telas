@@ -35,7 +35,9 @@ const MARCAS = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCh
 const slug = (s) => String(s || '').normalize('NFD').replace(MARCAS, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 // Matrícula sem zeros à esquerda (1023 = 01023).
 const semZeros = (s) => { const t = String(s || '').trim(); return t.replace(/^0+(?=.)/, ''); };
-const data = (p) => String(p.dia).padStart(2, '0') + '/' + String(p.mes).padStart(2, '0');
+// Reteste 4: a pessoa de antes, sem nome ou sem data, aparecia como "null/null" e "Editar null".
+const data = (p) => (p.dia && p.mes ? String(p.dia).padStart(2, '0') + '/' + String(p.mes).padStart(2, '0') : 'sem data');
+const nomeDe = (p) => (p && p.nome && String(p.nome).trim()) || 'pessoa sem nome';
 const iniciais = (nome) => String(nome || '?').split(/\s+/).map((x) => x[0]).join('').slice(0, 2).toUpperCase();
 
 function Rosto({ p, tamanho = 'h-9 w-9' }) {
@@ -68,7 +70,7 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
     finally { setSalvando(false); }
   }
   return (
-    <Dialog open onClose={onFechar} title={nova ? 'Pôr uma pessoa' : 'Editar ' + pessoa.nome} className="max-w-lg"
+    <Dialog open onClose={onFechar} title={nova ? 'Pôr uma pessoa' : 'Editar ' + nomeDe(pessoa)} className="max-w-lg"
       footer={<>
         <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
         <Button variant="primary" icon={Check} disabled={!valida || salvando} onClick={salvar}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
@@ -182,7 +184,7 @@ export function BirthdaysPage() {
   }
 
   async function tirar(p) {
-    if (!(await confirmar({ titulo: 'Tirar ' + p.nome + ' da lista?', texto: 'Sai do painel e da TV, com a foto e as fotos que mandou pelo QR — os arquivos são apagados. Se estiver na planilha, volta na próxima importação (sem a foto).', botao: 'Tirar', perigo: true }))) return;
+    if (!(await confirmar({ titulo: 'Tirar ' + nomeDe(p) + ' da lista?', texto: 'Sai do painel e da TV, com a foto e as fotos que mandou pelo QR — os arquivos são apagados. Se estiver na planilha, volta na próxima importação (sem a foto).', botao: 'Tirar', perigo: true }))) return;
     try { await birthdays.remover(p.id); reload(); }
     catch (err) { aviso.erro('pessoa', err.message || 'Não deu para tirar.'); }
   }
@@ -288,21 +290,21 @@ export function BirthdaysPage() {
             {visiveis.map((p) => (
               <li key={p.id} className="flex items-center gap-3 px-4 py-2">
                 <button type="button" onClick={() => { setFotoPara(p); fotoDaLinhaRef.current && fotoDaLinhaRef.current.click(); }}
-                  className="group relative shrink-0 rounded-full" aria-label={'Trocar a foto de ' + p.nome} disabled={busy === 'foto:' + p.id}>
+                  className="group relative shrink-0 rounded-full" aria-label={'Trocar a foto de ' + nomeDe(p)} disabled={busy === 'foto:' + p.id}>
                   <Rosto p={p} />
                   <span className="absolute inset-0 hidden items-center justify-center rounded-full bg-black/50 text-white group-hover:flex"><Camera size={14} /></span>
                 </button>
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate text-sm font-medium text-ink">{p.nome}</span>
+                    <span className="truncate text-sm font-medium text-ink">{nomeDe(p)}</span>
                     {/* A planilha é o caminho de sempre; o selo marca só quem chegou por outro (e fica na próxima importação). */}
                     {p.origem && p.origem !== 'planilha' && <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-px text-2xs font-medium text-accent">{ORIGEM[p.origem]}</span>}
                   </div>
                   <div className="truncate text-xs text-ink-3">{[p.setor, p.cargo].filter(Boolean).join(' · ') || '—'}</div>
                 </div>
                 <span className="tnum shrink-0 text-sm text-ink-2">{data(p)} <span className="text-ink-3">({MESES[(p.mes || 1) - 1]})</span></span>
-                <IconButton icon={Pencil} label={'Editar ' + p.nome} size={15} onClick={() => setEditando(p)} />
-                <IconButton icon={Trash2} label={'Tirar ' + p.nome} size={15} className="hover:text-danger" onClick={() => tirar(p)} />
+                <IconButton icon={Pencil} label={'Editar ' + nomeDe(p)} size={15} onClick={() => setEditando(p)} />
+                <IconButton icon={Trash2} label={'Tirar ' + nomeDe(p)} size={15} className="hover:text-danger" onClick={() => tirar(p)} />
               </li>
             ))}
           </ul>

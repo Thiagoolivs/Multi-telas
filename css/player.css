@@ -503,6 +503,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
  * (a logo é o nome), e o título, se houver, encolhe antes (caberNome).
  */
 .mt-header-logo { height: 72cqh; width: auto; max-width: 30cqw; object-fit: contain; }
+/* Reteste 4: a logo escura sem versão branca, no fundo escuro, numa placa clara (js/player.js, placaNaLogo). */
+.mt-logo-placa { background: #fff; border-radius: .3em; padding: .12em .32em; box-sizing: border-box; }
 .mt-header-title {
   position: relative; padding-left: 3cqw;
   font-size: max(var(--mt-piso, 0px), 30cqh); font-weight: 800; letter-spacing: -.01em;

@@ -5,6 +5,7 @@ import { temCurva } from '../../lib/composition.js';
 import { ICONS } from '../../lib/icons.js';
 import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
 import { PecaHtml } from './PecaHtml.jsx';
+import { Body } from './ItemPreview.jsx';
 
 /*
  * Miniatura fiel de um design (composição). Usada no hub "Meus Designs", na
@@ -38,9 +39,16 @@ export function DesignThumb({ item, fitHeight }) {
         </div>
       );
     }
+    /*
+     * Reteste 4: a peça guardada de um tipo antigo (texto, frase do dia, arte,
+     * aviso) aparecia como uma caixa escura com o nome técnico do tipo
+     * ("text", "quote"), em cinza sobre quase preto (o axe reprovava o
+     * contraste). Agora ela tem a prévia de verdade, a mesma do "Pôr na TV"
+     * (ItemPreview.jsx, Body), no fundo tinta da marca.
+     */
     return (
-      <div className={'flex items-center justify-center rounded-md border border-line bg-[#0a1020] text-2xs text-ink-3 ' + (fitHeight ? '' : 'w-full')} style={ar}>
-        {it.type === 'pptx' ? 'Apresentação/PDF' : it.type}
+      <div className={'flex flex-col items-center justify-center overflow-hidden rounded-md border border-line bg-[#0E0B1F] p-2 text-center text-white ' + (fitHeight ? '' : 'w-full')} style={ar} aria-hidden="true">
+        <Body item={it} />
       </div>
     );
   }

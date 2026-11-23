@@ -91,7 +91,7 @@ export const CONTENT_TYPES = {
       { key: 'titulo', label: 'Título', kind: 'text' },
       { key: 'precoDe', label: 'Preço "de"', kind: 'text' },
       { key: 'precoPor', label: 'Preço "por"', kind: 'text' },
-      { key: 'cta', label: 'Chamada (CTA)', kind: 'text' },
+      { key: 'cta', label: 'Chamada (frase curta)', kind: 'text' },
       { key: 'imagem', label: 'Imagem', kind: 'media', accept: 'image' },
       DUR,
     ],
@@ -133,7 +133,7 @@ export const CONTENT_TYPES = {
     },
   },
   kpi: {
-    label: 'Indicador (KPI)', icon: BarChart3, group: 'Dados',
+    label: 'Indicador (número)', icon: BarChart3, group: 'Dados',
     fields: [
       { key: 'rotulo', label: 'Rótulo', kind: 'text' },
       { key: 'valor', label: 'Valor', kind: 'text' },
@@ -163,12 +163,17 @@ export const CONTENT_TYPES = {
     make: () => ({ type: 'social', rede: 'instagram', titulo: 'Siga-nos', handle: '', qr: false, duracao: 12 }),
     summary: (i) => i.handle || i.titulo || 'Redes sociais',
   },
+  /*
+   * Reteste 4: os rótulos em palavras de quem usa — eram "Preencher (cover)",
+   * "Conter (contain)", "Chamada (CTA)", "Indicador (KPI)", "Vídeo (MP4)" e o
+   * grupo "Widgets": termos de quem programa, no meio do português.
+   */
   image: {
     label: 'Imagem', icon: ImageIcon, group: 'Mídia',
     fields: [
       { key: 'src', label: 'Imagem', kind: 'media', accept: 'image' },
       { key: 'fit', label: 'Ajuste', kind: 'select', ...AV, options: [
-        { value: 'cover', label: 'Preencher (cover)' }, { value: 'contain', label: 'Conter (contain)' } ] },
+        { value: 'cover', label: 'Preencher (corta)' }, { value: 'contain', label: 'Inteira (sem cortar)' } ] },
       DUR,
     ],
     make: () => ({ type: 'image', src: '', fit: 'cover', duracao: 8 }),
@@ -177,13 +182,13 @@ export const CONTENT_TYPES = {
     summary: (i, nomes) => nomeDaMidia(i, 'Foto', nomes) || (i.src ? 'Foto' : 'Foto (sem arquivo)'),
   },
   video: {
-    label: 'Vídeo (MP4)', icon: Film, group: 'Mídia',
+    label: 'Vídeo', icon: Film, group: 'Mídia',
     fields: [
       { key: 'src', label: 'Vídeo', kind: 'media', accept: 'video' },
       { key: 'loop', label: 'Repetir', kind: 'bool', ...AV },
       { key: 'muted', label: 'Sem som', kind: 'bool' },
       { key: 'fit', label: 'Ajuste', kind: 'select', ...AV, options: [
-        { value: 'contain', label: 'Conter (contain)' }, { value: 'cover', label: 'Preencher (cover)' } ] },
+        { value: 'contain', label: 'Inteiro (sem cortar)' }, { value: 'cover', label: 'Preencher (corta)' } ] },
       { key: 'duracao', label: 'Tempo na tela (segundos)', kind: 'number', min: 0, hint: '0 = toca o vídeo inteiro', ...AV },
     ],
     make: () => ({ type: 'video', src: '', loop: false, muted: true, fit: 'contain', duracao: 0 }),
@@ -236,7 +241,7 @@ export const CONTENT_TYPES = {
     summary: (i) => (i.codigo ? i.titulo || 'Mural ' + i.codigo : 'Escolha um mural'),
   },
   weatherpro: {
-    label: 'Painel do Clima', icon: CloudSun, group: 'Widgets',
+    label: 'Painel do Clima', icon: CloudSun, group: 'Informações',
     fields: [
       { key: 'cidade', label: 'Cidade', kind: 'text' },
       DUR,

@@ -153,10 +153,12 @@
    * (5 dias) precisa ganhar do Outubro Rosa (31), senão a campanha do mês
    * engole todas as datas específicas que caem dentro dela.
    */
-  function todaySeason(date) {
+  // `vale` (opcional): só as datas que servem à conta (o servidor passa as da frente, js/datas-frente.js).
+  function todaySeason(date, vale) {
     const hoje = date || new Date();
     let melhor = null;
     for (const s of SEASONS) {
+      if (vale && !vale(s)) continue;
       const j = D.janelaVigente(s, hoje);
       if (!j) continue;
       const dur = D.duracao(j);

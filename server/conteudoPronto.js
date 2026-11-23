@@ -70,6 +70,33 @@ function pecasDaTela(manifesto, id) {
 const esperando = (e) => !e || e === 'proposta' || e === 'rascunho';
 
 /*
+ * APROVAR VÁRIOS DE UMA VEZ (reteste 4, 22/11). A galeria tinha só o botão
+ * de cada cartão: para o dono aprovar a lista recomendada (dezenas de telas
+ * e peças), eram dezenas de toques e de pedidos. O lote confere tudo antes
+ * de gravar qualquer coisa: um id errado no meio não deixa metade aprovada
+ * e metade não — ou vai tudo, ou nada, com o motivo de cada um que falhou.
+ * `itens`: [{ tipo: 'peca'|'tela', id }]. Repetidos contam uma vez.
+ */
+const MAX_DO_LOTE = 500;
+function conferirLote(manifesto, itens, estado) {
+  if (!Array.isArray(itens) || !itens.length) return { erros: ['nada para decidir'], itens: [] };
+  if (itens.length > MAX_DO_LOTE) return { erros: ['no máximo ' + MAX_DO_LOTE + ' de uma vez'], itens: [] };
+  const vistos = new Set();
+  const lista = [];
+  const erros = [];
+  for (const x of itens) {
+    const tipo = x && x.tipo;
+    const id = x && typeof x.id === 'string' ? x.id : '';
+    const erro = conferirDecisao(manifesto, tipo, id, estado);
+    if (erro) { erros.push((id || '?') + ': ' + erro); continue; }
+    if (vistos.has(tipo + ':' + id)) continue;
+    vistos.add(tipo + ':' + id);
+    lista.push({ tipo, id });
+  }
+  return { erros, itens: lista };
+}
+
+/*
  * O PACOTE DO PRONTOS (reteste 2): o "Prontos para você" levava 7,4 s no 4G
  * lento — o manifesto e depois cada peça aprovada num pedido (43 pedidos,
  * cada um com a latência inteira do celular). Agora vai tudo num só:
@@ -104,4 +131,4 @@ function montarPacote(raiz, decisoes) {
   return pacoteGuardado;
 }
 
-module.exports = { ESTADOS, TIPOS, lerManifesto, aplicarDecisoes, conferirDecisao, pecasDaTela, esperando, montarPacote };
+module.exports = { ESTADOS, TIPOS, MAX_DO_LOTE, lerManifesto, aplicarDecisoes, conferirDecisao, conferirLote, pecasDaTela, esperando, montarPacote };

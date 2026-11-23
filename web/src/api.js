@@ -593,6 +593,8 @@ export const plataforma = {
   // Fase 9: a galeria do conteúdo pronto — o manifesto com as decisões, e aprovar/recusar.
   conteudo: () => api('GET', '/api/plataforma/conteudo'),
   decidirConteudo: (tipo, id, estado) => api('POST', '/api/plataforma/conteudo/' + tipo + '/' + encodeURIComponent(id), { estado }),
+  // Reteste 4: vários de uma vez ([{ tipo, id }]); ou vai tudo, ou nada.
+  decidirConteudoLote: (itens, estado) => api('POST', '/api/plataforma/conteudo/lote', { itens, estado }),
 };
 
 export const library = {
