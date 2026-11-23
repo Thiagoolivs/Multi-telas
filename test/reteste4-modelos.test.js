@@ -173,6 +173,37 @@ test('a data da vez é a da frente: em 22/11 a fábrica vê o Novembro Azul, nã
   assert.match(ler('web/src/pages/DashboardPage.jsx'), /Data da vez: \{ideia\.titulo\}/);
 });
 
+test('o cardápio do refeitório leva um prato, não a mesa de escritório (fotosDaFrente)', async () => {
+  const T = await lib('telasProntas.js');
+  const conta = { nome: 'Grupo Horizonte', cores: ['#1d4e89'] };
+  for (const id of ['cardapio-dia-foto', 'cardapio-destaque', 'cardapio-quadro']) {
+    const item = T.pecaDoProntos(modelos.get(id), conta, 'empresa', T.nomesDeExemplo(M.marcas));
+    assert.equal(item.campos.foto, '/pecas-ouro/fotos/prato-do-dia.jpg', id);
+    assert.ok(fs.existsSync(path.join(RAIZ, item.campos.foto)), id + ': a foto existe');
+    assert.equal(PH.validarItem(item).ok, true, id + ': a porta aceita');
+  }
+  // Na loja, nada muda: a foto vem do ramo (ou do negócio do texto, fotosDoExemplo).
+  const loja = T.pecaDoProntos(modelos.get('cardapio-dia-foto'), conta, 'comercio', T.nomesDeExemplo(M.marcas)).campos.foto;
+  assert.notEqual(loja, '/pecas-ouro/fotos/prato-do-dia.jpg');
+});
+
+test('a foto padrão da Empresas varia de peça para peça, sem o calendário em inglês nem o rosto de banco', () => {
+  const R = require('../js/peca-render.js');
+  const banco = JSON.parse(ler('pecas-ouro/fotos/banco.json'));
+  for (const [ramo, papeis] of Object.entries(R.VARIACOES)) {
+    for (const lista of Object.values(papeis)) {
+      for (const f of lista) assert.ok(banco.some((b) => b.arquivo === f.arquivo && b.ramos.includes(ramo)), f.arquivo + ' não está no banco com o ramo ' + ramo);
+    }
+  }
+  const usadas = new Set();
+  for (const p of M.pecas) for (const [campo, papel] of Object.entries(p.fotos || {})) { const f = R.fotoPadrao(papel, '', 'empresa', p.id + ':' + campo); if (f) usadas.add(f.arquivo); }
+  assert.ok(usadas.size >= 4, 'as peças da Empresas com uma foto só: ' + [...usadas].join(', '));
+  assert.ok(!usadas.has('/pecas-ouro/fotos/escritorio/mesa-minimalista.jpg') && !usadas.has('/pecas-ouro/fotos/escritorio/escritorio-aberto.jpg'));
+  // A mesma peça, a mesma foto (a TV, a bancada e o painel desenham igual); sem semente, a de sempre.
+  assert.deepEqual(R.fotoPadrao('ambiente', '', 'empresa', 'x:foto'), R.fotoPadrao('ambiente', '', 'empresa', 'x:foto'));
+  assert.equal(R.fotoPadrao('ambiente', '', 'empresa').arquivo, R.FOTOS_PADRAO.corporativo.ambiente.arquivo);
+});
+
 test('o nome da tela pronta chega ao cliente sem a empresa de exemplo', async () => {
   const T = await lib('telasProntas.js');
   const t = M.telas.find((x) => x.id === 'otica-semana-do-sol');

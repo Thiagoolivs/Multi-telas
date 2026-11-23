@@ -974,17 +974,34 @@
     beleza: { produto: { arquivo: '/pecas-ouro/fotos/salao/pinceis.jpg', foco: { x: 0.5, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/salao/camarim.jpg', foco: { x: 0.6, y: 0.45 } } },
     saude: { produto: { arquivo: '/pecas-ouro/fotos/farmacia/cuidados.jpg', foco: { x: 0.5, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/clinica/sala-clara.jpg', foco: { x: 0.5, y: 0.55 } },
       textura: { arquivo: '/pecas-ouro/fotos/clinica/entrada.jpg', foco: { x: 0.5, y: 0.5 } } },
-    corporativo: { produto: { arquivo: '/pecas-ouro/fotos/escritorio/mesa-minimalista.jpg', foco: { x: 0.7, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/escritorio/escritorio-aberto.jpg', foco: { x: 0.6, y: 0.5 } },
+    // Reteste 4: o "produto" da Empresas era a mesa com um calendário em inglês (M T W T F S), em toda peça de foto da fábrica e do RH.
+    // E o "ambiente" era o mesmo rapaz no notebook em toda peça (um rosto de banco, ainda por cima): a sala vazia.
+    corporativo: { produto: { arquivo: '/pecas-ouro/fotos/escritorio/mesa-cafe.jpg', foco: { x: 0.55, y: 0.45 } }, ambiente: { arquivo: '/pecas-ouro/fotos/escritorio/sala-reuniao.jpg', foco: { x: 0.5, y: 0.55 } },
       textura: { arquivo: '/pecas-ouro/fotos/escritorio/predio.jpg', foco: { x: 0.5, y: 0.5 } } },
   };
   // Os ramos da Marca (js/paletas.js) que usam as fotos de outro; o resto (pet, academia, moda, varejo) fica com a geral.
   const RAMO_DAS_FOTOS = { barbearia: 'beleza' };
   const RAMO_DA_FRENTE = { saude: 'saude', empresa: 'corporativo' };
   const PAPEIS_COM_FOTO_PADRAO = ['produto', 'ambiente', 'textura'];
-  function fotoPadrao(papel, ramo, frente) {
+  /*
+   * VARIAÇÃO (reteste 4, 22/11). Com uma foto só por papel, as peças de foto
+   * da Empresas saíam todas com a MESMA imagem — dez peças, dez vezes a mesma
+   * sala na TV do RH. Com `semente` (a peça de origem e o campo), a foto sai
+   * de uma lista curta, sempre a mesma para a mesma peça (a TV, a bancada e
+   * o painel desenham igual). Cada uma está no banco, com o ramo.
+   */
+  const VARIACOES = {
+    corporativo: { ambiente: [FOTOS_PADRAO.corporativo.ambiente, { arquivo: '/pecas-ouro/fotos/escritorio/predio-noite.jpg', foco: { x: 0.5, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/industria/escada.jpg', foco: { x: 0.5, y: 0.5 } }],
+      textura: [FOTOS_PADRAO.corporativo.textura, { arquivo: '/pecas-ouro/fotos/industria/estrutura.jpg', foco: { x: 0.5, y: 0.5 } }] },
+  };
+  function numeroDa(semente) { let h = 0; const t = String(semente); for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; return h; }
+  function fotoPadrao(papel, ramo, frente, semente) {
     if (PAPEIS_COM_FOTO_PADRAO.indexOf(papel) < 0) return null;
     const r = RAMO_DAS_FOTOS[ramo] || ramo;
-    const doRamo = (FOTOS_PADRAO[r] || FOTOS_PADRAO[RAMO_DA_FRENTE[frente]] || {})[papel];
+    const qual = FOTOS_PADRAO[r] ? r : RAMO_DA_FRENTE[frente];
+    const lista = semente && VARIACOES[qual] && VARIACOES[qual][papel];
+    if (lista) return lista[numeroDa(semente) % lista.length];
+    const doRamo = (FOTOS_PADRAO[qual] || {})[papel];
     return doRamo || FOTO_GERAL;
   }
   const CORTE_PADRAO = 0.5;
@@ -2269,7 +2286,7 @@
       }
       let esp = (it.espacos || {})[campo] || {};
       // O espaço de foto vazio leva a foto padrão do papel e do ramo (fotoPadrao): nada de meia peça vazia.
-      const padrao = !qr && campo !== 'logo' && !o.rascunho && !valor ? fotoPadrao(esp.papel, o.ramo, o.frente) : null;
+      const padrao = !qr && campo !== 'logo' && !o.rascunho && !valor ? fotoPadrao(esp.papel, o.ramo, o.frente, ((it.origem && it.origem.base) || '') + ':' + campo) : null;
       if (padrao) {
         valor = padrao.arquivo;
         esp = Object.assign({}, esp, { foco: esp.foco || padrao.foco });
@@ -2403,7 +2420,7 @@
   return {
     ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA,
     // A foto padrão do espaço vazio (o teste confere que cada uma está no banco) e o passo que não deixa texto cortado.
-    fotoPadrao, FOTOS_PADRAO, FOTO_GERAL, semCorte,
+    fotoPadrao, FOTOS_PADRAO, FOTO_GERAL, VARIACOES, semCorte,
     // O movimento de cinema: as partes puras (o teste), e as keyframes que só o player usa.
     DO_PLAYER, TEMPO, CINEMA, movimentoDe, animacaoDoElemento, contarTexto, contarPartes, origemDaFoto,
     // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).

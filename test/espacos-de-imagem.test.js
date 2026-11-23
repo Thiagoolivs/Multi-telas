@@ -219,7 +219,8 @@ test('o desenhista encaixa toda foto de campo — menos a logo, o QR e o rascunh
   const montar = src.slice(src.indexOf('function montar('), src.indexOf('return {\n      peca,'));
   assert.match(montar, /let esp = \(it\.espacos \|\| \{\}\)\[campo\] \|\| \{\};/);
   // Reteste 2: o espaço vazio leva a foto padrão do papel e do ramo (fotoPadrao), e também é encaixado.
-  assert.match(montar, /const padrao = !qr && campo !== 'logo' && !o\.rascunho && !valor \? fotoPadrao\(esp\.papel, o\.ramo, o\.frente\) : null;/);
+  // Reteste 4: com a semente (a peça de origem e o campo), a foto varia de peça para peça e é a mesma em todo lugar.
+  assert.match(montar, /const padrao = !qr && campo !== 'logo' && !o\.rascunho && !valor \? fotoPadrao\(esp\.papel, o\.ramo, o\.frente, \(\(it\.origem && it\.origem\.base\) \|\| ''\) \+ ':' \+ campo\) : null;/);
   assert.match(montar, /const foto = !qr && campo !== 'logo' && !o\.rascunho && !!valor \? \{ el, esp \} : null;/);
   assert.match(montar, /el\.addEventListener\('load', \(\) => encaixarFoto\(el, foto\.esp\)\)/);
   assert.match(montar, /new ResizeObserver\(\(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); encaixarFotos\(\); naTela\(\); \}\)/);

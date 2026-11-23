@@ -1,5 +1,5 @@
 {
-  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens). Telas prontas (D18): lotes de 20, por perfil ('perfil') e estrutura ('estrutura'), em estado 'proposta' até o dono aprovar na bancada. 'sazonal' (reteste 2): a época de uma peça ou tela de campanha — { de: 'MM-DD', ate: 'MM-DD' } para ela inteira, ou { <frente>: { de, ate } } quando só o texto daquela frente é de campanha. Fora da época, ela não aparece nos Prontos (web/src/lib/modelosOuro.js, naEpoca).",
+  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens). Telas prontas (D18): lotes de 20, por perfil ('perfil') e estrutura ('estrutura'), em estado 'proposta' até o dono aprovar na bancada. 'sazonal' (reteste 2): a época de uma peça ou tela de campanha — { de: 'MM-DD', ate: 'MM-DD' } para ela inteira, ou { <frente>: { de, ate } } quando só o texto daquela frente é de campanha. Fora da época, ela não aparece nos Prontos (web/src/lib/modelosOuro.js, naEpoca). fotosDaFrente (reteste 4): a foto de exemplo de uma frente para o espaço de foto que, sem ela, levaria a foto padrão do ramo — o cardápio do refeitório levava a mesa de escritório ({ <frente>: { <campo>: /pecas-ouro/fotos/… } }).",
   "marcas": [
     {
       "id": "otica",
@@ -1255,6 +1255,11 @@
         "titulo": "Churrasco",
         "titulo2": "com milho",
         "acompanha": "Linguiça, frango e alcatra com arroz e feijão da casa."
+      },
+      "fotosDaFrente": {
+        "empresa": {
+          "foto": "/pecas-ouro/fotos/prato-do-dia.jpg"
+        }
       }
     },
     {
@@ -2462,6 +2467,11 @@
       "lote": 4,
       "campos": {
         "foto": "/pecas-ouro/fotos/restaurante/prato-autoral.jpg"
+      },
+      "fotosDaFrente": {
+        "empresa": {
+          "foto": "/pecas-ouro/fotos/prato-do-dia.jpg"
+        }
       }
     },
     {
@@ -2515,6 +2525,11 @@
       "lote": 4,
       "campos": {
         "foto": "/pecas-ouro/fotos/restaurante/tagliatelle.jpg"
+      },
+      "fotosDaFrente": {
+        "empresa": {
+          "foto": "/pecas-ouro/fotos/prato-do-dia.jpg"
+        }
       }
     },
     {
