@@ -1006,6 +1006,7 @@
       img.onerror = () => { img.remove(); conta.textContent = nome; conta.hidden = !nome; };
       img.src = logo;
       conta.appendChild(img);
+      setTimeout(() => placaNaLogo(img, logo, m.logo, el), 0);
     } else {
       conta.textContent = nome;
     }
@@ -2460,10 +2461,11 @@
       const img = document.createElement('img');
       img.alt = '';
       img.className = 'mt-espera-logo';
-      // O fundo é a cor da marca escurecida: vai a versão branca, se houver.
+      // O fundo é a cor da marca escurecida: vai a versão branca, se houver (sem ela, a placa; o fundo só existe depois de entrar na página).
       img.src = logo.clara || logo.url;
       img.onerror = () => { img.remove(); marca.textContent = global.MT_NOME || ''; };
       marca.appendChild(img);
+      setTimeout(() => placaNaLogo(img, logo.url, logo, el), 0);
     } else {
       marca.textContent = global.MT_NOME || '';
     }
@@ -3405,13 +3407,29 @@
     const c = [m[1], m[2], m[3]].map((v) => { v = Number(v) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
     return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
   }
-  function logoNoFundo(logo, el) {
-    if (!logo || !logo.url) return '';
+  function luzDoFundo(el) {
     let l = null;
     for (let x = el; x && l == null; x = x.parentElement) l = luminanciaCss(getComputedStyle(x).backgroundColor);
     if (l == null) l = luminanciaCss(getComputedStyle(document.body).backgroundColor);
+    return l;
+  }
+  function logoNoFundo(logo, el) {
+    if (!logo || !logo.url) return '';
+    const l = luzDoFundo(el);
     if (l == null) return logo.url;
     return (l < 0.35 ? logo.clara : logo.escura) || logo.url;
+  }
+  /*
+   * Reteste 4: a logo escura SEM a versão branca, num fundo escuro, sumia (o
+   * cabeçalho, a espera, o código). Vai numa placa clara quando o desenho e o
+   * fundo ficam abaixo de 3:1 (js/peca-render.js, logoNaPlaca, que lê os
+   * pixels uma vez por logo). Com a versão branca, nada muda.
+   */
+  function placaNaLogo(img, url, logo, fundoEl) {
+    const R = global.MTPecaRender;
+    if (!img || !url || (logo && logo.clara) || !R || !R.logoNaPlaca) return;
+    const marcar = (sim) => { if (sim) img.classList.add('mt-logo-placa'); };
+    marcar(R.logoNaPlaca(url, luzDoFundo(fundoEl || img.parentElement), marcar));
   }
 
   /* ---------------- Zona: Cabeçalho ---------------- */
@@ -3434,6 +3452,7 @@
       // requestAnimationFrame: este não roda com a aba em segundo plano, e a logo nunca vinha).
       setTimeout(() => {
         const url = logoNoFundo(logo, zoneEl);
+        placaNaLogo(img, url, logo, zoneEl);
         // Sem a margem vazia em volta (reteste 3; js/peca-render.js, logoAparada): o desenho da logo ocupa a altura que ela tem.
         const aparar = global.MTPecaRender && MTPecaRender.logoAparada;
         const pronta = aparar ? aparar(url, (src) => { if (img.getAttribute('src') === url) { img.src = src; caberNome(title); } }) : '';

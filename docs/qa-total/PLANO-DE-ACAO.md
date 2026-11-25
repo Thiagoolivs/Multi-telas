@@ -381,6 +381,42 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
     - A logo escura sem versão clara some no cabeçalho escuro.
     - A régua mede a tela cheia no tamanho de referência, não no tamanho real da zona.
     - O app novo ainda não rodou num TV box de verdade.
+- [x] **Reteste 4 (22–25/11): o lançamento de 8 TVs do RH, os básicos e os modelos prontos.** Nota geral **7,9** (era 7,7). Detalhes em [RETESTE-4.md](RETESTE-4.md) e [RETESTE-4-MODELOS.md](RETESTE-4-MODELOS.md).
+  - **O propósito funciona:**
+    - A conta de RH monta as 8 TVs com o conteúdo do dia 1.
+    - A pasta de rede, o Excel e o feed da intranet passam pelo Conector e chegam às TVs.
+    - Dois bloqueadores foram consertados:
+      - o login de um membro derrubava a cortesia, e 7 de 8 TVs pausavam;
+      - os aniversariantes não iam para a TV.
+  - **Os básicos:** 34 funcionalidades conferidas. 31 funcionam sem ressalva, 3 com ressalva pequena e nenhuma está quebrada.
+  - **Os modelos são editáveis:**
+    - 113 de 113 peças e 95 de 95 telas foram editadas e postas na TV.
+    - Consertos:
+      - o QR do Wi-Fi;
+      - o "Não cabe" falso no cabeçalho e no rodapé;
+      - a troca de desenho, que trazia texto de outro negócio.
+  - **Também entrou:**
+    - os textos neutros no manifesto;
+    - a logo escura: versão branca no passo 2 e placa clara na TV;
+    - a data da frente (sem Black Friday no RH nem na clínica, e "Faltam 5 dias");
+    - o "%" no indicador;
+    - "Aprovar selecionados" em Plataforma › Conteúdo pronto.
+  - **Falta:**
+    - Aprovar a galeria: 170 itens pendentes, 86 recomendados ([galeria-para-aprovar](galeria-para-aprovar/index.html)).
+    - Com o nome da conta e o clima, 20 de 101 telas caem para 3,5–4,4% de letra; 12 delas são o cabeçalho com frase. A régua não pega porque usa as marcas de exemplo e não mostra o clima.
+    - 8 peças propostas com foto de pessoa ficam meio vazias sem a foto do cliente.
+    - A logo escura de conta antiga: o dono usa o "Melhorar" na Marca.
+    - Sem nenhum aviso, estas peças não fazem nada:
+      - a de rodapé, numa TV sem mensagem de rodapé;
+      - a de cabeçalho ou rodapé, num layout sem essa zona.
+    - Painel:
+      - na lista da TV, o cartão do indicador ao vivo mostra "—";
+      - em Aprovações, "Antes (agora na TV)" mostra uma peça que só entra depois.
+    - Não medido:
+      - a IA real;
+      - o TV box de verdade;
+      - PowerPoint e PDF no Windows;
+      - e-mail e pagamento.
 - [ ] **Bloco 2 e os cenários de IA do bloco 3:** dependem do crédito do Gemini.
 - [ ] **Os pilotos:** com você, pelo roteiro.
 - **O que falta para cada bloco chegar a 9 (do primeiro reteste, 05/11; quase tudo corrigido em 06/11):**

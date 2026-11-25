@@ -161,11 +161,17 @@
    */
   // A data vale para a frente da conta? Sem `frentes` na data, ou sem frente conhecida, vale para todas.
   function daFrente(s, frente) { return !frente || !Array.isArray(s.frentes) || s.frentes.indexOf(frente) >= 0; }
-  function todaySeason(date, frente) {
+  /*
+   * `filtro` (opcional): a frente da conta ('empresa', 'saude', 'comercio') ou
+   * uma função que diz quais datas servem à conta (o servidor passa as da
+   * frente, js/datas-frente.js).
+   */
+  function todaySeason(date, filtro) {
     const hoje = date || new Date();
+    const vale = typeof filtro === 'function' ? filtro : (s) => daFrente(s, filtro);
     let melhor = null;
     for (const s of SEASONS) {
-      if (!daFrente(s, frente)) continue;
+      if (!vale(s)) continue;
       const j = D.janelaVigente(s, hoje);
       if (!j) continue;
       const dur = D.duracao(j);

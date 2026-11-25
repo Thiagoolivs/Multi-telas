@@ -7,8 +7,8 @@ import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { Palco } from '../components/content/VerTelaAgora.jsx';
 import { devices, brand } from '../api.js';
-import { carregarModelos, itemDoModelo, ordenarPorPerfil, daFrente, separarPorRamo, faltaLinkParaOQr } from '../lib/modelosOuro.js';
-import { carregarTelasProntas, estadoDaPrevia, emPe, marcaDaConta } from '../lib/telasProntas.js';
+import { carregarModelos, ordenarPorPerfil, daFrente, separarPorRamo, faltaLinkParaOQr } from '../lib/modelosOuro.js';
+import { carregarTelasProntas, estadoDaPrevia, emPe, marcaDaConta, pecaDoProntos } from '../lib/telasProntas.js';
 import { telasDaConta, montar, SemTelasProntas, PersonalizarTela } from './TelasProntasPage.jsx';
 import { usePerfil } from '../lib/perfil.js';
 import { PorNaTV } from '../components/tela/PorNaTV.jsx';
@@ -121,7 +121,12 @@ export function PecasProntasPage({ onIr, filtroInicial, telaAlvo }) {
     if (!modelos || !dados || !marca) return [];
     const daTela = (t) => ({ id: 'tela-' + t.id, tela: t, emPe: emPe(t.layout), label: t.nome, origem: t.descricao || '' });
     const doModelo = (m) => {
-      const item = itemDoModelo(m, marca, perfil.id);
+      /*
+       * Reteste 4: a peça solta sem a empresa de exemplo, como a tela pronta
+       * (o WhatsApp e o @ do salão no rodapé da padaria, o telefone da ótica no
+       * "Reserve pelo WhatsApp"). O que saiu, o editor pede para completar.
+       */
+      const item = pecaDoProntos(m, marca, perfil.id, dados.exemplos);
       return { id: 'modelo-' + m.id, item, papel: item.papel, formato: item.formato, label: m.nome, origem: m.familia || '', modelo: true };
     };
     const lista = telasProntas.meus.map(daTela).concat(grupos.meus.map(doModelo),

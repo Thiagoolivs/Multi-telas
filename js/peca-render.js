@@ -201,7 +201,9 @@
     // Rodapé numa tela que já tem relógio no cabeçalho: o segundo relógio some (D12).
     + '.mt-peca[data-sem-relogio] [data-vivo="relogio"]{display:none!important}'
     // O elemento que a pessoa escondeu no editor (D19).
-    + '.mt-peca [data-oculto]{display:none!important}';
+    + '.mt-peca [data-oculto]{display:none!important}'
+    // A logo escura sem versão branca, num fundo escuro, vai numa placa clara (reteste 4: sumia no cabeçalho; ver logoNaPlaca).
+    + ':where(.mt-peca) img[data-logo-placa]{background:#fff;border-radius:.3em;padding:.12em .32em;box-sizing:border-box}';
 
   // As variáveis da marca, num bloco do palco.
   function cssDosTokens(tokens) {
@@ -713,28 +715,70 @@
    */
   const LOGOS = {};
   const LADO_DA_LOGO = 800;
-  function logoAparada(url, pronta) {
+  /*
+   * A leitura da logo, uma vez por endereço: a versão aparada (`src`) e a
+   * LUMINÂNCIA média do desenho (`luz`, 0 a 1, só dos pixels que não são
+   * transparentes). Quem pediu antes de a leitura acabar fica na espera.
+   */
+  function lerLogo(url, pronto) {
     const doc = typeof document !== 'undefined' ? document : null;
-    if (!url || !doc || typeof Image === 'undefined') return '';
+    if (!url || !doc || typeof Image === 'undefined') return null;
     const r = LOGOS[url];
-    if (r && !r.espera) return r.src;
-    if (r) { r.espera.push(pronta); return ''; }
-    const reg = LOGOS[url] = { src: '', espera: [pronta] };
-    const fim = (src) => {
-      reg.src = src || '';
+    if (r && !r.espera) return r;
+    if (r) { r.espera.push(pronto); return null; }
+    const reg = LOGOS[url] = { src: '', luz: null, espera: [pronto] };
+    const fim = (lida) => {
+      reg.src = (lida && lida.src) || '';
+      reg.luz = lida && lida.luz != null ? lida.luz : null;
       const esperando = reg.espera;
       reg.espera = null;
-      if (reg.src) esperando.forEach((f) => { try { if (f) f(reg.src); } catch (e) { /* a peça já saiu */ } });
+      esperando.forEach((f) => { try { if (f) f(reg); } catch (e) { /* a peça já saiu */ } });
     };
     const s = String(url);
     const i = s.indexOf('/media/');
     const daOrigem = s.charAt(0) === '/' ? s : (i >= 0 ? s.slice(i) : '');
-    if (!daOrigem) { fim(''); return ''; }
+    if (!daOrigem) { fim(null); return null; }
     const img = new Image();
-    img.onload = () => { let src = ''; try { src = semMargem(img, doc); } catch (e) { src = ''; } fim(src); };
-    img.onerror = () => fim('');
+    img.onload = () => { let lida = null; try { lida = semMargem(img, doc); } catch (e) { lida = null; } fim(lida); };
+    img.onerror = () => fim(null);
     img.src = daOrigem;
-    return '';
+    return null;
+  }
+  function logoAparada(url, pronta) {
+    const r = lerLogo(url, (reg) => { if (reg.src && pronta) pronta(reg.src); });
+    return r ? r.src : '';
+  }
+  /*
+   * A LOGO ESCURA NO FUNDO ESCURO (reteste 4, 22/11). A TV escolhe a versão
+   * branca da logo no fundo escuro (logoDaPeca, logoNoFundo no player); a
+   * versão branca só existe quando a pessoa aceitou a proposta da Marca. Sem
+   * ela, a logo preta ia para o cabeçalho escuro e sumia. Agora, quando o
+   * desenho da logo e o fundo ficam com contraste abaixo de 3:1, a logo vai
+   * numa placa branca — a mesma que se usa em crachá e em fachada. Logo
+   * clara, ou colorida que se lê no fundo, fica como está.
+   * `pronto(placa)` é chamado quando a leitura acaba; devolve já, se souber.
+   */
+  function contrasteDaLuz(a, b) { const x = Math.max(a, b), y = Math.min(a, b); return (x + 0.05) / (y + 0.05); }
+  function precisaDePlaca(luzDaLogo, luzDoFundo) {
+    if (luzDaLogo == null || luzDoFundo == null) return false;
+    return luzDoFundo < 0.35 && contrasteDaLuz(luzDaLogo, luzDoFundo) < 3;
+  }
+  function logoNaPlaca(url, luzDoFundo, pronto) {
+    const r = lerLogo(url, (reg) => { if (pronto) pronto(precisaDePlaca(reg.luz, luzDoFundo)); });
+    return r ? precisaDePlaca(r.luz, luzDoFundo) : null;
+  }
+  // A luminância média dos pixels visíveis de um RGBA (o desenho da logo, sem o transparente em volta).
+  function luzDosPixels(d) {
+    let soma = 0, n = 0;
+    for (let k = 0; k < d.length; k += 16) {
+      const a = d[k + 3];
+      if (a <= 16) continue;
+      const c = [d[k], d[k + 1], d[k + 2]].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+      const peso = a / 255;
+      soma += (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) * peso;
+      n += peso;
+    }
+    return n ? soma / n : null;
   }
   function semMargem(img, doc) {
     // SVG sem tamanho próprio vem com 0 (ou 300×150): desenha numa caixa de 2:1, que é a forma comum de logo.
@@ -747,21 +791,22 @@
     if (!g) return '';
     g.drawImage(img, 0, 0, w, h);
     const d = g.getImageData(0, 0, w, h).data;
+    const luz = luzDosPixels(d);
     let x0 = w, y0 = h, x1 = -1, y1 = -1;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         if (d[(y * w + x) * 4 + 3] > 16) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
       }
     }
-    if (x1 < 0) return '';
+    if (x1 < 0) return { src: '', luz };
     // Margem pequena (menos de 6% da largura e da altura, somados os dois lados): não compensa trocar a imagem.
-    if ((w - (x1 - x0 + 1)) / w < 0.06 && (h - (y1 - y0 + 1)) / h < 0.06) return '';
+    if ((w - (x1 - x0 + 1)) / w < 0.06 && (h - (y1 - y0 + 1)) / h < 0.06) return { src: '', luz };
     const m = Math.round(Math.max(x1 - x0, y1 - y0) * 0.02);
     x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(w - 1, x1 + m); y1 = Math.min(h - 1, y1 + m);
     const out = doc.createElement('canvas');
     out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
     out.getContext('2d').drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
-    return out.toDataURL('image/png');
+    return { src: out.toDataURL('image/png'), luz };
   }
 
   /*
@@ -929,17 +974,34 @@
     beleza: { produto: { arquivo: '/pecas-ouro/fotos/salao/pinceis.jpg', foco: { x: 0.5, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/salao/camarim.jpg', foco: { x: 0.6, y: 0.45 } } },
     saude: { produto: { arquivo: '/pecas-ouro/fotos/farmacia/cuidados.jpg', foco: { x: 0.5, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/clinica/sala-clara.jpg', foco: { x: 0.5, y: 0.55 } },
       textura: { arquivo: '/pecas-ouro/fotos/clinica/entrada.jpg', foco: { x: 0.5, y: 0.5 } } },
-    corporativo: { produto: { arquivo: '/pecas-ouro/fotos/escritorio/mesa-minimalista.jpg', foco: { x: 0.7, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/escritorio/escritorio-aberto.jpg', foco: { x: 0.6, y: 0.5 } },
+    // Reteste 4: o "produto" da Empresas era a mesa com um calendário em inglês (M T W T F S), em toda peça de foto da fábrica e do RH.
+    // E o "ambiente" era o mesmo rapaz no notebook em toda peça (um rosto de banco, ainda por cima): a sala vazia.
+    corporativo: { produto: { arquivo: '/pecas-ouro/fotos/escritorio/mesa-cafe.jpg', foco: { x: 0.55, y: 0.45 } }, ambiente: { arquivo: '/pecas-ouro/fotos/escritorio/sala-reuniao.jpg', foco: { x: 0.5, y: 0.55 } },
       textura: { arquivo: '/pecas-ouro/fotos/escritorio/predio.jpg', foco: { x: 0.5, y: 0.5 } } },
   };
   // Os ramos da Marca (js/paletas.js) que usam as fotos de outro; o resto (pet, academia, moda, varejo) fica com a geral.
   const RAMO_DAS_FOTOS = { barbearia: 'beleza' };
   const RAMO_DA_FRENTE = { saude: 'saude', empresa: 'corporativo' };
   const PAPEIS_COM_FOTO_PADRAO = ['produto', 'ambiente', 'textura'];
-  function fotoPadrao(papel, ramo, frente) {
+  /*
+   * VARIAÇÃO (reteste 4, 22/11). Com uma foto só por papel, as peças de foto
+   * da Empresas saíam todas com a MESMA imagem — dez peças, dez vezes a mesma
+   * sala na TV do RH. Com `semente` (a peça de origem e o campo), a foto sai
+   * de uma lista curta, sempre a mesma para a mesma peça (a TV, a bancada e
+   * o painel desenham igual). Cada uma está no banco, com o ramo.
+   */
+  const VARIACOES = {
+    corporativo: { ambiente: [FOTOS_PADRAO.corporativo.ambiente, { arquivo: '/pecas-ouro/fotos/escritorio/predio-noite.jpg', foco: { x: 0.5, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/industria/escada.jpg', foco: { x: 0.5, y: 0.5 } }],
+      textura: [FOTOS_PADRAO.corporativo.textura, { arquivo: '/pecas-ouro/fotos/industria/estrutura.jpg', foco: { x: 0.5, y: 0.5 } }] },
+  };
+  function numeroDa(semente) { let h = 0; const t = String(semente); for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; return h; }
+  function fotoPadrao(papel, ramo, frente, semente) {
     if (PAPEIS_COM_FOTO_PADRAO.indexOf(papel) < 0) return null;
     const r = RAMO_DAS_FOTOS[ramo] || ramo;
-    const doRamo = (FOTOS_PADRAO[r] || FOTOS_PADRAO[RAMO_DA_FRENTE[frente]] || {})[papel];
+    const qual = FOTOS_PADRAO[r] ? r : RAMO_DA_FRENTE[frente];
+    const lista = semente && VARIACOES[qual] && VARIACOES[qual][papel];
+    if (lista) return lista[numeroDa(semente) % lista.length];
+    const doRamo = (FOTOS_PADRAO[qual] || {})[papel];
     return doRamo || FOTO_GERAL;
   }
   const CORTE_PADRAO = 0.5;
@@ -1302,7 +1364,9 @@
   const BASE_SEM_CQ = BASE
     .replace(':where(.mt-peca,.mt-peca *,.mt-peca *::before,.mt-peca *::after){box-sizing:border-box}', '*,*::before,*::after{box-sizing:border-box}')
     .replace(':where(.mt-peca) :where(h1,h2,h3,h4,p,ul,ol,figure,figcaption){margin:0}', 'h1,h2,h3,h4,p,ul,ol,figure,figcaption{margin:0}')
-    .replace(':where(.mt-peca) :where(img){display:block}', 'img{display:block}');
+    .replace(':where(.mt-peca) :where(img){display:block}', 'img{display:block}')
+    // A placa da logo escura (reteste 4): sem o `:where()`, a TV antiga jogava a regra inteira fora. O peso é o mesmo (tag + atributo).
+    .replace(':where(.mt-peca) img[data-logo-placa]{', 'img[data-logo-placa]{');
   const ROLAR_SEM_CQ = 'from{transform:translateX(0)}to{transform:translateX(-50%)}';
 
   /*
@@ -2215,10 +2279,16 @@
         const daLogo = valor;
         const aparada = logoAparada(daLogo, (src) => { if (el.isConnected !== false && el.getAttribute('src') === daLogo) { el.src = src; enquadrar(host, palcoEl); } });
         if (aparada) valor = aparada;
+        // A logo da marca sem a versão que lê neste fundo vai na placa (ver logoNaPlaca).
+        const daConta = !!(o.logo && o.logo.url) && (!it.campos.logo || it.campos.logo === o.logo.url);
+        if (daConta) {
+          const placa = logoNaPlaca(daLogo, luminanciaHex(tokens && tokens.cores && tokens.cores.fundo), (sim) => { if (sim && el.isConnected !== false) { el.setAttribute('data-logo-placa', ''); enquadrar(host, palcoEl); } });
+          if (placa) el.setAttribute('data-logo-placa', '');
+        }
       }
       let esp = (it.espacos || {})[campo] || {};
       // O espaço de foto vazio leva a foto padrão do papel e do ramo (fotoPadrao): nada de meia peça vazia.
-      const padrao = !qr && campo !== 'logo' && !o.rascunho && !valor ? fotoPadrao(esp.papel, o.ramo, o.frente) : null;
+      const padrao = !qr && campo !== 'logo' && !o.rascunho && !valor ? fotoPadrao(esp.papel, o.ramo, o.frente, ((it.origem && it.origem.base) || '') + ':' + campo) : null;
       if (padrao) {
         valor = padrao.arquivo;
         esp = Object.assign({}, esp, { foco: esp.foco || padrao.foco });
@@ -2352,13 +2422,13 @@
   return {
     ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA,
     // A foto padrão do espaço vazio (o teste confere que cada uma está no banco) e o passo que não deixa texto cortado.
-    fotoPadrao, FOTOS_PADRAO, FOTO_GERAL, semCorte,
+    fotoPadrao, FOTOS_PADRAO, FOTO_GERAL, VARIACOES, semCorte,
     // O movimento de cinema: as partes puras (o teste), e as keyframes que só o player usa.
     DO_PLAYER, TEMPO, CINEMA, movimentoDe, animacaoDoElemento, contarTexto, contarPartes, origemDaFoto,
     // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).
     encaixeDaFoto, miniaturaDaFoto, encaixarFoto, AMPLIACAO_MAXIMA,
-    // A logo sem a margem vazia (reteste 3): o cabeçalho padrão do player usa a mesma.
-    logoAparada,
+    // A logo sem a margem vazia (reteste 3): o cabeçalho padrão do player usa a mesma; e a placa da logo escura no fundo escuro (reteste 4).
+    logoAparada, logoNaPlaca, precisaDePlaca, luzDosPixels,
     // FOTO VIVA: o CSS da peça que vale também para o <video> do espaço, e a troca do <img> pelo <video>.
     cssComVideo, videoNoLugar,
     BASE_SEM_CQ, cssSemCq, cssCompletoSemCq, condicaoCq, temContainerQueries, referencia,

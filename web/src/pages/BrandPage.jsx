@@ -56,6 +56,9 @@ function Ficha({ titulo, texto, itens }) {
   );
 }
 
+// Reteste 4: o exemplo do nome é da frente da conta (a fábrica via "Ex.: Padaria Aurora").
+const NOME_DE_EXEMPLO = { comercio: 'Ex.: Padaria Aurora', saude: 'Ex.: Clínica Bem Viver', empresa: 'Ex.: Grupo Horizonte' };
+
 /*
  * A MARCA (EXECUTOR D6).
  *
@@ -426,7 +429,7 @@ export function BrandPage({ onIr }) {
         <PanelHeader title="Nome e jeito de falar" description="Como a marca aparece nas peças e como a IA escreve por ela." />
         <div className="grid gap-4 p-4 md:grid-cols-2">
           <Field label="Nome da marca" hint="Aparece nas peças.">
-            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Padaria Aurora" maxLength={60} />
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder={NOME_DE_EXEMPLO[perfil.id] || NOME_DE_EXEMPLO.comercio} maxLength={60} />
           </Field>
           <Field label="Tom de voz">
             <Input value={tom} onChange={(e) => setTom(e.target.value)} placeholder="acolhedor" maxLength={60} />

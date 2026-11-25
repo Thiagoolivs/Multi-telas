@@ -22,7 +22,7 @@ export const perfilDaTela = (t) => t.perfil || PERFIL_DA_MARCA[t.marca] || 'come
 
 // Reteste 2: a tela de campanha fora de época (Outubro Rosa em novembro) também não aparece (modelosOuro.js, naEpoca).
 export const aprovadas = (manifesto, hoje) => ((manifesto && manifesto.telas) || [])
-  .filter((t) => t.estado === 'aprovada' && naEpoca(t, perfilDaTela(t), hoje)).map(paraOCliente);
+  .filter((t) => t.estado === 'aprovada' && naEpoca(t, perfilDaTela(t), hoje)).map((t) => paraOCliente(t, manifesto.marcas));
 
 /*
  * O que da tela do manifesto chega ao cliente (QA de lançamento, 03/11).
@@ -48,8 +48,19 @@ export function descricaoDaTela(t) {
   const lista = partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : partes[0];
   return 'Tela inteira, com ' + lista + '. Troque os textos e ponha na TV.';
 }
-export function paraOCliente(t) {
-  const { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar, negocio, ramos } = t;
+/*
+ * Reteste 4: o nome da tela sem a empresa de exemplo. "Ótica Central ·
+ * Semana do Sol" é o nome de bancada (o operador sabe de que exemplo é); na
+ * conta do cliente, o cartão diz "Semana do Sol".
+ */
+export function nomeParaOCliente(t, marcas) {
+  const nome = String((t && t.nome) || '');
+  const exemplo = (marcas || []).find((m) => m.id === (t && t.marca));
+  return exemplo && exemplo.nome && nome.startsWith(exemplo.nome + ' · ') ? nome.slice(exemplo.nome.length + 3) : nome;
+}
+export function paraOCliente(t, marcas) {
+  const { id, marca, perfil, layout, zonas, mensagens, estado, paraComecar, negocio, ramos } = t;
+  const nome = nomeParaOCliente(t, marcas);
   return { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar: paraComecar === true, descricao: descricaoDaTela(t),
     // Fase 9: o pacote do tipo de negócio (padaria, ótica, clínica…) e os ramos da Marca a que ele serve (js/paletas.js).
     negocio: negocio || '', ramos: Array.isArray(ramos) ? ramos : [] };
@@ -136,11 +147,20 @@ export function limparDoExemplo(valor, def, conta, exemplos) {
   return exemplos.compactos.some((k) => k.length > 4 && compacto(v).includes(k)) ? '' : v;
 }
 
-// A peça de uma zona da tela, pronta para desenhar e para ir à TV.
-export function itemDaTela(modelo, entrada, modo, papel, marca, exemplos) {
-  const base = itemDoModelo(modelo, marca);
-  const campos = { ...(entrada.campos || {}) };
-  DO_EXEMPLO.forEach((c) => { if (c in campos) campos[c] = ''; });
+/*
+ * Os campos de um modelo sem nada da empresa de exemplo (a regra de cima),
+ * para a tela pronta e, desde o reteste 4, também para a peça solta do
+ * Prontos e para o desenho trocado no editor: lá a padaria abria o rodapé
+ * de contatos com o WhatsApp e o @ do salão, e o "Reserve pelo WhatsApp"
+ * com o telefone da ótica. Devolve os campos e os que ficaram por completar.
+ *
+ * O ano de fundação (DO_EXEMPLO) sai do campo: a TV mostra o texto neutro
+ * que o desenho traz no lugar ("Bem-vindo"), em vez de um "Desde 1987" que
+ * o cliente nunca disse — e em vez de um enfeite em volta de nada.
+ */
+export function camposSemExemplo(modelo, entrada, marca, exemplos) {
+  const campos = { ...(entrada || {}) };
+  DO_EXEMPLO.forEach((c) => { delete campos[c]; });
   const defs = globalThis.MTPecaHtml ? globalThis.MTPecaHtml.higienizar(modelo.arq).campos : [];
   const pendentes = [];
   for (const d of defs) {
@@ -157,9 +177,31 @@ export function itemDaTela(modelo, entrada, modo, papel, marca, exemplos) {
     campos[d.nome] = limpo;
     if (!limpo) pendentes.push(d.nome);
   }
+  return { campos, pendentes };
+}
+
+// A peça de uma zona da tela, pronta para desenhar e para ir à TV.
+export function itemDaTela(modelo, entrada, modo, papel, marca, exemplos) {
+  const base = itemDoModelo(modelo, marca);
+  const { campos, pendentes } = camposSemExemplo(modelo, entrada.campos, marca, exemplos);
   if (base.campos.marca) campos.marca = base.campos.marca;
   else delete campos.marca;
   return { ...base, papel, modo: modo || 'marca', campos, ...(pendentes.length ? { _pendentes: pendentes } : {}) };
+}
+
+/*
+ * A PEÇA SOLTA DO PRONTOS, sem a empresa de exemplo (reteste 4): o mesmo
+ * itemDoModelo (o texto da frente, a marca, o link e a foto da conta) e, por
+ * cima, a limpeza da tela pronta. O que saiu vai em `_pendentes`, e o editor
+ * pede para completar.
+ */
+export function pecaDoProntos(modelo, marca, frente, exemplos) {
+  const base = itemDoModelo(modelo, marca, frente);
+  const { marca: nome, ...resto } = base.campos;
+  // As fotos que o itemDoModelo escolheu ({ src, foco }) passam como vieram: a limpeza só olha texto e QR.
+  const { campos, pendentes } = camposSemExemplo(modelo, resto, marca, exemplos);
+  if (nome) campos.marca = nome;
+  return { ...base, campos, ...(pendentes.length ? { _pendentes: pendentes } : {}) };
 }
 
 /*

@@ -79,7 +79,13 @@ export function itemDoModelo(m, marca, frente) {
    * a da padaria, na clínica, de horário da recepção, não de pão quente.
    */
   const daFrente = (frente && m.textos && m.textos[frente]) || {};
-  const campos = { ...daFrente, ...(k.nome && /data-campo="marca"/.test(m.arq.html) ? { marca: k.nome } : {}) };
+  /*
+   * Reteste 4: a foto de exemplo da frente (`fotosDaFrente` no manifesto). O
+   * espaço vazio leva a foto padrão do ramo da conta, e no "Almoço de hoje"
+   * da fábrica ela era a mesa de escritório (com um calendário em inglês).
+   */
+  const fotoDaFrente = (frente && m.fotosDaFrente && m.fotosDaFrente[frente]) || {};
+  const campos = { ...fotoDaFrente, ...daFrente, ...(k.nome && /data-campo="marca"/.test(m.arq.html) ? { marca: k.nome } : {}) };
   // Reteste 3: o QR do modelo abre o contato de verdade da conta (o site ou o WhatsApp da Marca), nunca o do exemplo.
   const link = linkDaConta(k);
   if (link && !campos.link && /data-campo-qr="link"/.test(m.arq.html)) campos.link = link;

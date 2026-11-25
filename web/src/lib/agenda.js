@@ -46,9 +46,12 @@ export function resumoAgenda(ag) {
   if (ag.horaInicio || ag.horaFim) {
     partes.push('das ' + (ag.horaInicio || '00:00') + ' às ' + (ag.horaFim || '23:59'));
   }
-  if (ag.dataInicio && ag.dataFim) partes.push('de ' + dataBr(ag.dataInicio) + ' a ' + dataBr(ag.dataFim));
-  else if (ag.dataFim) partes.push('até ' + dataBr(ag.dataFim));
-  else if (ag.dataInicio) partes.push('a partir de ' + dataBr(ag.dataInicio));
+  // Reteste 4: a data de antes em outro formato ("31/12/2020") não vira "até " pela metade: sai do resumo.
+  const ini = dataBr(ag.dataInicio);
+  const fim = dataBr(ag.dataFim);
+  if (ini && fim) partes.push('de ' + ini + ' a ' + fim);
+  else if (fim) partes.push('até ' + fim);
+  else if (ini) partes.push('a partir de ' + ini);
   const t = partes.join(', ');
   return t.charAt(0).toUpperCase() + t.slice(1);
 }

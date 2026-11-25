@@ -7,11 +7,15 @@ import { Button } from '../ui/Button.jsx';
 import { Field, Input } from '../ui/Field.jsx';
 import { PecaHtml } from './PecaHtml.jsx';
 import { TrocarFoto } from '../fotos/TrocarFoto.jsx';
-import { carregarDesenhista, conferirNosFormatos, medirEspaco, NOME_DO_FORMATO } from '../../lib/pecaHtml.js';
+import { carregarDesenhista, conferirNosFormatos, medirEspaco, NOME_DO_FORMATO, TAMANHO_REAL } from '../../lib/pecaHtml.js';
 import { papelDoEspaco, papelNoManifesto, espacoComFoto } from '../../lib/espacos.js';
 import { imagemDoCampo, ehVideoSrc } from '../../lib/fotoViva.js';
 import { ai, brand } from '../../api.js';
 import { carregarModelos, espacosDoModelo } from '../../lib/modelosOuro.js';
+import { carregarManifesto } from '../../lib/pacoteOuro.js';
+import { pecaDoProntos, marcaDaConta, nomesDeExemplo } from '../../lib/telasProntas.js';
+import { qrDoWifi, temQrDeWifi } from '../../lib/qrDoWifi.js';
+import { usePerfil } from '../../lib/perfil.js';
 import { CURADAS } from '../../lib/paletas.js';
 import { MiniConversa, comPergunta } from '../tela/MiniConversa.jsx';
 
@@ -30,6 +34,10 @@ const ROTULO = {
   kicker: 'Chamada pequena (acima do título)', titulo: 'Título', titulo2: 'Título — 2ª linha', apoio: 'Texto de apoio',
   cta: 'Chamada', chamada: 'Chamada', preco: 'Preço', centavos: 'Centavos', marca: 'Nome da empresa', selo: 'Selo',
   quando: 'Quando', endereco: 'Endereço', oferta: 'Oferta', nota: 'Observação', acompanha: 'Acompanha', link: 'Link do QR',
+  // Reteste 4: o Wi-Fi em palavras (era "Wifi", com o "WIFI:T:WPA;…" ao lado em Elementos).
+  wifi: 'QR do Wi-Fi', rede: 'Nome da rede', senha: 'Senha', 'rotulo-rede': 'Rótulo da rede', 'rotulo-senha': 'Rótulo da senha',
+  // As partes vivas que o conferidor também mede (o aviso dizia "Relogio").
+  relogio: 'Relógio', data: 'Data', clima: 'Clima', contagem: 'Contagem', mensagens: 'Avisos do rodapé',
 };
 /*
  * O nome do campo vem do HTML da peça, sem acento (data-campo="rotulo"). Sem
@@ -44,12 +52,22 @@ const COM_ACENTO = {
 };
 const acentuar = (palavra) => COM_ACENTO[palavra] || palavra;
 const maiuscula = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+
 export function rotulo(nome) {
   if (ROTULO[nome]) return ROTULO[nome];
   const m = nome.match(/^(\w+?)(\d+)(?:-(\w+))?$/);
   if (m) return maiuscula(acentuar(m[1])) + ' ' + m[2] + (m[3] ? ' · ' + acentuar(m[3]) : '');
   return maiuscula(nome.split('-').map(acentuar).join(' '));
 }
+/*
+ * ONDE A PEÇA É CONFERIDA (reteste 4, 22/11). O cabeçalho e o rodapé eram
+ * conferidos como peça de tela cheia (1920×1080, 1080×1920, 1080×1080): o
+ * "Cabeçalho clássico" aprovado, sem ninguém mexer, abria com "Não cabe —
+ * Relogio passa da borda". A faixa é conferida no tamanho da faixa da TV.
+ */
+const FAIXA = { cabecalho: 'Cabeçalho', rodape: 'Rodapé' };
+export const ondeConferir = (item, lugar) => (lugar ? { [lugar.nome]: lugar.tamanho }
+  : item && FAIXA[item.papel] ? { [FAIXA[item.papel]]: TAMANHO_REAL[item.papel] } : undefined);
 /*
  * Estilo e marca (§4.15: "trocar marca ou modo reestiliza a peça sem gerar de
  * novo"). A peça só usa as variáveis --mt-*; trocar o modo ou a marca troca
@@ -105,7 +123,7 @@ export function AvisoDeEncaixe({ item, onTrocar, auto }) {
     let ativo = true;
     const vivo = () => ativo;
     setEstado({ fase: 'conferindo', avisos: [] });
-    conferirNosFormatos(item).then((r) => {
+    conferirNosFormatos(item, ondeConferir(item)).then((r) => {
       if (!ativo) return;
       const avisos = avisosDaConferencia(r);
       if (!avisos.length) setEstado({ fase: 'ok', avisos });
@@ -181,6 +199,11 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   const [desenho, setDesenho] = useState(() => ({ html: item.html, css: item.css, base: (item.origem && item.origem.base) || '' }));
   const [modelos, setModelos] = useState(null);
   const [daConta, setDaConta] = useState(null);   // a marca principal: o "voltar para a marca"
+  // Reteste 4: a conta no formato das telas prontas (site, endereço, ramo) e os nomes das marcas de exemplo,
+  // para o desenho trocado nascer com o texto da frente e sem o contato da empresa de exemplo.
+  const [contaPronta, setContaPronta] = useState(null);
+  const [exemplos, setExemplos] = useState(null);
+  const perfil = usePerfil();
   const [familias, setFamilias] = useState([]);
   // D20: pedir à IA dentro da peça. Ela devolve só o que muda; "Desfazer" volta ao de antes do pedido.
   const [pedido, setPedido] = useState('');
@@ -195,6 +218,7 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
     brand.get().then((r) => {
       const k = (r && r.kit) || {};
       setDaConta({ marca: marcaDaPeca(k), nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '' });
+      setContaPronta(marcaDaConta(r));
       // O tipo de negócio: o banco de fotos do "Trocar foto" abre nas fotos dele.
       setRamo((r && r.ramo) || '');
     }).catch(() => setDaConta({ marca: null, nome: '' }));
@@ -214,7 +238,8 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   // Os outros desenhos só carregam quando a aba abre.
   useEffect(() => {
     if (aba === 'desenho' && !modelos) carregarModelos().then(setModelos).catch(() => setModelos([]));
-  }, [aba, modelos]);
+    if (aba === 'desenho' && !exemplos) carregarManifesto().then((m) => setExemplos(nomesDeExemplo(m && m.marcas))).catch(() => setExemplos(nomesDeExemplo([])));
+  }, [aba, modelos, exemplos]);
 
   /*
    * O campo escondido vai VAZIO para a TV, e o texto dele fica em
@@ -223,9 +248,15 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
    * campo não viesse. Vazio, ela não mostra nada.
    */
   const atual = useMemo(() => {
-    const { ocultos: _o, guardados: _g, creditos: _c, espacos: _e, ...resto } = item; // eslint-disable-line no-unused-vars
+    const { ocultos: _o, guardados: _g, creditos: _c, espacos: _e, _pendentes: _p, ...resto } = item; // eslint-disable-line no-unused-vars
     const doDesenho = { html: desenho.html, css: desenho.css, origem: { ...(item.origem || {}), ...(desenho.base ? { base: desenho.base } : {}) } };
     const gravados = { ...campos };
+    // Reteste 4: o QR do Wi-Fi sai da rede e da senha que a pessoa escreveu (lib/qrDoWifi.js).
+    if (temQrDeWifi(definicao)) {
+      const ex = Object.fromEntries((definicao || []).map((c) => [c.nome, c.exemplo]));
+      const valor = (n) => (gravados[n] != null ? gravados[n] : ex[n]);
+      gravados.wifi = qrDoWifi(valor('rede'), valor('senha'), ex);
+    }
     const guardados = {};
     ocultos.forEach((n) => { if (gravados[n]) guardados[n] = gravados[n]; gravados[n] = ''; });
     // Só o crédito de foto que continua na peça (e visível).
@@ -234,19 +265,34 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
     const espacosVivos = Object.fromEntries(Object.entries(espacos).filter(([n, e]) => e && (e.papel || gravados[n])));
     return { ...resto, ...doDesenho, campos: gravados, modo, marca, ...(ocultos.length ? { ocultos } : {}), ...(Object.keys(guardados).length ? { guardados } : {}), ...(Object.keys(vivos).length ? { creditos: vivos } : {}),
       ...(item.espacos || Object.keys(espacosVivos).length ? { espacos: espacosVivos } : {}) };
-  }, [item, desenho, campos, modo, marca, ocultos, creditos, espacos]);
+  }, [item, desenho, campos, modo, marca, ocultos, creditos, espacos, definicao]);
 
   // Confere meio segundo depois da última mudança (nos três formatos, ou no lugar da peça).
   useEffect(() => {
     let vivo = true;
     setConferencia(null);
     const t = setTimeout(() => {
-      conferirNosFormatos(atual, lugar ? { [lugar.nome]: lugar.tamanho } : undefined).then((r) => { if (vivo) setConferencia(r); }).catch(() => {});
+      conferirNosFormatos(atual, ondeConferir(atual, lugar)).then((r) => { if (vivo) setConferencia(r); }).catch(() => {});
     }, 500);
     return () => { vivo = false; clearTimeout(t); };
   }, [atual]);
 
-  const problemas = avisosDaConferencia(conferencia);
+  /*
+   * SÓ O QUE A PESSOA CAUSOU (reteste 4, 22/11). A peça pronta, aprovada e
+   * sem ninguém mexer, abria com "Não cabe" por uma regra de composição que
+   * ela já traz ("Numero encostado na borda" na quadrada): a pessoa lia
+   * "encurte o texto" sem ter escrito nada. O aviso que a peça já tinha como
+   * chegou fica com quem desenhou (a régua e a galeria do dono); aqui aparece
+   * o que mudou com a edição. Mudou o desenho, a conta recomeça.
+   */
+  const [avisosDeAntes, setAvisosDeAntes] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    const comoChegou = { ...item, html: desenho.html, css: desenho.css };
+    conferirNosFormatos(comoChegou, ondeConferir(comoChegou, lugar)).then((r) => { if (vivo) setAvisosDeAntes(avisosDaConferencia(r)); }).catch(() => { if (vivo) setAvisosDeAntes([]); });
+    return () => { vivo = false; };
+  }, [desenho]); // eslint-disable-line react-hooks/exhaustive-deps
+  const problemas = avisosDeAntes == null ? [] : avisosDaConferencia(conferencia).filter((a) => !avisosDeAntes.includes(a));
 
   async function pedirIA(t) {
     const frase = String(t == null ? pedido : t).trim();
@@ -301,14 +347,23 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
    * a marca.
    */
   const nomesDo = (m) => new Set(window.MTPecaHtml ? window.MTPecaHtml.higienizar(m.arq).campos.map((c) => c.nome) : []);
-  function camposPara(nomes) {
-    const novo = Object.fromEntries(Object.entries(efetivos).filter(([k]) => nomes.has(k)));
+  /*
+   * Reteste 4: o campo que só o desenho novo tem nascia com o exemplo DELE —
+   * trocar o Wi-Fi pelo "Reserve pelo WhatsApp" punha o telefone da ótica, e
+   * o Instagram, o @ do salão. Agora ele nasce como no Prontos: o texto da
+   * frente da conta, sem contato, endereço nem nome da empresa de exemplo
+   * (lib/telasProntas.js, pecaDoProntos). O que casa pelo nome vem por cima.
+   */
+  function camposPara(nomes, m) {
+    const daFrente = m && contaPronta && exemplos ? pecaDoProntos(m, contaPronta, perfil.id, exemplos).campos : {};
+    const base = Object.fromEntries(Object.entries(daFrente).filter(([k, v]) => nomes.has(k) && typeof v === 'string'));
+    const novo = { ...base, ...Object.fromEntries(Object.entries(efetivos).filter(([k]) => nomes.has(k))) };
     if (nomes.has('marca') && !novo.marca && daConta && daConta.nome) novo.marca = daConta.nome;
     return novo;
   }
   function trocarDesenho(m) {
     const nomes = nomesDo(m);
-    setCampos(camposPara(nomes));
+    setCampos(camposPara(nomes, m));
     setOcultos((o) => o.filter((n) => nomes.has(n)));
     // A foto vai junto (o mesmo nome de campo), com o ponto que importa; o papel é o do desenho novo.
     setEspacos((x) => {
@@ -350,8 +405,8 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
     .sort((a, b) => Number(b.familia === familia) - Number(a.familia === familia)).slice(0, 9)
     .map((m) => {
       const nomes = nomesDo(m);
-      return { m, item: { ...atual, html: m.arq.html, css: m.arq.css, campos: camposPara(nomes), ocultos: ocultos.filter((n) => nomes.has(n)) } };
-    }), [modelos, desenho.base, papel, familia, atual, efetivos, daConta]); // eslint-disable-line react-hooks/exhaustive-deps
+      return { m, item: { ...atual, html: m.arq.html, css: m.arq.css, campos: camposPara(nomes, m), ocultos: ocultos.filter((n) => nomes.has(n)) } };
+    }), [modelos, desenho.base, papel, familia, atual, efetivos, daConta, contaPronta, exemplos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cores = marcaBase().cores;
   const pill = (ativo) => 'rounded-md border px-2.5 py-1 text-xs ' + (ativo ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3');
@@ -360,7 +415,8 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   return (
     <Dialog open onClose={onFechar} className="max-w-4xl" title={'Editar · ' + (label || 'peça')}
       description={lugar ? 'Troque textos, cores, fonte, o que aparece e o desenho. A peça é conferida no tamanho dela na TV (' + lugar.nome.toLowerCase() + ').'
-        : 'Troque textos, cores, fonte, o que aparece e o desenho. A peça é conferida na TV deitada, em pé e na quadrada.'}
+        : FAIXA[item.papel] ? 'Troque textos, cores, fonte, o que aparece e o desenho. A faixa é conferida no tamanho dela na TV (' + FAIXA[item.papel].toLowerCase() + ').'
+          : 'Troque textos, cores, fonte, o que aparece e o desenho. A peça é conferida na TV deitada, em pé e na quadrada.'}
       footer={<>
         <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
         <Button variant="primary" icon={Check} disabled={salvando || !definicao} onClick={salvar}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
@@ -368,8 +424,8 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="space-y-2">
           <PecaHtml item={atual} formato={item.formato || '16/9'} tamanho={lugar && lugar.tamanho} />
-          {conferencia == null
-            ? <p className="text-2xs text-ink-3">{lugar ? 'Conferindo…' : 'Conferindo nos três formatos…'}</p>
+          {conferencia == null || avisosDeAntes == null
+            ? <p className="text-2xs text-ink-3">{lugar || FAIXA[item.papel] ? 'Conferindo…' : 'Conferindo nos três formatos…'}</p>
             : problemas.length
               ? (
                 <div className="rounded-lg border border-warn/40 bg-warn/10 p-2 text-2xs leading-relaxed text-ink">
@@ -378,7 +434,7 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
                   <div className="mt-1 text-ink-3">Encurte o texto (ou troque a fonte) até o aviso sumir.</div>
                 </div>
               )
-              : <p className="flex items-center gap-1.5 text-2xs text-ok"><Check size={13} /> {lugar ? 'Cabe no lugar dela na TV (' + lugar.nome.toLowerCase() + ').' : 'Cabe na TV deitada, em pé e na quadrada.'}</p>}
+              : <p className="flex items-center gap-1.5 text-2xs text-ok"><Check size={13} /> {lugar ? 'Cabe no lugar dela na TV (' + lugar.nome.toLowerCase() + ').' : FAIXA[item.papel] ? 'Cabe na faixa da TV (' + FAIXA[item.papel].toLowerCase() + ').' : 'Cabe na TV deitada, em pé e na quadrada.'}</p>}
         </div>
 
         <div className="min-w-0 space-y-3">
@@ -407,14 +463,25 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
 
           {aba === 'textos' && <>
             {textos.map((c) => {
+              // O QR do Wi-Fi é montado da rede e da senha (lib/qrDoWifi.js): no lugar do campo técnico, a frase.
+              if (c.tipo === 'qr' && c.nome === 'wifi' && temQrDeWifi(definicao)) {
+                return (
+                  <p key={c.nome} className="text-2xs leading-relaxed text-ink-3">
+                    {atual.campos.wifi ? 'O QR entra no Wi-Fi com a rede e a senha acima.' : 'Escreva a rede e a senha de verdade: com elas, a TV mostra o QR que entra no Wi-Fi.'}
+                  </p>
+                );
+              }
               const valor = campos[c.nome] != null ? campos[c.nome] : c.exemplo;
+              // Reteste 4: o contato da empresa de exemplo saiu (lib/telasProntas.js): a pessoa completa com o dela.
+              const falta = (item._pendentes || []).includes(c.nome) && !String(valor || '').trim();
               // O texto com que a peça CHEGOU também conta: a reserva preenchida já vem com título maior que o do exemplo.
               const inicial = (item.campos || {})[c.nome];
               const max = c.tipo === 'qr' ? 300 : limite(String(inicial || '').length > String(c.exemplo || '').length ? inicial : c.exemplo);
               const escondido = ocultos.includes(c.nome);
               return (
                 <Field key={c.nome} label={rotulo(c.nome) + (escondido ? ' (escondido)' : '')}
-                  hint={c.tipo === 'qr' ? (precisaDeLink.includes(c.nome) && (escondido || !String(valor || '').trim()) ? 'Sem o endereço, esta peça não vai ao ar: ela só existe por causa do QR.' : 'O endereço que o QR abre.') : String(valor || '').length + ' de ' + max}>
+                  hint={c.tipo === 'qr' ? (precisaDeLink.includes(c.nome) && (escondido || !String(valor || '').trim()) ? 'Sem o endereço, esta peça não vai ao ar: ela só existe por causa do QR.' : 'O endereço que o QR abre.')
+                    : falta ? 'O do exemplo saiu. Escreva o seu; vazio, a TV não mostra.' : String(valor || '').length + ' de ' + max}>
                   <Input value={valor || ''} maxLength={max} disabled={escondido} onChange={(e) => setCampos((x) => ({ ...x, [c.nome]: e.target.value }))} />
                 </Field>
               );

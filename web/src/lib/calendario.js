@@ -29,6 +29,8 @@ const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function partesDaData(iso) {
   const [a, m, d] = String(iso || '').split('-').map(Number);
+  // Reteste 4: a data de antes que não é data ("data-invalida", mês 13) aparecia como "NaN" e "undefined".
+  if (!(a > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return { dia: '–', mes: '', semana: '', curta: 'sem data' };
   const data = new Date(a, (m || 1) - 1, d || 1);
   return { dia: String(d).padStart(2, '0'), mes: MESES[(m || 1) - 1], semana: SEMANA[data.getDay()], curta: String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0') };
 }

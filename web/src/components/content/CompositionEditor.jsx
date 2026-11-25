@@ -7,7 +7,7 @@ import {
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup, LayoutTemplate,
-  Ruler, Paintbrush, Play, Wand,
+  Ruler, Paintbrush, Play, ListOrdered,
 } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
@@ -1019,8 +1019,9 @@ export function CompositionEditor({ value, onClose, onSave }) {
 
         <div className="mx-1 h-5 w-px bg-line" />
         <IconBtn title="Ver a animação da peça" icon={Play} onClick={() => setPrevia((n) => n + 1)} />
+        {/* Reteste 4: a varinha saiu do painel em 13/11 (eb10dbf); esta sobrou. A lista em ordem diz o que o botão faz. */}
         <IconBtn title="Escalonar a entrada: cada elemento entra logo depois do anterior"
-          icon={Wand} disabled={els.length < 2}
+          icon={ListOrdered} disabled={els.length < 2}
           onClick={() => { editar((d) => ({ ...d, els: escalonar(d.els) }), null); setPrevia((n) => n + 1); }} />
         <IconBtn title="Margem de segurança, centro e terços" icon={Ruler} ativo={guiasFixas} onClick={() => setGuiasFixas((g) => !g)} />
         <IconBtn title="Menos zoom" icon={ZoomOut} onClick={() => setZoom((z) => clamp(z - 0.25, 0.25, 3))} />

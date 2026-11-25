@@ -235,7 +235,8 @@ test('a logo do cabeçalho: sem a margem vazia e maior, no cabeçalho padrão e 
   // Pela nossa origem (/media/ é servido de qualquer armazenamento): o canvas só lê pixel da mesma origem.
   assert.match(r, /const daOrigem = s\.charAt\(0\) === '\/' \? s : \(i >= 0 \? s\.slice\(i\) : ''\);/);
   // Margem pequena, ou logo de fundo cheio: fica a original.
-  assert.match(r, /if \(\(w - \(x1 - x0 \+ 1\)\) \/ w < 0\.06 && \(h - \(y1 - y0 \+ 1\)\) \/ h < 0\.06\) return '';/);
+  // Reteste 4: a mesma leitura devolve também a luz da logo (a placa da logo escura no fundo escuro).
+  assert.match(r, /if \(\(w - \(x1 - x0 \+ 1\)\) \/ w < 0\.06 && \(h - \(y1 - y0 \+ 1\)\) \/ h < 0\.06\) return \{ src: '', luz \};/);
   assert.match(r, /if \(campo === 'logo' && !qr && valor && !o\.rascunho\) \{/);
   assert.match(r, /logoAparada,/);
   assert.match(ler('css', 'player.css'), /\.mt-header-logo \{ height: 72cqh; width: auto; max-width: 30cqw; object-fit: contain; \}/);
