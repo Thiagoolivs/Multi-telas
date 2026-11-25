@@ -65,6 +65,8 @@ const banco = require('./server/banco.js');
 const pixabay = require('./server/pixabay');
 const fotoViva = require('./server/foto-viva');
 const cortesia = require('./server/cortesia.js');
+// A primeira importação dos aniversariantes liga o "Mostrar nas TVs" (reteste 4).
+const automaticos = require('./server/automaticos.js');
 const limites = require('./server/limites.js');
 const passes = require('./server/passes.js');
 const metricas = require('./server/metricas.js');
@@ -1091,8 +1093,20 @@ async function handleApi(req, res, pathname, query) {
         for (const p of plano.entram) p.foto = await fotoDaConta(p.foto, p.nome);
         for (const u of plano.atualizam) u.pessoa.foto = await fotoDaConta(u.pessoa.foto, u.pessoa.nome);
         await db.importarPessoas(t, plano);
+        /*
+         * Importou e a conta nunca decidiu se as TVs mostram: liga em todas
+         * (server/automaticos.js, ligarNaPrimeiraImportacao). Sem isto o RH
+         * importava a lista e nenhuma das TVs mostrava aniversariante.
+         */
+        let ligouNasTvs = false;
+        const ligar = automaticos.ligarNaPrimeiraImportacao((await db.getTenant(t) || {}).automaticos);
+        if (ligar && (plano.entram.length || plano.atualizam.length)) {
+          await db.setAutomaticos(t, ligar);
+          ligouNasTvs = true;
+          avisarTelas(t, 'config', { updatedAt: Date.now(), automaticos: true }).catch(() => {});
+        }
         return sendJson(res, 200, {
-          ok: true, entram: plano.entram.length, atualizam: plano.atualizam.length, saem: plano.saem.length, ficam: plano.ficam, ignoradas: plano.ignoradas,
+          ok: true, entram: plano.entram.length, atualizam: plano.atualizam.length, saem: plano.saem.length, ficam: plano.ficam, ignoradas: plano.ignoradas, ligouNasTvs,
           // Nomes de antes, para o painel que ainda não atualizou.
           imported: plano.entram.length + plano.atualizam.length, ignored: plano.ignoradas,
         });
@@ -1302,7 +1316,10 @@ async function handleApi(req, res, pathname, query) {
     // Aberto a quem está logado. `hoje` é o que faz o painel oferecer o pacote
     // certo sem o usuário precisar procurar na lista.
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
-    const hoje = seasons.todaySeason();
+    // A data de hoje é a da FRENTE da conta: nada de Black Friday no RH nem na clínica (reteste 4).
+    const conta = await db.getTenant(sess.tenant_id).catch(() => null);
+    const frente = conta && Perfil.tem(conta.perfil) ? conta.perfil : null;
+    const hoje = seasons.todaySeason(undefined, frente);
     /*
      * As zonas vêm do layout da tela que está aberta. Sem isso geraríamos
      * conteúdo de lateral para um layout que não tem lateral — o usuário
@@ -1312,7 +1329,7 @@ async function handleApi(req, res, pathname, query) {
     const programa = hoje ? seasons.programaDe(hoje, { zonas }) : null;
     return sendJson(res, 200, {
       seasons: seasons.SEASONS, decorations: seasons.DECORATIONS,
-      hoje: hoje || null, programa,
+      hoje: hoje || null, hojeAlvo: hoje ? seasons.alvoVigente(hoje) : null, programa,
     });
   }
 

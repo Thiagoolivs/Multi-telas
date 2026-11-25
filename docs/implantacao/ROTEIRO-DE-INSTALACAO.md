@@ -95,6 +95,12 @@ Faça tudo isto em cada box, com o box no cabo de rede.
 4. Se aparecer **"O plano grátis tem 1 TV"**, o plano da conta não está pronto.
    Pare e fale com o dono. O código fica na tela: resolvido o plano, digite o
    mesmo código de novo.
+5. Se aparecer **"Esta TV parece ser a «Recepção», que parou de dar sinal. É
+   ela?"**, numa TV que você está instalando agora, toque em **"Não, é outra
+   TV"**. A pergunta aparece porque os 8 boxes são iguais e uma TV já pareada
+   está desligada ou sem rede. "Sim" só serve para a TV que **voltou** mostrando
+   um código (ela assume o nome e a programação da antiga). Responder "Sim" por
+   engano tira a programação de outra parede (reteste 4).
 
 ### 3. Nome, grupo e horário
 

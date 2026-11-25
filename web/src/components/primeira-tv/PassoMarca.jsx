@@ -8,6 +8,7 @@ import { brand, media } from '../../api.js';
 import { marcaFeita } from '../../lib/jornada.js';
 import { sugerir, coresDoLogo, coresDoTexto, ehCurada, mesmaPaleta } from '../../lib/paletas.js';
 import { cn } from '../../lib/cn.js';
+import { versoesQueFaltam } from '../../lib/logo.js';
 import { frase } from '../../lib/erros.js';
 
 // "@padariasol", "instagram.com/padariasol" → o endereço do perfil; o resto vai como site.
@@ -46,8 +47,19 @@ export function PassoMarca({ dadosDaMarca, ramo, frente, onRecarregar, onConclui
     try {
       const up = await media.upload(f);
       await brand.addAsset('logo', up.url, f.name.slice(0, 40));
+      // A versão para o fundo em que a logo some (lib/logo.js, versoesQueFaltam): sem ela, a logo escura não aparece na TV.
+      const versoes = { clara: '', escura: '' };
+      try {
+        const v = await versoesQueFaltam(up.url);
+        for (const [k, kind, rotulo] of [['clara', 'logo-clara', 'logo para fundo escuro'], ['escura', 'logo-escura', 'logo para fundo claro']]) {
+          if (!v[k]) continue;
+          const arq = await media.upload(new File([v[k].blob], v[k].nome, { type: v[k].blob.type || 'image/png' }));
+          await brand.addAsset(kind, arq.url, rotulo);
+          versoes[k] = arq.url;
+        }
+      } catch (er2) { /* sem a versão: a logo vai como veio, e a Marca ainda oferece o "Melhorar" */ }
       // A logo nova vale já nas prévias (o App só lê no login).
-      globalThis.MT_LOGO = { url: up.url, clara: '', escura: '' };
+      globalThis.MT_LOGO = { url: up.url, clara: versoes.clara, escura: versoes.escura };
       await onRecarregar();
       setTela('cores');
     } catch (er) { setErro(er.message || 'Não deu para mandar o logo. Tente de novo.'); }
@@ -68,7 +80,8 @@ export function PassoMarca({ dadosDaMarca, ramo, frente, onRecarregar, onConclui
   }
 
   if (tela === 'cores') {
-    return <CoresDaMarca kit={kit} logo={logo} nome={nome} ramo={ramo} frente={frente} onTrocarFonte={() => setTela('fonte')} onConcluir={onConcluir} />;
+    return <CoresDaMarca kit={kit} logo={logo} logoClara={assets.find((a) => a.kind === 'logo-clara')} logoEscura={assets.find((a) => a.kind === 'logo-escura')}
+      nome={nome} ramo={ramo} frente={frente} onTrocarFonte={() => setTela('fonte')} onConcluir={onConcluir} />;
   }
 
   return (
@@ -105,7 +118,7 @@ export function PassoMarca({ dadosDaMarca, ramo, frente, onRecarregar, onConclui
  * As cores: a paleta que saiu do logo (ou do site) na TV desenhada, e a
  * escolha é uma só — "Está bom" (grava) ou "Trocar" (mostra as outras).
  */
-function CoresDaMarca({ kit, logo, nome, ramo, frente, onTrocarFonte, onConcluir }) {
+function CoresDaMarca({ kit, logo, logoClara, logoEscura, nome, ramo, frente, onTrocarFonte, onConcluir }) {
   const [doLogo, setDoLogo] = useState(null);
   useEffect(() => { coresDoLogo(logo && logo.url).then(setDoLogo).catch(() => setDoLogo([])); }, [logo && logo.url]); // eslint-disable-line react-hooks/exhaustive-deps
   const salvas = kit.cores || [];
@@ -119,7 +132,7 @@ function CoresDaMarca({ kit, logo, nome, ramo, frente, onTrocarFonte, onConcluir
   const [gravando, setGravando] = useState(false);
   const [erro, setErro] = useState('');
   const atual = escolhida || paletas[0] || null;
-  const logoDoEsboco = logo ? { url: logo.url, clara: '', escura: '' } : null;
+  const logoDoEsboco = logo ? { url: logo.url, clara: (logoClara && logoClara.url) || '', escura: (logoEscura && logoEscura.url) || '' } : null;
   const zonas = { cabecalho: { pecas: 1 }, principal: { pecas: 1 }, lateral: { pecas: 1 }, rodape: { pecas: 1, mensagens: [FRASE[frente] || FRASE.comercio] } };
 
   async function estaBom() {
@@ -144,6 +157,12 @@ function CoresDaMarca({ kit, logo, nome, ramo, frente, onTrocarFonte, onConcluir
             <span className="flex -space-x-1">{atual.cores.slice(0, 3).map((c, i) => <span key={i} className="h-4 w-4 rounded-full border border-surface ring-1 ring-line" style={{ background: c }} />)}</span>
             {atual.nome}
           </p>
+          {/* O que foi feito com a logo, dito (a Marca guarda as duas versões; dá para tirar lá). */}
+          {(logoClara || logoEscura) && (
+            <p className="mt-1 text-center text-xs text-ink-3">
+              {logoClara ? 'A logo sumia no fundo escuro da TV: fiz uma versão branca para ele.' : 'A logo sumia no fundo claro da TV: fiz uma versão escura para ele.'}
+            </p>
+          )}
         </div>
       )}
       {trocando && (

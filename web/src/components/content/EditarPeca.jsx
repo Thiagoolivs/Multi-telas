@@ -31,11 +31,24 @@ const ROTULO = {
   cta: 'Chamada', chamada: 'Chamada', preco: 'Preço', centavos: 'Centavos', marca: 'Nome da empresa', selo: 'Selo',
   quando: 'Quando', endereco: 'Endereço', oferta: 'Oferta', nota: 'Observação', acompanha: 'Acompanha', link: 'Link do QR',
 };
+/*
+ * O nome do campo vem do HTML da peça, sem acento (data-campo="rotulo"). Sem
+ * esta lista o editor mostrava "Rotulo", "Funcao", "Numero" (reteste 4): a
+ * palavra certa, com acento, palavra por palavra.
+ */
+const COM_ACENTO = {
+  rotulo: 'rótulo', preco: 'preço', funcao: 'função', numero: 'número', instrucao: 'instrução', mes: 'mês',
+  tendencia: 'tendência', periodo: 'período', horario: 'horário', edicao: 'edição', citacao: 'citação',
+  descricao: 'descrição', titulo: 'título', endereco: 'endereço', servico: 'serviço', informacao: 'informação',
+  epi: 'EPI', qr: 'QR', ate: 'até', proximo: 'próximo', agua: 'água', unico: 'único', video: 'vídeo',
+};
+const acentuar = (palavra) => COM_ACENTO[palavra] || palavra;
+const maiuscula = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 export function rotulo(nome) {
   if (ROTULO[nome]) return ROTULO[nome];
   const m = nome.match(/^(\w+?)(\d+)(?:-(\w+))?$/);
-  if (m) return m[1].charAt(0).toUpperCase() + m[1].slice(1) + ' ' + m[2] + (m[3] ? ' · ' + m[3] : '');
-  return nome.charAt(0).toUpperCase() + nome.slice(1).replace(/-/g, ' ');
+  if (m) return maiuscula(acentuar(m[1])) + ' ' + m[2] + (m[3] ? ' · ' + acentuar(m[3]) : '');
+  return maiuscula(nome.split('-').map(acentuar).join(' '));
 }
 /*
  * Estilo e marca (§4.15: "trocar marca ou modo reestiliza a peça sem gerar de

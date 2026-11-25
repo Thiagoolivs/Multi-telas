@@ -115,7 +115,7 @@ function LigarPlanilha({ onFechar, onPronto }) {
         )}
         {resultado && (resultado.erro
           ? <p className="flex items-start gap-1.5 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-ink"><AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />{(feito ? 'A planilha foi ligada, mas não deu para ler: ' : '') + resultado.erro + '.'}</p>
-          : <div className="rounded-md border border-ok/40 bg-ok-soft px-3 py-2 text-sm text-ink">Veio {resultado.lista.length === 1 ? '1 indicador' : resultado.lista.length + ' indicadores'}: {resultado.lista.slice(0, 6).map((i) => i.nome + ' = ' + formatar(i.valor, i.unidade)).join(' · ')}</div>)}
+          : <div className="rounded-md border border-ok/40 bg-ok-soft px-3 py-2 text-sm text-ink">{resultado.lista.length === 1 ? 'Veio 1 indicador' : 'Vieram ' + resultado.lista.length + ' indicadores'}: {resultado.lista.slice(0, 6).map((i) => i.nome + ' = ' + formatar(i.valor, i.unidade)).join(' · ')}</div>)}
       </div>
     </Dialog>
   );
@@ -162,7 +162,7 @@ function EditarConector({ c, segredosProntos, onFechar, onSalvo }) {
             <ComoMontarPlanilha />
             {teste && (teste.erro
               ? <p className="flex items-start gap-1.5 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-ink"><AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />{teste.erro}</p>
-              : <div className="rounded-md border border-ok/40 bg-ok-soft px-3 py-2 text-sm text-ink">Veio {teste.lista.length === 1 ? '1 indicador' : teste.lista.length + ' indicadores'}: {teste.lista.slice(0, 6).map((i) => i.nome + ' = ' + formatar(i.valor, i.unidade)).join(' · ')}</div>)}
+              : <div className="rounded-md border border-ok/40 bg-ok-soft px-3 py-2 text-sm text-ink">{teste.lista.length === 1 ? 'Veio 1 indicador' : 'Vieram ' + teste.lista.length + ' indicadores'}: {teste.lista.slice(0, 6).map((i) => i.nome + ' = ' + formatar(i.valor, i.unidade)).join(' · ')}</div>)}
           </>
         )}
         {pull && (
@@ -197,7 +197,7 @@ function EditarConector({ c, segredosProntos, onFechar, onSalvo }) {
             <Field label="Buscar a cada (minutos)" className="max-w-[12rem]"><Input type="number" min={5} max={1440} value={f.intervaloMin} onChange={set('intervaloMin')} /></Field>
             {teste && (teste.erro
               ? <p className="flex items-start gap-1.5 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-ink"><AlertTriangle size={14} className="mt-0.5 shrink-0 text-danger" />{teste.erro}</p>
-              : <div className="rounded-md border border-ok/40 bg-ok-soft px-3 py-2 text-xs text-ink">Veio {teste.lista.length === 1 ? '1 indicador' : teste.lista.length + ' indicadores'}: {teste.lista.slice(0, 6).map((i) => i.nome + ' = ' + formatar(i.valor, i.unidade)).join(' · ')}</div>)}
+              : <div className="rounded-md border border-ok/40 bg-ok-soft px-3 py-2 text-xs text-ink">{teste.lista.length === 1 ? 'Veio 1 indicador' : 'Vieram ' + teste.lista.length + ' indicadores'}: {teste.lista.slice(0, 6).map((i) => i.nome + ' = ' + formatar(i.valor, i.unidade)).join(' · ')}</div>)}
           </>
         )}
       </div>
@@ -218,7 +218,7 @@ function PorNaTv({ indicador, onFechar }) {
       const item = { type: 'kpi', indicador: indicador.chave, rotulo: indicador.nome, duracao: 12 };
       // Na área principal, no lugar do mesmo indicador (js/lote-tv.js, porIndicador) — o servidor põe em cada TV (teste de carga, 16/11).
       const r = await enviarOperacao({ tipo: 'indicador', item }, escolhidas);
-      avisarComDesfazer(indicador.nome + ' na TV' + (escolhidas.length === 1 ? '.' : 's (' + escolhidas.length + ').'), r.lote);
+      avisarComDesfazer(indicador.nome + (escolhidas.length === 1 ? ' na TV.' : ' em ' + escolhidas.length + ' TVs.'), r.lote);
       onFechar();
     } catch (e) { aviso.erro('kpis', e.message || 'Não deu para pôr na TV.'); }
     finally { setEnviando(false); }

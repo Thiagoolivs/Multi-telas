@@ -113,6 +113,8 @@ export function BirthdaysPage() {
   const [busy, setBusy] = useState('');
   const [editando, setEditando] = useState(null);
   const [fotoPara, setFotoPara] = useState(null);
+  // Muda quando a importação liga o "Mostrar nas TVs": a caixa relê a escolha da conta.
+  const [versaoNasTvs, setVersaoNasTvs] = useState(0);
   const [busca, setBusca] = useState('');
   // D34: quem está sem foto ou sem e-mail, num toque.
   const [filtro, setFiltro] = useState('todos');
@@ -161,7 +163,10 @@ export function BirthdaysPage() {
     setBusy('importar');
     try {
       const r = await birthdays.import(comFotos);
-      aviso.ok('Lista atualizada: ' + [[r.entram, 'nova', 'novas'], [r.atualizam, 'atualizada', 'atualizadas'], [r.saem, 'saiu', 'saíram']].filter((x) => x[0]).map((x) => x[0] + ' ' + (x[0] === 1 ? x[1] : x[2])).join(', ') + '.');
+      aviso.ok('Lista atualizada: ' + [[r.entram, 'nova', 'novas'], [r.atualizam, 'atualizada', 'atualizadas'], [r.saem, 'saiu', 'saíram']].filter((x) => x[0]).map((x) => x[0] + ' ' + (x[0] === 1 ? x[1] : x[2])).join(', ') + '.'
+        // A primeira importação liga o "Mostrar nas TVs" (o servidor diz): a pessoa fica sabendo onde desligar.
+        + (r.ligouNasTvs ? ' As TVs já mostram cada um na semana do aniversário.' : ''));
+      if (r.ligouNasTvs) setVersaoNasTvs((v) => v + 1);
       setLinhas(null); setFotos({});
       reload();
     } catch (err) { aviso.erro('importar', err.message || 'Não deu para importar.'); }
@@ -218,7 +223,7 @@ export function BirthdaysPage() {
 
       {/* Na TV, sozinho (D15): na semana do aniversário o cartão entra no rodízio; no dia, vira destaque. */}
       <div className="mb-4">
-        <MostrarNasTVs qual="aniversarios" titulo="Mostrar nas TVs, na semana do aniversário"
+        <MostrarNasTVs key={versaoNasTvs} qual="aniversarios" titulo="Mostrar nas TVs, na semana do aniversário"
           explicacao="Na semana, um cartão com os aniversariantes entra no rodízio da área principal; no dia, vira o destaque. Semana sem aniversário: nada aparece. As datas comemorativas continuam e se intercalam." />
       </div>
 

@@ -59,13 +59,38 @@ function ehCortesia(email) {
  * acrescentar alguém à lista vale a partir do próximo login dessa pessoa —
  * que é quando ela vai olhar, porque foi quando você a avisou.
  */
+/*
+ * A CONTA está na lista, não só quem entrou agora (reteste 4, 22/11).
+ *
+ * A lista tem o e-mail do DONO. Antes, cada login comparava só o e-mail de
+ * quem entrava: o primeiro colega do RH convidado para a equipe entrava, não
+ * estava na lista, e a conta inteira voltava para o grátis — 7 das 8 TVs da
+ * empresa iam para "Esta TV está pausada" no meio do expediente. Agora a
+ * conta segue em cortesia enquanto ALGUÉM da equipe estiver na lista; sai só
+ * quando ninguém da conta está mais nela.
+ *
+ * Devolve true/false, ou null quando não deu para ler a equipe.
+ */
+async function contaNaLista(db, tenantId, email) {
+  if (ehCortesia(email)) return true;
+  if (!listaDoAmbiente().length) return false;
+  if (typeof db.listUsers !== 'function') return false;
+  try {
+    return (await db.listUsers(tenantId) || []).some((u) => ehCortesia(u && u.email));
+  } catch (e) {
+    return null;
+  }
+}
+
 async function sincronizar(db, tenantId, email) {
   if (!tenantId) return 'nada';
   const tenant = await db.getTenant(tenantId);
   if (!tenant) return 'nada';
 
   const marcada = tenant.plan_status === STATUS;
-  const naLista = ehCortesia(email);
+  const naLista = await contaNaLista(db, tenantId, email);
+  // Não deu para ler a equipe: na dúvida, não mexe no plano de ninguém.
+  if (naLista === null) return 'nada';
 
   if (naLista && !marcada) {
     /*
@@ -89,4 +114,4 @@ function contaEmCortesia(tenant) {
   return !!tenant && tenant.plan_status === STATUS;
 }
 
-module.exports = { PLANO, STATUS, listaDoAmbiente, ehCortesia, sincronizar, contaEmCortesia };
+module.exports = { PLANO, STATUS, listaDoAmbiente, ehCortesia, contaNaLista, sincronizar, contaEmCortesia };

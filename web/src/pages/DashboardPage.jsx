@@ -131,7 +131,7 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
 
 function IdeiaDeHoje({ onIr }) {
   const [ideia, setIdeia] = React.useState(null);
-  React.useEffect(() => { seasons.list().then((r) => setIdeia(ideiaDaData(r && r.hoje))).catch(() => {}); }, []);
+  React.useEffect(() => { seasons.list().then((r) => setIdeia(ideiaDaData(r && r.hoje, r && r.hojeAlvo))).catch(() => {}); }, []);
   if (!ideia) return null;
   return (
     <button type="button" onClick={() => onIr && onIr('criar', { ideia: 'data' })}
