@@ -140,6 +140,8 @@ test('a logo escura sem versão branca vai numa placa clara no fundo escuro; a c
   assert.equal(R.precisaDePlaca(preta, 0.9), false, 'no fundo claro a escura se lê');
   assert.equal(R.precisaDePlaca(null, fundoEscuro), false, 'sem ler a logo, nada muda');
   assert.match(R.BASE, /:where\(\.mt-peca\) img\[data-logo-placa\]\{background:#fff;/);
+  // E também na TV antiga (a BASE sem `:where()`, compat-tv).
+  assert.match(R.cssSemCq(R.BASE_SEM_CQ, 1920, 1080), /img\[data-logo-placa\]\{background:#fff;/);
   // O cabeçalho padrão, a espera e o código também (o player), só sem a versão branca.
   const p = ler('js/player.js');
   assert.match(p, /if \(!img \|\| !url \|\| \(logo && logo\.clara\) \|\| !R \|\| !R\.logoNaPlaca\) return;/);
@@ -199,9 +201,26 @@ test('a foto padrão da Empresas varia de peça para peça, sem o calendário em
   for (const p of M.pecas) for (const [campo, papel] of Object.entries(p.fotos || {})) { const f = R.fotoPadrao(papel, '', 'empresa', p.id + ':' + campo); if (f) usadas.add(f.arquivo); }
   assert.ok(usadas.size >= 4, 'as peças da Empresas com uma foto só: ' + [...usadas].join(', '));
   assert.ok(!usadas.has('/pecas-ouro/fotos/escritorio/mesa-minimalista.jpg') && !usadas.has('/pecas-ouro/fotos/escritorio/escritorio-aberto.jpg'));
+  // Nem como foto fixa de tela pronta: a l4-escritorio-em-pe trazia a mesa do calendário em inglês (M T W T F S).
+  assert.ok(!JSON.stringify(M.telas).includes('mesa-minimalista.jpg'), 'tela pronta com a foto do calendário em inglês');
+  // E a confraternização da mesma tela não mostra dois estranhos do banco como se fossem a equipe do cliente.
+  const esc = M.telas.find((t) => t.id === 'l4-escritorio-em-pe');
+  assert.ok(!JSON.stringify(esc).includes('equipe-executiva.jpg'), 'l4-escritorio-em-pe com rosto de banco no evento');
   // A mesma peça, a mesma foto (a TV, a bancada e o painel desenham igual); sem semente, a de sempre.
   assert.deepEqual(R.fotoPadrao('ambiente', '', 'empresa', 'x:foto'), R.fotoPadrao('ambiente', '', 'empresa', 'x:foto'));
   assert.equal(R.fotoPadrao('ambiente', '', 'empresa').arquivo, R.FOTOS_PADRAO.corporativo.ambiente.arquivo);
+});
+
+test('o Indicador só desenha a barra da meta com o número da meta (não com o exemplo ou a importância)', () => {
+  const r = ler('js/render.js');
+  // `item.meta` também é onde o painel marca o exemplo do "Adicionar" e a importância: {} ia ao ar como "NaN% da meta de undefined".
+  assert.match(r, /if \(item\.meta && isFinite\(Number\(item\.meta\.pct\)\) && item\.meta\.texto != null && String\(item\.meta\.texto\)\.trim\(\)\) \{/);
+});
+
+test('o resumo do agendamento não fica pela metade com a data de antes ("31/12/2020")', async () => {
+  const { resumoAgenda } = await lib('agenda.js');
+  assert.equal(resumoAgenda({ ativo: true, dataFim: '31/12/2020' }), 'Todo dia');
+  assert.equal(resumoAgenda({ ativo: true, dataFim: '2026-12-31' }), 'Todo dia, até 31/12');
 });
 
 test('o nome da tela pronta chega ao cliente sem a empresa de exemplo', async () => {

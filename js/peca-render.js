@@ -202,7 +202,7 @@
     + '.mt-peca[data-sem-relogio] [data-vivo="relogio"]{display:none!important}'
     // O elemento que a pessoa escondeu no editor (D19).
     + '.mt-peca [data-oculto]{display:none!important}'
-    // A logo escura sem versão branca, num fundo escuro, vai numa placa clara (reteste 4: sumia no cabeçalho; ver tomDaLogo).
+    // A logo escura sem versão branca, num fundo escuro, vai numa placa clara (reteste 4: sumia no cabeçalho; ver logoNaPlaca).
     + ':where(.mt-peca) img[data-logo-placa]{background:#fff;border-radius:.3em;padding:.12em .32em;box-sizing:border-box}';
 
   // As variáveis da marca, num bloco do palco.
@@ -1364,7 +1364,9 @@
   const BASE_SEM_CQ = BASE
     .replace(':where(.mt-peca,.mt-peca *,.mt-peca *::before,.mt-peca *::after){box-sizing:border-box}', '*,*::before,*::after{box-sizing:border-box}')
     .replace(':where(.mt-peca) :where(h1,h2,h3,h4,p,ul,ol,figure,figcaption){margin:0}', 'h1,h2,h3,h4,p,ul,ol,figure,figcaption{margin:0}')
-    .replace(':where(.mt-peca) :where(img){display:block}', 'img{display:block}');
+    .replace(':where(.mt-peca) :where(img){display:block}', 'img{display:block}')
+    // A placa da logo escura (reteste 4): sem o `:where()`, a TV antiga jogava a regra inteira fora. O peso é o mesmo (tag + atributo).
+    .replace(':where(.mt-peca) img[data-logo-placa]{', 'img[data-logo-placa]{');
   const ROLAR_SEM_CQ = 'from{transform:translateX(0)}to{transform:translateX(-50%)}';
 
   /*
