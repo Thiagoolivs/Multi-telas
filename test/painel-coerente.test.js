@@ -347,3 +347,27 @@ test('item 44: Vestir a tela com a data de hoje mora em Ajustes › Aparência',
   assert.match(f, /export function SettingsForm\(\{ settings, onChange, deviceId, device, zonas, dataDeHoje \}\)/);
   assert.match(f, /\{dataDeHoje\}/);
 });
+
+test('reteste 4: a data de hoje é a da frente (nada de Black Friday no RH) e diz quanto falta', async () => {
+  const S = require('../js/seasons.js');
+  // 22/11/2026, domingo: a janela da Black Friday (27/11) já abriu, e é novembro (Novembro Azul).
+  const domingo = new Date(2026, 10, 22, 10, 0);
+  assert.equal(S.todaySeason(domingo, 'comercio').id, 'black-friday');
+  assert.equal(S.todaySeason(domingo, 'empresa').id, 'novembro-azul', 'o RH via "Hoje: Black Friday"');
+  assert.equal(S.todaySeason(domingo, 'saude').id, 'novembro-azul', 'a clínica via "Hoje: Black Friday"');
+  assert.equal(S.todaySeason(domingo).id, 'black-friday', 'sem frente, o de sempre');
+  assert.equal(S.alvoVigente(S.getSeason('black-friday'), domingo), '2026-11-27');
+
+  const { pathToFileURL } = require('node:url');
+  const D = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/ideiaDaData.js')).href);
+  const bf = D.ideiaDaData(S.getSeason('black-friday'), '2026-11-27', domingo);
+  assert.equal(bf.porque, 'Faltam 5 dias: uma campanha com a cara dela.', 'dizia "É a data de hoje" cinco dias antes');
+  assert.doesNotMatch(bf.brief, /loja/, 'a mesma ideia aparece para a empresa e a clínica');
+  assert.equal(D.ideiaDaData(S.getSeason('black-friday'), '2026-11-27', new Date(2026, 10, 27, 9)).porque, 'É a data de hoje: uma campanha com a cara dela.');
+  assert.equal(D.ideiaDaData(S.getSeason('novembro-azul'), '2026-11-01', domingo).porque, 'É o mês dela: uma campanha com a cara dela.');
+  // O servidor escolhe pela frente da conta e manda o dia da data.
+  const srv = ler('server.js');
+  assert.match(srv, /seasons\.todaySeason\(undefined, frente\)/);
+  assert.match(srv, /hojeAlvo: hoje \? seasons\.alvoVigente\(hoje\) : null/);
+  for (const f of ['web/src/pages/DashboardPage.jsx', 'web/src/pages/CriarPage.jsx']) assert.match(ler(f), /ideiaDaData\(r && r\.hoje, r && r\.hojeAlvo\)/, f);
+});

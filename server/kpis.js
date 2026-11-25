@@ -109,6 +109,13 @@ function sentidoDe(i) {
  * banco; `null` de propósito limpa. `nomeNovo` é o nome para quando o
  * indicador ainda não existe.
  */
+// A unidade que vem escrita junto do número ("87,5%", "R$ 1.234,56"), ou ''.
+function unidadeEscrita(v) {
+  if (typeof v !== 'string') return '';
+  if (/\d\s*%/.test(v)) return '%';
+  if (/R\$\s*-?\d/i.test(v)) return 'R$';
+  return '';
+}
 function normalizarComAviso(r) {
   if (!r || typeof r !== 'object') return { item: null, aviso: 'indicador vazio' };
   const temNome = r.nome != null && String(r.nome).trim() !== '';
@@ -121,6 +128,16 @@ function normalizarComAviso(r) {
   if (nome !== undefined) item.nome = nome;
   else if (r.nomeNovo != null) item.nomeNovo = corta(r.nomeNovo, 60);
   if (r.unidade !== undefined) item.unidade = corta(r.unidade, 12);
+  else {
+    /*
+     * O "%" e o "R$" ESCRITOS na célula são a unidade (reteste 4, 22/11). A
+     * planilha do Excel com a célula em formato de porcentagem chega como
+     * "91,2%" (o Conector manda como o Excel mostra), a coluna Unidade fica
+     * vazia — e a TV mostrava "91,2", sem o %, um número que mente.
+     */
+    const u = unidadeEscrita(r.valor) || unidadeEscrita(r.meta);
+    if (u) item.unidade = u;
+  }
   const avisos = lido.aviso ? [lido.aviso] : [];
   if (r.meta !== undefined) {
     const m = r.meta === null || r.meta === '' ? { valor: null, aviso: '' } : lerNumero(r.meta);

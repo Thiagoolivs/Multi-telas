@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MonitorPlay, CalendarDays, Table2, UserPlus, Hourglass, Home } from 'lucide-react';
+import { MonitorPlay, CalendarDays, Table2, UserPlus, Hourglass, Home, Cake, Ticket } from 'lucide-react';
 import { TituloDoPasso, RodapeDoPasso, Escolha, Erro } from './MolduraDoPasso.jsx';
 import { LigarTv } from './PassoTv.jsx';
 import { TvAoVivo } from '../tela/TvAoVivo.jsx';
@@ -36,7 +36,16 @@ export function PassoPronto({ opcao, horario, frente, nomeDaConta, tv, podeLigar
   if (resultado) {
     const proximos = [
       { id: 'agenda', icone: CalendarDays, titulo: 'Agenda', detalhe: 'Datas e avisos que entram e saem sozinhos', on: () => onIr('calendario') },
-      { id: 'planilha', icone: Table2, titulo: 'Planilha de preços', detalhe: 'O preço muda na planilha e a TV muda junto', on: () => onIr('planilhas') },
+      /*
+       * O segundo passo é o da FRENTE (reteste 4): o RH via "Planilha de
+       * preços" aqui, e a clínica também. Empresa: os aniversariantes da
+       * planilha do RH; Saúde: a chamada de senha; Comércio: a planilha de preços.
+       */
+      frente === 'empresa'
+        ? { id: 'pessoas', icone: Cake, titulo: 'Aniversariantes', detalhe: 'Importe a planilha do RH e a TV mostra cada um', on: () => onIr('birthdays') }
+        : frente === 'saude'
+          ? { id: 'senha', icone: Ticket, titulo: 'Chamada de senha', detalhe: 'A recepção chama pelo celular e a TV mostra', on: () => onIr('senha') }
+          : { id: 'planilha', icone: Table2, titulo: 'Planilha de preços', detalhe: 'O preço muda na planilha e a TV muda junto', on: () => onIr('planilhas') },
       souRevisor
         ? { id: 'convidar', icone: UserPlus, titulo: 'Convidar alguém', detalhe: 'Para cuidar da TV com você', on: () => onIr('team', { convidar: true }) }
         : { id: 'pedidos', icone: Hourglass, titulo: 'Meus pedidos', detalhe: 'O que espera a aprovação do dono', on: () => onIr('aprovacoes') },

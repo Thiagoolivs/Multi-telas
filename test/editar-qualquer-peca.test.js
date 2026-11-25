@@ -87,3 +87,26 @@ test('revisão do #240: o campo escondido vai VAZIO para a TV (a antiga não con
   assert.match(e, /useState\(\(\) => \(\{ \.\.\.\(item\.campos \|\| \{\}\), \.\.\.\(item\.guardados \|\| \{\}\) \}\)\)/);
   assert.ok(!/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(ler('js/peca-html.js')), 'caractere de controle literal no código da porta');
 });
+
+test('o nome de cada campo, com acento: "Rótulo", não "Rotulo" (reteste 4)', () => {
+  const e = ler('web/src/components/content/EditarPeca.jsx');
+  // A função de verdade, tirada do arquivo e rodada aqui (o JSX não carrega no Node).
+  const ini = e.indexOf('const ROTULO = {');
+  const fim = e.indexOf('\n}\n', e.indexOf('export function rotulo(')) + 2;
+  const rotulo = new Function(e.slice(ini, fim).replace('export function rotulo', 'function rotulo') + '\nreturn rotulo;')();
+  assert.equal(rotulo('rotulo'), 'Rótulo');
+  assert.equal(rotulo('funcao'), 'Função');
+  assert.equal(rotulo('numero'), 'Número');
+  assert.equal(rotulo('preco-rotulo'), 'Preço rótulo');
+  assert.equal(rotulo('item1-preco'), 'Item 1 · preço');
+  assert.equal(rotulo('epi'), 'EPI');
+  assert.equal(rotulo('titulo'), 'Título', 'o mapa de sempre continua valendo');
+  assert.equal(rotulo('assunto'), 'Assunto');
+  // Todo campo das peças-ouro sai sem palavra conhecida sem acento.
+  const campos = new Set();
+  for (const f of fs.readdirSync(path.join(RAIZ, 'pecas-ouro')).filter((x) => x.endsWith('.html'))) {
+    for (const m of ler('pecas-ouro', f).matchAll(/data-campo="([^"]+)"/g)) campos.add(m[1]);
+  }
+  const semAcento = /\b(rotulo|funcao|numero|instrucao|mes|tendencia|periodo|horario|edicao|citacao|descricao|preco)\b/i;
+  for (const c of campos) assert.doesNotMatch(rotulo(c), semAcento, c + ' → ' + rotulo(c));
+});

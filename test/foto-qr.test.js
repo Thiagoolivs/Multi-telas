@@ -150,6 +150,12 @@ test('a rota: e-mail → código → passe → foto na fila; o RH aprova (foto n
   await pedir('/api/devices/' + tv.id + '/config', { headers: daTv });
   assert.ok((await pedir('/api/pair', { method: 'POST', cookie: c, json: { code: tv.code } })).status < 300);
   await pedir('/api/devices/' + tv.id + '/config', { method: 'PUT', cookie: c, json: { settings: { layoutId: 'full' }, zonas: {} } });
+  /*
+   * A primeira importação liga o "mostrar nas TVs" (reteste 4,
+   * server/automaticos.js): aqui o dono desliga, para conferir que sem ele o
+   * QR não vai.
+   */
+  await pedir('/api/automaticos', { method: 'PUT', cookie: c, json: { aniversarios: { ligado: false, telas: 'todas' } } });
   let cfg = (await pedir('/api/devices/' + tv.id + '/config', { headers: daTv })).json;
   assert.equal(cfg.settings.automaticos, undefined, 'sem os aniversários ligados, o QR não vai');
   await pedir('/api/automaticos', { method: 'PUT', cookie: c, json: { aniversarios: { ligado: true, telas: 'todas' } } });

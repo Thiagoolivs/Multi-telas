@@ -162,7 +162,7 @@ function PorNaTv({ planilha, onFechar }) {
       const escolhidas = telas.filter((t) => marcados.includes(t.id));
       // Na área principal; pôr de novo troca a que já estava (js/lote-tv.js, porPlanilha) — o servidor põe em cada TV (teste de carga, 16/11).
       const r = await enviarOperacao({ tipo: 'planilha', item, nome: planilha.nome }, escolhidas);
-      avisarComDesfazer(tituloFinal + ' na TV' + (escolhidas.length === 1 ? '.' : 's (' + escolhidas.length + ').'), r.lote);
+      avisarComDesfazer(tituloFinal + (escolhidas.length === 1 ? ' na TV.' : ' em ' + escolhidas.length + ' TVs.'), r.lote);
       onFechar();
     } catch (e) { aviso.erro('planilha', e.message || 'Não deu para pôr na TV.'); }
     finally { setEnviando(false); }

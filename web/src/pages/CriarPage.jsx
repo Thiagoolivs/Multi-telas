@@ -144,7 +144,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     // As sugestões da conta. Sem IA, o guia devolve um cardápio genérico — e isso já basta.
     ai.guia({}).then((r) => setIdeias((r && r.sugestoes) || [])).catch(() => setIdeias([]));
     seasons.list().then((r) => {
-      const ideia = ideiaDaData(r && r.hoje);
+      const ideia = ideiaDaData(r && r.hoje, r && r.hojeAlvo);
       setDaData(ideia);
       // Veio do Início pelo "Criar para a data": a conversa já começa nela.
       if (ideia && ideiaInicial === 'data') usarIdeia(ideia);

@@ -160,6 +160,25 @@
     return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
   }
 
+  /*
+   * A versão da logo que lê no fundo onde ela caiu (reteste 4): a tela da
+   * senha é escura na maioria dos temas, e a logo escura da clínica sumia no
+   * canto. A branca no escuro, a escura no claro — a mesma regra do
+   * cabeçalho (js/player.js, logoNoFundo); sem a versão, a original.
+   */
+  function luminancia(cor) {
+    const m = String(cor || '').match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/);
+    if (!m || (m[4] != null && Number(m[4]) < 0.5)) return null;
+    const c = [m[1], m[2], m[3]].map(function (v) { v = Number(v) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function logoNoFundo(logo, alvo) {
+    let l = null;
+    for (let x = alvo; x && l == null; x = x.parentElement) l = luminancia(getComputedStyle(x).backgroundColor);
+    if (l == null) return logo.url;
+    return (l < 0.35 ? logo.clara : logo.escura) || logo.url;
+  }
+
   function marcaEl() {
     const m = el('div', 'mt-senha-marca');
     const logo = ajustes.logo;
@@ -168,6 +187,20 @@
       img.alt = '';
       img.onerror = function () { img.remove(); if (!m.textContent) m.textContent = ajustes.nome || ''; };
       img.src = logo.url;
+      /*
+       * O fundo só existe depois de a marca entrar na página — e a tela da
+       * senha entra depois de montada. Espera ela estar no documento (até
+       * 2 s; setTimeout, que roda também com a aba em segundo plano).
+       */
+      if (logo.clara || logo.escura) {
+        let tentativas = 0;
+        const escolher = function () {
+          if (!m.isConnected && tentativas++ < 20) { setTimeout(escolher, 100); return; }
+          const u = logoNoFundo(logo, m);
+          if (u && img.getAttribute('src') !== u) img.src = u;
+        };
+        setTimeout(escolher, 0);
+      }
       m.appendChild(img);
     } else if (ajustes.nome) {
       m.textContent = ajustes.nome;
