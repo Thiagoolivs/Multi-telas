@@ -97,3 +97,14 @@ test('a tela da senha usa a logo branca no fundo escuro (a logo escura da clíni
   // Escolhe só com a tela no documento (montada antes de entrar, o fundo ainda não existe).
   assert.match(src, /if \(!m\.isConnected && tentativas\+\+ < 20\) \{ setTimeout\(escolher, 100\); return; \}\s*const u = logoNoFundo\(logo, m\);/);
 });
+
+test('"O que passa" chama a peça pelo título inteiro: "Último dia da campanha do agasalho", e o comunicado pelo assunto', async () => {
+  const { pathToFileURL } = require('node:url');
+  let C;
+  try { C = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/contentTypes.js')).href); } catch (e) { C = null; }
+  if (!C) return; // sem o lucide-react instalado (o painel não foi instalado), o arquivo não carrega no Node
+  const resumo = (campos) => C.itemSummary({ type: 'peca-html', campos, origem: { pedido: 'modelo pronto' } });
+  assert.equal(resumo({ titulo: 'Último dia da', titulo2: 'campanha do agasalho' }), 'Peça · Último dia da campanha do agasalho');
+  assert.equal(resumo({ assunto: 'Exame periódico: agende até 10/12', rotulo: 'Comunicado' }), 'Peça · Exame periódico: agende até 10/12');
+  assert.equal(resumo({}), 'Peça · modelo pronto', 'sem texto, o de onde veio');
+});

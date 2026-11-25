@@ -269,6 +269,7 @@ Em ordem de gravidade. Todos os 🔧 foram consertados, cada um com teste.
 | 12 | Feio | "Rotulo", "Funcao", "Numero" no editor da peça | `web/src/components/content/EditarPeca.jsx:39` | `test/editar-qualquer-peca.test.js` |
 | 13 | Feio | "Veio 3 indicadores"; "Dias sem acidente na TVs (3)." | `web/src/pages/IndicadoresPage.jsx:118`, `:221`; `web/src/pages/PlanilhasPage.jsx:165` | `test/reteste4.test.js` |
 | 14 | Feio | Backup "multitelas-produ-o-1.json" | `web/src/pages/ScreensPage.jsx:770` | `test/reteste4.test.js` |
+| 15 | Feio | "O que passa" e Aprovações: "Peça · Último dia da" (o título pela metade) e "Peça · modelo pronto" (o comunicado) | `web/src/lib/contentTypes.js:22` (`tituloDaPeca`) | `test/reteste4.test.js` |
 
 `SHELL_CACHE` do `sw.js` subiu para `mt-shell-v98` (a TV baixa o CSS e o JS
 novos). Outra tarefa pode ter subido para v98 também: reconciliar.
@@ -286,10 +287,8 @@ novos). Outra tarefa pode ter subido para v98 também: reconciliar.
 - **O link do item do feed** vai escrito na TV (o endereço da intranet). É o
   contrato da API (`docs/INTEGRACOES.md` §3.6); decidir se o Conector deve
   mandar o link dos itens de feed.
-- **Rótulos da lista "O que passa"** cortam o título de duas partes ("Peça ·
-  Último dia da") e chamam a peça do Prontos de "Peça · modelo pronto"; o
-  cartão "Ao vivo" do indicador mostra "—" no painel. Só no painel; a TV está
-  certa.
+- **O cartão "Ao vivo" do indicador** mostra "—" na lista do painel (a TV
+  mostra o número). Só no painel.
 - **A aprovação "Antes (agora na TV)"** desenha a primeira peça da lista, mesmo
   agendada para depois (o Natal, que entra em 05/12). Precisa conferir com
   calma (`R4/shots/e71-antes-depois.png`).
@@ -297,13 +296,32 @@ novos). Outra tarefa pode ter subido para v98 também: reconciliar.
   grupo").
 - **A pergunta "Esta TV parece ser a X?"** aparece ao parear uma TV do mesmo
   modelo com a anterior desligada há pouco. "Não, é outra TV" resolve, mas no
-  dia D, com 8 boxes iguais, o instalador pode responder "Sim" por engano.
-  Vale uma linha no roteiro de instalação.
+  dia D, com 8 boxes iguais, o instalador pode responder "Sim" por engano. Não
+  é código: entrou o passo 5 em
+  [ROTEIRO-DE-INSTALACAO.md](../implantacao/ROTEIRO-DE-INSTALACAO.md) ("Ligar e
+  parear").
 - **Não medido aqui:** a IA real, TVs e boxes de verdade, a conversão de
   PowerPoint/PDF do Conector (só no Windows), e-mail e pagamento, "Ver agora".
 
 ## Testes e régua
 
-- `env -u GITHUB_TOKEN npm test`: ver o fim desta seção.
+- **`env -u GITHUB_TOKEN npm test`: 2.196 de 2.197, 0 falhas, 1 pulado**
+  (eram 2.061 no reteste 3). Os testes novos desta rodada: 2 em
+  `cortesia.test.js`, 2 em `automaticos.test.js` (um com servidor de verdade),
+  1 em `kpis.test.js`, 1 em `painel-coerente.test.js`, 2 em
+  `primeira-tv.test.js`, 1 em `calendario.test.js`, 1 em
+  `editar-qualquer-peca.test.js` e o arquivo novo `reteste4.test.js` (8). O
+  `foto-qr.test.js` passou a desligar o "mostrar nas TVs" antes de conferir
+  que, sem ele, o QR não vai (a primeira importação agora liga).
 - `cd web && npm run build`: ok. `npm run lint:nomes`: limpo.
-- Régua: ver o fim desta seção.
+- **Régua** (`npm run regua`), uma TV por vez e uma página da bancada
+  (`REGUA_TVS`, `REGUA_PAGINAS=1`: a máquina aguenta 2 contextos de navegador
+  ao mesmo tempo, e a parte B roda junto):
+  - **TV em pé, inteira: passou** (`R4/logs/regua-em-pé.log`, 2.735 s): tela
+    cheia 14/14, bloco 14/14, a senha 1/1, peças-ouro em tela cheia 306/306,
+    nas 11 marcas 3.366/3.366, texto sobre texto e cortado 12.471/12.471,
+    telas prontas 101/101, contraste 13/13 e 13/13, cor da marca 14/14, texto
+    padrão do "Adicionar" 0/18. A principal da quadrada com rodapé (só medida)
+    segue em 981/1.122, como antes.
+  - Deitada e quadrada, os casos afetados (aviso, texto e a senha;
+    `REGUA_SO=announce,text`): ver abaixo.

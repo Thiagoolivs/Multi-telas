@@ -14,6 +14,17 @@ import {
   Youtube, Globe, QrCode, CloudSun, Film, Cake, Layout, Airplay, Cast, Presentation, ReceiptText, Palette, CircleHelp } from 'lucide-react';
 import { nomeGuardado } from './nomesDasMidias.js';
 
+/*
+ * O título da peça na lista "O que passa" (reteste 4): o título em duas
+ * partes ia pela metade ("Peça · Último dia da") e o comunicado, que tem
+ * "assunto" e não "título", virava "Peça · modelo pronto".
+ */
+export function tituloDaPeca(campos) {
+  const c = campos || {};
+  const t = [c.titulo, c.titulo2].map((x) => String(x || '').trim()).filter(Boolean).join(' ');
+  return t || String(c.assunto || c.nome || c.kicker || '').trim();
+}
+
 const GRUPO_PC = 'Com computador ligado à TV';
 
 /*
@@ -297,7 +308,7 @@ export const CONTENT_TYPES = {
     label: 'Peça da campanha (IA)', icon: Layout, group: 'Mídia',
     fields: [DUR],
     make: () => null,
-    summary: (i) => 'Peça · ' + String((i.campos && (i.campos.titulo || i.campos.kicker)) || (i.origem && i.origem.pedido) || 'campanha com IA').slice(0, 40),
+    summary: (i) => 'Peça · ' + String(tituloDaPeca(i.campos) || (i.origem && i.origem.pedido) || 'campanha com IA').slice(0, 40),
   },
   birthdayauto: {
     label: 'Aniversariantes (automático)', icon: Cake, group: 'Equipe',
