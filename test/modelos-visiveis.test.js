@@ -31,7 +31,8 @@ test('o modelo sai na marca da conta, no clima dela (sem clima, "Cor da marca"),
   const src = ler('web/src/lib/modelosOuro.js');
   assert.match(src, /modo: CLIMAS\.includes\(k\.clima\) \? k\.clima : 'marca', formato: FORMATO_DO_PAPEL\[papel\] \|\| '16\/9'/);
   // Fase 9: o exemplo na língua da frente vem antes, e o nome da conta por cima.
-  assert.match(src, /const campos = \{ \.\.\.daFrente, \.\.\.\(k\.nome && \/data-campo="marca"\/\.test\(m\.arq\.html\) \? \{ marca: k\.nome \} : \{\}\) \};/);
+  // Reteste 4: a foto de exemplo da frente (fotosDaFrente) por baixo de tudo.
+  assert.match(src, /const campos = \{ \.\.\.fotoDaFrente, \.\.\.daFrente, \.\.\.\(k\.nome && \/data-campo="marca"\/\.test\(m\.arq\.html\) \? \{ marca: k\.nome \} : \{\}\) \};/);
   assert.match(src, /marca: \{ cores: k\.cores \|\| \[\], fonteTitulo: k\.fonteTitulo \|\| '', fonteApoio: k\.fonteApoio \|\| '' \}/);
   // A ordem segue o tipo de negócio (D4).
   assert.match(src, /empresa: \['gente', 'serviço', 'institucional'/);
@@ -48,7 +49,7 @@ test('Peças prontas mostra os modelos; com eles, a página nunca fica vazia', (
    * aparece quando o filtro ou a busca não deixam nada — nunca "Nenhuma peça
    * pronta ainda" com os modelos guardados.
    */
-  assert.match(p, /const item = itemDoModelo\(m, marca, perfil\.id\);/);
+  assert.match(p, /const item = pecaDoProntos\(m, marca, perfil\.id, dados\.exemplos\);/);
   assert.match(p, /telasProntas\.meus\.map\(daTela\)\.concat\(grupos\.meus\.map\(doModelo\),/);
   assert.doesNotMatch(p, /Nenhuma peça pronta ainda/);
   assert.match(p, /title="Nada neste filtro" description="Troque o filtro ou a busca\."/);

@@ -97,13 +97,14 @@ test('o cliente só vê tela aprovada; tela sem perfil vale pela marca de exempl
   assert.equal(L.perfilDaTela({ marca: 'otica', perfil: 'saude' }), 'saude');
 });
 
-test('a tela vem com a marca da conta: nome no lugar do da empresa de exemplo, ano de fundação em branco', async () => {
+test('a tela vem com a marca da conta: nome no lugar do da empresa de exemplo, sem o ano de fundação', async () => {
   const L = await lib();
   const tela = M.telas.find((t) => t.id === 'l1-empresa-seguranca');
   const t = L.montarTela(tela, modelos, MARCA);
   const cab = t.grupos.cabecalho[0];
   assert.equal(cab.campos.marca, 'Padaria Real');
-  assert.equal(cab.campos.desde, '', 'o "Desde 2001" da Rota Sul foi para a TV do cliente');
+  // Reteste 4: o campo sai, e a TV mostra o texto neutro do desenho ("Bem-vindo"), não um enfeite em volta de nada.
+  assert.ok(!('desde' in cab.campos), 'o "Desde 2001" da Rota Sul foi para a TV do cliente');
   assert.equal(cab.campos.status, 'Turno da manhã');
   assert.deepEqual(cab.marca.cores, MARCA.cores);
   assert.equal(cab.modo, 'escuro', 'o modo da zona se perdeu');
@@ -151,7 +152,9 @@ test('a galeria: grava com versão, confere na zona, só põe em TV do mesmo jei
   assert.match(p, /const naoCabe = pe != null && pe !== emPe\(escolhida\.layout\);/);
   assert.match(p, /lugar=\{zonas\[editando\.grupo\]\}/);
   const e = fs.readFileSync(path.join(RAIZ, 'web/src/components/content/EditarPeca.jsx'), 'utf8');
-  assert.match(e, /conferirNosFormatos\(atual, lugar \? \{ \[lugar\.nome\]: lugar\.tamanho \} : undefined\)/);
+  // Reteste 4: no lugar da zona; sem lugar, a faixa no tamanho da faixa (ondeConferir).
+  assert.match(e, /conferirNosFormatos\(atual, ondeConferir\(atual, lugar\)\)/);
+  assert.match(e, /export const ondeConferir = \(item, lugar\) => \(lugar \? \{ \[lugar\.nome\]: lugar\.tamanho \}/);
   const h = fs.readFileSync(path.join(RAIZ, 'web/src/lib/pecaHtml.js'), 'utf8');
   assert.match(h, /const medidas = formatos && !Array\.isArray\(formatos\) \? Object\.entries\(formatos\)/);
   // A TV vazia oferece a tela pronta como começo.

@@ -1,5 +1,5 @@
 {
-  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens). Telas prontas (D18): lotes de 20, por perfil ('perfil') e estrutura ('estrutura'), em estado 'proposta' até o dono aprovar na bancada. 'sazonal' (reteste 2): a época de uma peça ou tela de campanha — { de: 'MM-DD', ate: 'MM-DD' } para ela inteira, ou { <frente>: { de, ate } } quando só o texto daquela frente é de campanha. Fora da época, ela não aparece nos Prontos (web/src/lib/modelosOuro.js, naEpoca).",
+  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens). Telas prontas (D18): lotes de 20, por perfil ('perfil') e estrutura ('estrutura'), em estado 'proposta' até o dono aprovar na bancada. 'sazonal' (reteste 2): a época de uma peça ou tela de campanha — { de: 'MM-DD', ate: 'MM-DD' } para ela inteira, ou { <frente>: { de, ate } } quando só o texto daquela frente é de campanha. Fora da época, ela não aparece nos Prontos (web/src/lib/modelosOuro.js, naEpoca). fotosDaFrente (reteste 4): a foto de exemplo de uma frente para o espaço de foto que, sem ela, levaria a foto padrão do ramo — o cardápio do refeitório levava a mesa de escritório ({ <frente>: { <campo>: /pecas-ouro/fotos/… } }).",
   "marcas": [
     {
       "id": "otica",
@@ -129,6 +129,9 @@
         },
         "empresa": {
           "chamada": "Semana da segurança · até sexta"
+        },
+        "comercio": {
+          "chamada": "Novidades da semana"
         }
       },
       "estado": "aprovada",
@@ -188,7 +191,7 @@
         "saude": {
           "numero": "15",
           "unidade": "anos",
-          "kicker": "Desde 2010",
+          "kicker": "Nossa história",
           "titulo": "Cuidando da saúde do bairro",
           "apoio": "Consultas, exames e retorno no mesmo lugar, com hora marcada.",
           "endereco": ""
@@ -199,6 +202,14 @@
           "kicker": "Sem acidente",
           "titulo": "Nosso recorde de segurança",
           "apoio": "Obrigado a cada um que usa o EPI e para a máquina antes de mexer.",
+          "endereco": ""
+        },
+        "comercio": {
+          "numero": "25",
+          "unidade": "anos",
+          "kicker": "Nossa história",
+          "titulo": "Cuidando do bairro",
+          "apoio": "A mesma equipe de sempre, com o atendimento de sempre.",
           "endereco": ""
         }
       },
@@ -222,7 +233,8 @@
       "aprovadaEm": "2026-10-20",
       "textos": {
         "comercio": {
-          "data": "Últimos dias"
+          "data": "Últimos dias",
+          "apoio": "30% de desconto em toda a vitrine."
         }
       }
     },
@@ -243,6 +255,12 @@
           "kicker": "Sem fila",
           "titulo": "Agende pelo WhatsApp",
           "apoio": "Escolha o dia e o horário pelo celular e chegue na hora.",
+          "contato": ""
+        },
+        "comercio": {
+          "kicker": "Sem fila",
+          "titulo": "Reserve pelo WhatsApp",
+          "apoio": "Escolha pelo celular e retire na loja.",
           "contato": ""
         }
       },
@@ -297,7 +315,7 @@
         "saude": {
           "status": "Atendendo agora",
           "horario": "Hoje até as 18h",
-          "desde": ""
+          "desde": "Bem-vindo"
         }
       },
       "estado": "aprovada",
@@ -402,6 +420,18 @@
           "dia3": "Jantar",
           "hora3": "18h – 19h30",
           "nota": "Cardápio da semana no mural"
+        },
+        "comercio": {
+          "kicker": "Funcionamento",
+          "titulo": "Horário",
+          "titulo2": "de atendimento",
+          "dia1": "Segunda a sexta",
+          "hora1": "8h – 20h",
+          "dia2": "Sábado",
+          "hora2": "8h – 18h",
+          "dia3": "Domingo e feriado",
+          "hora3": "9h – 13h",
+          "nota": "Feriados: confira na loja"
         }
       },
       "estado": "aprovada",
@@ -562,6 +592,11 @@
           "frase": "Fui atendida na hora e saí com tudo explicado. Voltei a confiar.",
           "nome": "Maria L.",
           "quem": "paciente desde 2018"
+        },
+        "comercio": {
+          "frase": "Fui muito bem atendida e voltei na semana seguinte.",
+          "nome": "Juliana M.",
+          "quem": "cliente desde 2019"
         }
       },
       "estado": "aprovada",
@@ -589,6 +624,11 @@
         "empresa": {
           "arroba": "@suaempresa",
           "apoio": "Os bastidores do time e as conquistas de cada mês."
+        },
+        "comercio": {
+          "kicker": "Siga a gente",
+          "arroba": "@sualoja",
+          "apoio": "As novidades da loja, toda semana."
         }
       },
       "estado": "aprovada",
@@ -615,6 +655,9 @@
           "contato1": "",
           "contato2": "",
           "contato3": ""
+        },
+        "comercio": {
+          "chamada": "Fale com a gente"
         }
       },
       "estado": "aprovada",
@@ -1114,13 +1157,13 @@
       ],
       "textos": {
         "saude": {
-          "kicker": "Desde 2010",
+          "kicker": "Bem-vindo",
           "titulo": "Cuidar bem",
           "titulo2": "muda tudo",
           "endereco": ""
         },
         "empresa": {
-          "kicker": "Desde 1998",
+          "kicker": "Nossa equipe",
           "titulo": "Gente que",
           "titulo2": "faz acontecer",
           "endereco": ""
@@ -1164,6 +1207,11 @@
           "titulo": "A próxima foto pode ser a sua",
           "apoio": "Mande a foto do seu time pelo QR e ela aparece aqui.",
           "pedido": "Mande pelo QR"
+        },
+        "comercio": {
+          "legenda": "Cliente da casa",
+          "quando": "Cliente desde 2019",
+          "apoio": "Tire uma foto na loja e mande para a gente. Ela entra no mural."
         }
       },
       "estado": "aprovada",
@@ -1207,6 +1255,11 @@
         "titulo": "Churrasco",
         "titulo2": "com milho",
         "acompanha": "Linguiça, frango e alcatra com arroz e feijão da casa."
+      },
+      "fotosDaFrente": {
+        "empresa": {
+          "foto": "/pecas-ouro/fotos/prato-do-dia.jpg"
+        }
       }
     },
     {
@@ -1992,7 +2045,7 @@
           "titulo": "Entregamos no bairro",
           "apoio": "Taxa grátis acima de R$ 50 · em até 40 minutos",
           "cta": "Peça pelo WhatsApp",
-          "contato": "(11) 99999-0000"
+          "contato": ""
         }
       },
       "estado": "proposta",
@@ -2020,27 +2073,27 @@
           "kicker": "Wi-Fi grátis",
           "titulo": "Fique conectado",
           "rotulo-rede": "Rede",
-          "rede": "Clientes",
+          "rede": "Nome da rede",
           "rotulo-senha": "Senha",
-          "senha": "bemvindo2026",
+          "senha": "Senha da rede",
           "cta": "Ou aponte a câmera para entrar"
         },
         "saude": {
           "kicker": "Wi-Fi para pacientes",
           "titulo": "Enquanto você espera",
           "rotulo-rede": "Rede",
-          "rede": "Pacientes",
+          "rede": "Nome da rede",
           "rotulo-senha": "Senha",
-          "senha": "saude2026",
+          "senha": "Senha da rede",
           "cta": "Ou aponte a câmera para entrar"
         },
         "empresa": {
           "kicker": "Wi-Fi",
           "titulo": "Rede para visitantes",
           "rotulo-rede": "Rede",
-          "rede": "Visitantes",
+          "rede": "Nome da rede",
           "rotulo-senha": "Senha",
-          "senha": "boasvindas26",
+          "senha": "Senha da rede",
           "cta": "Ou aponte a câmera para entrar"
         }
       },
@@ -2048,7 +2101,7 @@
       "marca": "salao",
       "lote": 3,
       "campos": {
-        "wifi": "WIFI:T:WPA;S:Clientes;P:bemvindo2026;;"
+        "wifi": "WIFI:T:WPA;S:Nome da rede;P:Senha da rede;;"
       }
     },
     {
@@ -2317,7 +2370,7 @@
       },
       "textos": {
         "comercio": {
-          "kicker": "Desde 1987",
+          "kicker": "Bem-vindo",
           "titulo": "A mesa posta",
           "titulo2": "como em casa",
           "apoio": "Massa feita à mão todas as manhãs e o vinho da casa.",
@@ -2414,6 +2467,11 @@
       "lote": 4,
       "campos": {
         "foto": "/pecas-ouro/fotos/restaurante/prato-autoral.jpg"
+      },
+      "fotosDaFrente": {
+        "empresa": {
+          "foto": "/pecas-ouro/fotos/prato-do-dia.jpg"
+        }
       }
     },
     {
@@ -2467,6 +2525,11 @@
       "lote": 4,
       "campos": {
         "foto": "/pecas-ouro/fotos/restaurante/tagliatelle.jpg"
+      },
+      "fotosDaFrente": {
+        "empresa": {
+          "foto": "/pecas-ouro/fotos/prato-do-dia.jpg"
+        }
       }
     },
     {
@@ -3142,19 +3205,19 @@
       },
       "textos": {
         "saude": {
-          "kicker": "Desde 2011",
+          "kicker": "Nossa história",
           "numero": "15",
           "rotulo": "anos cuidando de sorrisos",
           "assinatura": "Obrigado pela confiança"
         },
         "comercio": {
-          "kicker": "Desde 1987",
+          "kicker": "Nossa história",
           "numero": "38",
           "rotulo": "anos na mesma esquina",
           "assinatura": "Obrigado, freguesia"
         },
         "empresa": {
-          "kicker": "Desde 1998",
+          "kicker": "Nossa história",
           "numero": "28",
           "rotulo": "anos fazendo junto",
           "assinatura": "Parabéns a cada um de vocês"
@@ -3688,7 +3751,7 @@
           "contexto": "Meta de 17.000 superada. Obrigado, equipe."
         },
         "comercio": {
-          "kicker": "Desde 1987",
+          "kicker": "Nossa história",
           "numero": "37",
           "rotulo": "anos de pão quentinho no bairro",
           "contexto": "Obrigado por fazer parte da nossa história."
@@ -3728,21 +3791,21 @@
           "titulo": "Que bom",
           "titulo2": "ter você aqui",
           "apoio": "Fique à vontade: chamamos você pelo nome na hora da consulta.",
-          "nota": "Wi-Fi: Visitantes · senha na recepção"
+          "nota": "Wi-Fi: peça a senha na recepção"
         },
         "empresa": {
           "kicker": "Visitantes",
           "titulo": "Seja bem-vindo",
           "titulo2": "à nossa casa",
           "apoio": "Identifique-se na recepção: alguém da equipe vem buscar você.",
-          "nota": "Wi-Fi: Visitantes · senha na recepção"
+          "nota": "Wi-Fi: peça a senha na recepção"
         },
         "comercio": {
           "kicker": "Seja bem-vindo",
           "titulo": "Que bom",
           "titulo2": "ter você aqui",
           "apoio": "Sente-se, peça um café e fique o tempo que quiser.",
-          "nota": "Wi-Fi: Clientes · senha no caixa"
+          "nota": "Wi-Fi grátis: peça a senha no caixa"
         }
       },
       "estado": "proposta",
@@ -4843,7 +4906,7 @@
                 "kicker": "Nossa história",
                 "linha1": "Uma bancada,",
                 "linha2": "um cliente por vez.",
-                "linha3": "Desde 1998.",
+                "linha3": "A gente capricha.",
                 "assinatura": "Família Souza"
               }
             }
@@ -6756,7 +6819,7 @@
               "campos": {
                 "numero": "25",
                 "unidade": "anos",
-                "kicker": "Desde 2001",
+                "kicker": "Nossa história",
                 "titulo": "Cuidando da visão do bairro",
                 "apoio": "Exame de vista, lentes sob medida e ajuste na hora.",
                 "endereco": "",
@@ -6856,7 +6919,7 @@
               "campos": {
                 "numero": "25",
                 "unidade": "anos",
-                "kicker": "Desde 2001",
+                "kicker": "Nossa história",
                 "titulo": "Cuidando da visão do bairro",
                 "apoio": "Exame de vista, lentes sob medida e ajuste na hora.",
                 "endereco": "",
@@ -6944,7 +7007,7 @@
               "campos": {
                 "numero": "25",
                 "unidade": "anos",
-                "kicker": "Desde 2001",
+                "kicker": "Nossa história",
                 "titulo": "Cuidando da visão do bairro",
                 "apoio": "Exame de vista, lentes sob medida e ajuste na hora.",
                 "endereco": "",
@@ -9188,11 +9251,11 @@
                 "kicker": "Wi-Fi grátis",
                 "titulo": "Fique conectado",
                 "rotulo-rede": "Rede",
-                "rede": "Clientes",
+                "rede": "Nome da rede",
                 "rotulo-senha": "Senha",
-                "senha": "paoquente",
+                "senha": "Senha da rede",
                 "cta": "Ou aponte a câmera para entrar",
-                "wifi": "WIFI:T:WPA;S:Clientes;P:paoquente;;"
+                "wifi": ""
               }
             },
             {
@@ -9790,11 +9853,11 @@
                 "kicker": "Wi-Fi grátis",
                 "titulo": "Relaxe e conecte",
                 "rotulo-rede": "Rede",
-                "rede": "Clientes",
+                "rede": "Nome da rede",
                 "rotulo-senha": "Senha",
-                "senha": "cabelo2026",
+                "senha": "Senha da rede",
                 "cta": "Ou aponte a câmera para entrar",
-                "wifi": "WIFI:T:WPA;S:Clientes;P:cabelo2026;;"
+                "wifi": ""
               }
             },
             {
@@ -9890,11 +9953,11 @@
                 "kicker": "Wi-Fi grátis",
                 "titulo": "Relaxe e conecte",
                 "rotulo-rede": "Rede",
-                "rede": "Clientes",
+                "rede": "Nome da rede",
                 "rotulo-senha": "Senha",
-                "senha": "cabelo2026",
+                "senha": "Senha da rede",
                 "cta": "Ou aponte a câmera para entrar",
-                "wifi": "WIFI:T:WPA;S:Clientes;P:cabelo2026;;"
+                "wifi": ""
               }
             },
             {
@@ -10077,11 +10140,11 @@
                 "kicker": "Wi-Fi grátis",
                 "titulo": "Enquanto você espera",
                 "rotulo-rede": "Rede",
-                "rede": "Clientes",
+                "rede": "Nome da rede",
                 "rotulo-senha": "Senha",
-                "senha": "bemestar26",
+                "senha": "Senha da rede",
                 "cta": "Ou aponte a câmera para entrar",
-                "wifi": "WIFI:T:WPA;S:Clientes;P:bemestar26;;"
+                "wifi": ""
               }
             }
           ]
@@ -10382,11 +10445,11 @@
                 "kicker": "Wi-Fi para pacientes",
                 "titulo": "Para quem espera",
                 "rotulo-rede": "Rede",
-                "rede": "Pacientes",
+                "rede": "Nome da rede",
                 "rotulo-senha": "Senha",
-                "senha": "sorriso26",
+                "senha": "Senha da rede",
                 "cta": "Ou aponte a câmera para entrar",
-                "wifi": "WIFI:T:WPA;S:Pacientes;P:sorriso26;;"
+                "wifi": ""
               }
             }
           ]
@@ -11205,7 +11268,7 @@
             {
               "id": "capa-casa",
               "campos": {
-                "kicker": "Desde 1987",
+                "kicker": "Bem-vindo",
                 "titulo": "A mesa posta",
                 "titulo2": "como em casa",
                 "apoio": "Massa feita à mão todas as manhãs e o vinho da casa.",
@@ -11502,7 +11565,7 @@
             {
               "id": "capa-casa",
               "campos": {
-                "kicker": "Desde 2009",
+                "kicker": "Bem-vindo",
                 "titulo": "O lanche",
                 "titulo2": "da turma toda",
                 "apoio": "Mesas grandes, chope gelado e música baixa.",
@@ -11784,7 +11847,7 @@
             {
               "id": "capa-casa",
               "campos": {
-                "kicker": "Desde 2014",
+                "kicker": "Bem-vindo",
                 "titulo": "Seu tempo,",
                 "titulo2": "seu cuidado",
                 "apoio": "Cabelo, unhas e maquiagem com hora marcada.",
@@ -11897,7 +11960,7 @@
             {
               "id": "numero-marco",
               "campos": {
-                "kicker": "Desde 2014",
+                "kicker": "Nossa história",
                 "numero": "10",
                 "rotulo": "anos de salão",
                 "assinatura": "Obrigada, clientes",
@@ -12339,7 +12402,7 @@
             {
               "id": "numero-marco",
               "campos": {
-                "kicker": "Desde 2011",
+                "kicker": "Nossa história",
                 "numero": "15",
                 "rotulo": "anos cuidando de sorrisos",
                 "assinatura": "Obrigado pela confiança",
@@ -12610,7 +12673,7 @@
                 "titulo": "O escritório novo ficou pronto",
                 "apoio": "Mais luz, salas de reunião e um café de verdade no terceiro andar.",
                 "legenda": "Na foto: o terceiro andar",
-                "foto": "/pecas-ouro/fotos/escritorio/mesa-minimalista.jpg",
+                "foto": "/pecas-ouro/fotos/escritorio/sala-reuniao.jpg",
                 "marca": "Vértice Contabilidade"
               }
             },
@@ -12651,7 +12714,7 @@
                 "titulo": "Café da manhã de fim de ano",
                 "hora": "Às 8h30",
                 "local": "No terraço",
-                "foto": "/pecas-ouro/fotos/escritorio/equipe-executiva.jpg"
+                "foto": "/pecas-ouro/fotos/escritorio/mesa-cafe.jpg"
               }
             }
           ]
@@ -13448,7 +13511,7 @@
                 "titulo": "Seja bem-vindo",
                 "titulo2": "à nossa casa",
                 "apoio": "Identifique-se na recepção: alguém da equipe vem buscar você.",
-                "nota": "Wi-Fi: Visitantes · senha na recepção",
+                "nota": "Wi-Fi: peça a senha na recepção",
                 "foto": "/pecas-ouro/videos/escritorio/nuvens-sobre-a-cidade.mp4"
               }
             },
@@ -13556,7 +13619,7 @@
                 "titulo": "Seja bem-vindo",
                 "titulo2": "à nossa casa",
                 "apoio": "Identifique-se na recepção: alguém da equipe vem buscar você.",
-                "nota": "Wi-Fi: Visitantes · senha na recepção",
+                "nota": "Wi-Fi: peça a senha na recepção",
                 "foto": "/pecas-ouro/videos/escritorio/cidade-ao-entardecer.mp4"
               }
             },
@@ -13754,7 +13817,7 @@
                 "titulo": "Que bom",
                 "titulo2": "ter você aqui",
                 "apoio": "Fique à vontade: chamamos você pelo nome na hora da consulta.",
-                "nota": "Wi-Fi: Visitantes · senha na recepção",
+                "nota": "Wi-Fi: peça a senha na recepção",
                 "foto": "/pecas-ouro/videos/clinica/recepcao-clara.mp4"
               }
             },
@@ -13865,7 +13928,7 @@
                 "titulo": "Que bom",
                 "titulo2": "ter você aqui",
                 "apoio": "Fique à vontade: chamamos você pelo nome na hora da consulta.",
-                "nota": "Wi-Fi: Visitantes · senha na recepção",
+                "nota": "Wi-Fi: peça a senha na recepção",
                 "foto": "/pecas-ouro/videos/clinica/recepcao-clara.mp4"
               }
             },

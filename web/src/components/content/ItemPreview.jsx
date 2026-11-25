@@ -7,6 +7,7 @@ import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
 import { ICONS } from '../../lib/icons.js';
 import { murais } from '../../api.js';
 import { PecaHtml } from './PecaHtml.jsx';
+import { nomeDoTipo } from '../../lib/contentTypes.js';
 import '../../../../js/precos.js';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
@@ -189,7 +190,7 @@ export function Body({ item }) {
     case 'image':
       return item.src
         ? <img src={item.src} alt="" className="h-full w-full rounded object-cover" style={{ objectFit: item.fit || 'cover' }} onError={(e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'text-xs opacity-40', textContent: 'Imagem indisponível' })); }} />
-        : <Placeholder icon={ImageIcon} label="Imagem (defina a URL)" />;
+        : <Placeholder icon={ImageIcon} label="Imagem (sem arquivo)" />;
     case 'video':
       return item.src
         ? <video src={item.src} muted loop autoPlay playsInline className="h-full w-full rounded object-contain" />
@@ -234,8 +235,9 @@ export function Body({ item }) {
           <div className="text-[10px] opacity-50">Painel do clima</div>
         </div>
       );
+    // Reteste 4: o tipo desconhecido (de uma versão antiga) não mostra o nome técnico ("pricetable", "xyz").
     default:
-      return <div className="text-xs opacity-40">{item.type}</div>;
+      return <div className="text-xs opacity-60">{item.type && nomeDoTipo(item.type) !== item.type ? nomeDoTipo(item.type) : 'Conteúdo de uma versão antiga'}</div>;
   }
 }
 

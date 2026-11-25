@@ -1026,7 +1026,9 @@ async function handleApi(req, res, pathname, query) {
         if (d < dia0) d = new Date(hoje.getFullYear() + 1, p.mes - 1, p.dia).getTime();
         return Math.round((d - dia0) / 864e5);
       };
-      const proximos = lista.map((p) => ({ id: p.id, nome: p.nome, dia: p.dia, mes: p.mes, foto: p.foto, setor: p.setor, cargo: p.cargo, em: emDias(p) }))
+      // Reteste 4: a pessoa sem dia ou mês (ou com 31/02, mês 13 — dados de antes) não entra: virava "seg, null/null" no Início.
+      const dataValida = (p) => Number.isInteger(p.dia) && Number.isInteger(p.mes) && new Date(2024, p.mes - 1, p.dia).getMonth() === p.mes - 1 && p.mes >= 1 && p.mes <= 12;
+      const proximos = lista.filter(dataValida).map((p) => ({ id: p.id, nome: p.nome || 'Pessoa sem nome', dia: p.dia, mes: p.mes, foto: p.foto, setor: p.setor, cargo: p.cargo, em: emDias(p) }))
         .filter((p) => p.em <= 30).sort((a, b) => a.em - b.em || String(a.nome).localeCompare(b.nome)).slice(0, 8);
       return sendJson(res, 200, {
         pessoas: lista.length,
@@ -1316,10 +1318,16 @@ async function handleApi(req, res, pathname, query) {
     // Aberto a quem está logado. `hoje` é o que faz o painel oferecer o pacote
     // certo sem o usuário precisar procurar na lista.
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
-    // A data de hoje é a da FRENTE da conta: nada de Black Friday no RH nem na clínica (reteste 4).
-    const conta = await db.getTenant(sess.tenant_id).catch(() => null);
-    const frente = conta && Perfil.tem(conta.perfil) ? conta.perfil : null;
-    const hoje = seasons.todaySeason(undefined, frente);
+    /*
+     * Reteste 4: a data de hoje DA FRENTE da conta (js/datas-frente.js). Em
+     * 22/11 o Início da fábrica e do RH dizia "Hoje: Black Friday — uma
+     * campanha com a cara dela", para a loja: a janela da Black Friday
+     * (a mais curta) ganhava do Novembro Azul, que é a data da Empresas.
+     */
+    const perfilDaConta = await paletaInicial.perfilDaConta(db, sess.tenant_id).catch(() => '');
+    const daFrente = (require('./js/datas-frente.js').DATAS || {})[perfilDaConta];
+    const ids = daFrente ? new Set(daFrente.map((d) => d.id)) : null;
+    const hoje = ids ? seasons.todaySeason(new Date(), (s) => ids.has(s.id)) : seasons.todaySeason();
     /*
      * As zonas vêm do layout da tela que está aberta. Sem isso geraríamos
      * conteúdo de lateral para um layout que não tem lateral — o usuário
@@ -1459,6 +1467,34 @@ const negocioCache = new Map();
       let base;
       try { base = conteudoPronto.lerManifesto(ROOT); } catch (e) { return sendJson(res, 500, { error: 'não deu para ler o manifesto do conteúdo pronto' }); }
       if (req.method === 'GET' && !parts[3]) return sendJson(res, 200, conteudoPronto.aplicarDecisoes(base, await db.decisoesDoConteudo()));
+      /*
+       * Reteste 4: "Aprovar selecionados" — a lista recomendada de uma vez
+       * (server/conteudoPronto.js, conferirLote). Confere tudo antes de
+       * gravar: com um id errado, nada muda e a resposta diz qual.
+       */
+      if (req.method === 'POST' && parts[3] === 'lote' && !parts[4]) {
+        return readBody(req, res, async (b) => {
+          const estado = b && b.estado;
+          const lote = conteudoPronto.conferirLote(base, b && b.itens, estado);
+          if (lote.erros.length) return sendJson(res, 400, { error: lote.erros.length === 1 ? lote.erros[0] : lote.erros.length + ' itens com problema', erros: lote.erros.slice(0, 20) });
+          for (const x of lote.itens) await db.decidirConteudo(x.tipo, x.id, estado, sess.email);
+          log.info('conteudo.lote', { n: lote.itens.length, estado, por: sess.email });
+          // Como no cartão: a tela aprovada leva junto as peças dela que ainda esperam.
+          const pecas = [];
+          if (estado === 'aprovada') {
+            const agora = conteudoPronto.aplicarDecisoes(base, await db.decisoesDoConteudo());
+            for (const x of lote.itens.filter((y) => y.tipo === 'tela')) {
+              for (const pid of conteudoPronto.pecasDaTela(agora, x.id)) {
+                const p = (agora.pecas || []).find((y) => y.id === pid);
+                if (!p || !conteudoPronto.esperando(p.estado) || pecas.includes(pid)) continue;
+                await db.decidirConteudo('peca', pid, 'aprovada', sess.email);
+                pecas.push(pid);
+              }
+            }
+          }
+          return sendJson(res, 200, { ok: true, estado, decididos: lote.itens, pecas });
+        });
+      }
       if (req.method === 'POST' && parts[3] && parts[4] && !parts[5]) {
         return readBody(req, res, async (b) => {
           const tipo = parts[3];

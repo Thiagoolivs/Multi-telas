@@ -10,7 +10,8 @@
  * janela começa dias antes (a Black Friday, uma semana), e o painel dizia
  * "É a data de hoje" cinco dias antes dela (reteste 4). Agora diz quanto
  * falta; a campanha de mês inteiro diz que é o mês dela. A frase do pedido
- * não fala mais em "loja": a mesma ideia aparece para a empresa e a clínica.
+ * fala do `lugar` da frente (a loja, a empresa, a clínica): a fábrica recebia
+ * "uma campanha … para a loja".
  */
 function diasAte(alvo, agora) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(alvo || ''));
@@ -21,7 +22,7 @@ function diasAte(alvo, agora) {
   return Math.round((a.getTime() - hoje.getTime()) / 864e5);
 }
 
-export function ideiaDaData(hoje, alvo, agora) {
+export function ideiaDaData(hoje, { alvo, agora, lugar } = {}) {
   if (!hoje || !hoje.label) return null;
   const mesInteiro = hoje.quando && hoje.quando.tipo === 'mes';
   const faltam = mesInteiro ? null : diasAte(alvo, agora);
@@ -32,7 +33,7 @@ export function ideiaDaData(hoje, alvo, agora) {
   return {
     titulo: (hoje.emoji ? hoje.emoji + ' ' : '') + hoje.label,
     porque,
-    brief: 'Uma campanha de ' + hoje.label,
+    brief: 'Uma campanha de ' + hoje.label + (lugar ? ' para a ' + lugar : ''),
     imagens: 'nenhuma',
     daData: true,
   };

@@ -1339,8 +1339,13 @@
       if (cabe < 22) v.style.fontSize = cabe.toFixed(2) + 'cqw';
     }
     inner.appendChild(valueWrap);
-    // A meta (D36): a barra até 100% e, passou, o destaque.
-    if (item.meta) {
+    /*
+     * A meta (D36): a barra até 100% e, passou, o destaque. Só com o número:
+     * `item.meta` também guarda o que o painel marca no item (o exemplo do
+     * "Adicionar", a importância). Reteste 4: o Indicador editado na Empresas
+     * ia ao ar com "NaN% da meta de undefined" e a barra vazia.
+     */
+    if (item.meta && isFinite(Number(item.meta.pct)) && item.meta.texto != null && String(item.meta.texto).trim()) {
       const batida = item.meta.batida != null ? !!item.meta.batida : item.meta.pct >= 100;
       if (batida) el.classList.add('mt-kpi-batida');
       if (menor && !batida) el.classList.add('mt-kpi-acima');

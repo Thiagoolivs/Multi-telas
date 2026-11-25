@@ -159,7 +159,7 @@ export function telaMontada(heroi, modelos, neg, frente, forma) {
   // "Vale-refeição" é de quem vende comida.
   const comida = neg && ['padaria', 'restaurante', 'lanchonete'].includes(neg.id);
   const rodape = entrada(moldura.rodape, moldura.rodape === 'rodape-pagamento' && !comida ? { pagamento4: '' } : {});
-  // O "Desde 1987" é da padaria de exemplo: sai (o mesmo de DO_EXEMPLO, em lib/telasProntas.js).
+  // O "Desde 1987" é da padaria de exemplo: sai, e fica o "Bem-vindo" do desenho (DO_EXEMPLO, em lib/telasProntas.js).
   const cabecalho = entrada(moldura.cabecalho, moldura.cabecalho === 'cabecalho-status' ? { desde: '' } : {});
   const zonas = {
     cabecalho: { modo: MODO.cabecalho, pecas: [cabecalho].filter(Boolean) },

@@ -152,7 +152,7 @@ export function CalendarioPage({ onIr }) {
   }
 
   async function apagar(ev) {
-    if (!(await confirmar({ titulo: 'Tirar “' + ev.titulo + '”?', texto: 'Sai do calendário e das TVs em que estava.', botao: 'Tirar' }))) return;
+    if (!(await confirmar({ titulo: 'Tirar “' + (ev.titulo || 'a data') + '”?', texto: 'Sai do calendário e das TVs em que estava.', botao: 'Tirar' }))) return;
     try {
       await tirarDaAgenda(ev, tvs);
       // Com a aprovação ligada, a data que está na TV fica "saindo" até o dono aprovar (o servidor responde 202).
@@ -192,7 +192,7 @@ export function CalendarioPage({ onIr }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-ink">{ev.titulo}</span>
+            <span className="truncate text-sm font-semibold text-ink">{ev.titulo || 'Data sem nome'}</span>
             <Badge>{NOME_DO_TIPO[ev.tipo] || 'Evento'}</Badge>
             {ev.prioridade !== 'normal' && <Badge tone="warn">{ev.prioridade === 'urgente' ? 'Urgente' : 'Alta'}</Badge>}
             {sit.estado === 'esperando' && <Badge tone="warn">Esperando aprovação</Badge>}
@@ -211,9 +211,9 @@ export function CalendarioPage({ onIr }) {
           )}
         </div>
         {ev.podeMudar === false ? <span className="shrink-0 text-2xs text-ink-3">Também em outras lojas</span> : (<>
-          <button type="button" onClick={() => setEditando({ ...ev })} aria-label={'Editar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink"><Pencil size={15} /></button>
+          <button type="button" onClick={() => setEditando({ ...ev })} aria-label={'Editar ' + (ev.titulo || 'a data')} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink"><Pencil size={15} /></button>
           {/* Saindo: já há um pedido para tirar; outro "Tirar" só trocaria o pedido. */}
-          {sit.estado !== 'saindo' && <button type="button" onClick={() => apagar(ev)} aria-label={'Tirar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-danger"><Trash2 size={15} /></button>}
+          {sit.estado !== 'saindo' && <button type="button" onClick={() => apagar(ev)} aria-label={'Tirar ' + (ev.titulo || 'a data')} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-danger"><Trash2 size={15} /></button>}
         </>)}
       </li>
     );
@@ -247,7 +247,7 @@ export function CalendarioPage({ onIr }) {
             {lidos.map((ev, i) => (
               <li key={i} className={cn('flex gap-3 p-3', !ev.incluir && 'opacity-50')}>
                 <input type="checkbox" checked={ev.incluir} onChange={() => setLidos((l) => l.map((x, j) => (j === i ? { ...x, incluir: !x.incluir } : x)))}
-                  aria-label={'Incluir ' + ev.titulo} className="mt-2" />
+                  aria-label={'Incluir ' + (ev.titulo || 'a data')} className="mt-2" />
                 <div className="min-w-0 flex-1">
                   <LinhaEditavel ev={ev} onChange={(novo) => setLidos((l) => l.map((x, j) => (j === i ? novo : x)))} />
                   {ev.data < hoje && <p className="mt-1 text-2xs text-warn">Essa data já passou.</p>}
