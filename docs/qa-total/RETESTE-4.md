@@ -30,9 +30,12 @@ Os dois bloqueadores (achados e consertados nesta rodada):
 1. **O primeiro colega do RH que entrava no painel pausava 7 das 8 TVs.** Na
    conta em cortesia, cada login comparava só o e-mail de quem entrava com a
    lista; o membro convidado não estava nela, e a conta voltava para o grátis
-   (1 TV no ar). As outras 7 mostravam "Esta TV está pausada: reative o plano"
-   (`R4/shots/tv-prod1-d-*`, antes do conserto). Agora a conta segue em
-   cortesia enquanto alguém da equipe estiver na lista.
+   (1 TV no ar). As outras 7 mostravam "Esta TV está pausada: reative o plano
+   em app.multitelas.net.br", e `/api/billing` dizia `"status":"free"`,
+   `"pausa":{"noAr":["Recepção"],"pausadas":7}` (lido na TV Produção 1 e na
+   API; as fotos dessa passada foram sobrescritas pela seguinte, já com o
+   conserto). Agora a conta segue em cortesia enquanto alguém da equipe
+   estiver na lista.
 2. **Os aniversariantes importados não iam para nenhuma TV.** A página diz "o
    aniversário de cada um, que a TV mostra sozinha", mas a chave "Mostrar nas
    TVs" nascia desligada. O roteiro de treino do RH (item 6, "importar a
@@ -40,8 +43,8 @@ Os dois bloqueadores (achados e consertados nesta rodada):
    liga em todas as TVs, e o aviso diz isso.
 
 **As funcionalidades básicas funcionam: 31 de 34 sem ressalva, 3 com
-ressalva pequena, 0 quebradas depois dos consertos** (eram 2 quebradas e 9
-com problema antes). Tabela abaixo.
+ressalva pequena, 0 quebradas depois dos consertos** (antes: 2 quebradas, 16 com
+ressalva e 16 sem). Tabela abaixo.
 
 ## As notas
 
@@ -220,7 +223,7 @@ parece ser a TV 1?" ao parear uma TV com a anterior desligada.
 | 4 | Logo e cores na TV | 🟡 logo escura some | 🔧 versão branca no passo 2 | Mandar o logo | `e03`, `s01`, `s02`, `cinco/computador-13` |
 | 5 | Parear pelo painel (Ligar uma TV) | ✅ | ✅ | Telas › Ligar uma TV › código e nome | `e15`–`e17` |
 | 6 | 8 TVs, nomes e grupos | ✅ | ✅ | Nome e grupo | `e18`–`e21` |
-| 7 | Plano/cortesia para 8 TVs | 🔧 7 pausadas no 1º login do membro | ✅ | Equipe › convite › membro entra | `tv-prod1-d-*` |
+| 7 | Plano/cortesia para 8 TVs | 🔧 7 pausadas no 1º login do membro | ✅ | Equipe › convite › membro entra | `/api/billing` (texto acima) |
 | 8 | Peça pronta › Usar › Pôr na TV com "Quando" | 🟡 "Rotulo" | 🔧 ✅ | Prontos › Usar › Salvar › grupo › Até um dia | `e25`–`e31` |
 | 9 | Aviso rápido para todas | 🟡 texto contraditório | 🔧 ✅ | Criar › texto › prévia › Pôr em 8 TVs | `e33`–`e35` |
 | 10 | Campanha com "Quando" | ✅ | ✅ | Criar › Sem foto › Gerar › Até um dia | `e95`–`e97` |
@@ -323,5 +326,13 @@ novos). Outra tarefa pode ter subido para v98 também: reconciliar.
     telas prontas 101/101, contraste 13/13 e 13/13, cor da marca 14/14, texto
     padrão do "Adicionar" 0/18. A principal da quadrada com rodapé (só medida)
     segue em 981/1.122, como antes.
-  - Deitada e quadrada, os casos afetados (aviso, texto e a senha;
-    `REGUA_SO=announce,text`): ver abaixo.
+  - **Deitada e quadrada, os casos afetados** (`REGUA_SO=announce,text`: o
+    aviso, o texto e a tela da senha, mais a bancada inteira, que roda sempre):
+    **passaram** (`R4/logs/regua-so-deitada.log`, 2.702 s;
+    `R4/logs/regua-so-quadrada.log`, 2.685 s). Senha 1/1 nas duas; tela cheia,
+    principal com lateral, lateral e bloco 3/3; contraste e cor da marca 3/3;
+    peças-ouro, as 11 marcas, os 12.471 cortes e as 101 telas prontas iguais à
+    em pé.
+  - O mural não tem caso na régua: a grade em pé foi conferida na TV aberta
+    (`R4/shots/tv-prod1-p-mural-depois.png`) e no teste
+    `reteste4.test.js`.
