@@ -8,6 +8,8 @@ import { EscolherArquivo } from '../ui/EscolherArquivo.jsx';
 import { BancoDeImagens } from '../content/FotoDoProduto.jsx';
 import { media, ia, pixabay } from '../../api.js';
 import { prepararFoto } from '../../lib/subir.js';
+import { analisarFoto } from '../../lib/fotoRuim.js';
+import { MelhorarFoto } from './MelhorarFoto.jsx';
 import { carregarDesenhista } from '../../lib/pecaHtml.js';
 import { lerValor, tamanhoNaTv, proporcaoDe, formatoParaIA, fotosDoBanco, pedidoDaFoto, carregarBanco, NOME_DO_PAPEL } from '../../lib/espacos.js';
 import { ACEITA_VIDEO, LIMITES_FOTO_VIVA, ehVideoSrc, posterDe, lerVideo, problemaDoVideo, subirFotoViva, carregarBancoDeVideos } from '../../lib/fotoViva.js';
@@ -118,7 +120,7 @@ export function TrocarFoto({ papel = 'produto', ramo = '', valor, onTrocar, form
             ))}
           </div>
           <div role="tabpanel" id={'painel-foto-' + aba} aria-labelledby={'aba-foto-' + aba}>
-            {aba === 'celular' && <DoCelular onEscolher={escolher} />}
+            {aba === 'celular' && <DoCelular onEscolher={escolher} formato={formato} />}
             {aba === 'banco' && <DoBanco ramo={ramo} papel={papel} onEscolher={escolher} umToque={umToque} />}
             {aba === 'ia' && <ComIA papel={papel} ramo={ramo} titulo={titulo} formato={formato} onEscolher={escolher} />}
           </div>
@@ -178,11 +180,15 @@ export async function subirFotoDoCelular(f) {
   return { src: up.url, fundo: p.fundo };
 }
 
-function DoCelular({ onEscolher }) {
+function DoCelular({ onEscolher, formato }) {
   const [enviando, setEnviando] = useState('');
   const [progresso, setProgresso] = useState(0);
   const [erro, setErro] = useState('');
   const [minhas, setMinhas] = useState(null);
+  // A foto escolhida que tem o que melhorar (lib/fotoRuim.js): { arquivo, analise }, esperando a pessoa escolher.
+  const [revisar, setRevisar] = useState(null);
+  const espaco = tamanhoNaTv(formato);
+  useEffect(() => () => { if (revisar) URL.revokeObjectURL(revisar.analise.url); }, [revisar]);
 
   useEffect(() => {
     let vivo = true;
@@ -214,6 +220,21 @@ function DoCelular({ onEscolher }) {
     if (!f) return;
     if (/^video\//.test(f.type) || /\.(mp4|mov|webm)$/i.test(f.name || '')) { enviarVideo(f); return; }
     if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { setErro('Use uma foto em JPG, PNG ou WEBP, ou um vídeo curto.'); return; }
+    setErro('');
+    /*
+     * Escura, apagada, mal enquadrada ou pequena para a TV? Antes de subir,
+     * o antes e o depois (MelhorarFoto): a pessoa escolhe a original ou a
+     * melhorada. Sem nada a dizer (ou sem como medir), sobe direto.
+     */
+    let analise = null;
+    try { analise = await analisarFoto(f, espaco); } catch (e2) { analise = null; }
+    if (analise && analise.problemas.length) { setRevisar({ arquivo: f, analise }); return; }
+    if (analise) URL.revokeObjectURL(analise.url);
+    subir(f);
+  }
+
+  async function subir(f) {
+    setRevisar(null);
     setEnviando('foto'); setErro('');
     try {
       // A foto do celular encolhe antes de subir, e a miniatura borrada já sai daqui (lib/subir.js).
@@ -221,6 +242,10 @@ function DoCelular({ onEscolher }) {
     } catch (err) {
       setErro(err.message || 'A foto não subiu. Tente de novo.');
     } finally { setEnviando(''); }
+  }
+
+  if (revisar) {
+    return <MelhorarFoto arquivo={revisar.arquivo} analise={revisar.analise} espaco={espaco} onUsar={subir} onOutra={() => setRevisar(null)} />;
   }
 
   const botao = 'flex min-h-24 w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-line bg-surface-2 p-2 text-center text-sm font-medium leading-tight text-ink transition hover:border-accent';
