@@ -273,11 +273,28 @@ export async function pausarCampanha(resultado, nome, telas, ids) {
  * em pé na lateral, deitada na principal — e, sem a zona certa, ela vai para
  * a principal. Entra no fim da zona, sem tirar nada do que já está lá.
  */
-export const aplicarPeca = (cfg, peca) => L.aplicarPeca(cfg, peca);
+export const aplicarPeca = (cfg, peca, opcoes) => L.aplicarPeca(cfg, peca, opcoes);
 
 // Todas de uma vez, pelo servidor (a operação 'peca'); devolve { lote, ids } para o Desfazer.
-export async function porPecaNasTelas(peca, ids, telas) {
+// `opcoes`: { trocarLayout, frases } — o que a pessoa respondeu ao "Pôr na TV" (comoEntraNasTelas).
+export async function porPecaNasTelas(peca, ids, telas, opcoes = {}) {
   const p = peca || {};
-  return enviarOperacao({ tipo: 'peca', peca: { item: p.item, campanha: p.campanha || '', papel: p.papel || '', formato: p.formato || '', label: p.label || '' } },
-    ids.map((id) => ({ id })));
+  const frases = (opcoes.frases || []).map((f) => String(f || '').trim()).filter(Boolean);
+  return enviarOperacao({ tipo: 'peca', peca: { item: p.item, campanha: p.campanha || '', papel: p.papel || '', formato: p.formato || '', label: p.label || '', ...(frases.length ? { frases } : {}) },
+    ...(opcoes.trocarLayout ? { trocarLayout: true } : {}) }, ids.map((id) => ({ id })));
 }
+
+/*
+ * A faixa que a TV não mostraria (reteste 4, js/lote-tv.js comoEntraAPeca):
+ * o servidor confere cada TV sem a programação vir para cá. Devolve
+ * [{ id, faixa, semFaixa, layoutAtual, layoutNovo, semFrase }]; a peça que
+ * não é de faixa não pergunta nada ([]).
+ */
+export const ehDeFaixa = (p) => { const papel = (p && (p.papel || (p.item && p.item.papel))) || ''; return papel === 'cabecalho' || papel === 'rodape'; };
+export async function comoEntraNasTelas(peca, ids) {
+  const p = peca || {};
+  if (!ehDeFaixa(p) || !(ids && ids.length)) return [];
+  const r = await loteApi.operacao({ operacao: { tipo: 'peca', peca: { item: p.item, papel: p.papel || '', formato: p.formato || '' } }, telas: ids, simular: true });
+  return (r && r.telas) || [];
+}
+export const comoEntraAPeca = (cfg, peca) => L.comoEntraAPeca(cfg, peca);

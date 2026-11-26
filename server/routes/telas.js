@@ -1612,16 +1612,24 @@ module.exports = function (ctx) {
       descricao: (op) => 'Pausar: ' + op.nome,
       aplicar: (cfg, tela, op) => loteTv.tirarCampanha(cfg, op.entradas[tela.entrada], op.nome),
     },
-    // Uma peça pronta em várias TVs (EXECUTOR §2c, item 34).
+    /*
+     * Uma peça pronta em várias TVs (EXECUTOR §2c, item 34). Reteste 4: a
+     * faixa que a TV não mostraria (sem a parte no formato, ou o rodapé de
+     * frases sem frase) — o `simular` diz por TV, e o painel pergunta antes:
+     * `trocarLayout` e as primeiras `frases` do rodapé (js/lote-tv.js).
+     */
     peca: {
       limpar(o) {
         const p = ehObjeto(o.peca) ? o.peca : null;
         if (!p || !itemOk(p.item)) return recusa(PECA_INVALIDA, 'operacao-invalida');
+        const frases = Array.isArray(p.frases) ? p.frases.filter((f) => typeof f === 'string').map((f) => curto(f, 200)).filter(Boolean).slice(0, 5) : [];
         return { op: { peca: Object.assign({ item: p.item }, p.campanha ? { campanha: curto(p.campanha, 120) } : {},
-          p.papel ? { papel: curto(p.papel, 20) } : {}, p.formato ? { formato: curto(p.formato, 10) } : {}), label: curto(p.label, 120) } };
+          p.papel ? { papel: curto(p.papel, 20) } : {}, p.formato ? { formato: curto(p.formato, 10) } : {}, frases.length ? { frases } : {}),
+        label: curto(p.label, 120), trocarLayout: o.trocarLayout === true } };
       },
       descricao: (op) => 'Peça: ' + (op.label || 'peça pronta'),
-      aplicar: (cfg, tela, op) => loteTv.aplicarPeca(cfg, op.peca),
+      aplicar: (cfg, tela, op) => loteTv.aplicarPeca(cfg, op.peca, { trocarLayout: op.trocarLayout }),
+      simular: (cfg, tela, op) => loteTv.comoEntraAPeca(cfg, op.peca),
     },
     // Publicar peças (Meus Designs, Criação rápida, Subir): a peça na zona do formato dela, com a faixa de horário.
     publicar: {

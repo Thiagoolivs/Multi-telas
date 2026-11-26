@@ -98,3 +98,69 @@ test('2. "Antes (agora na TV)" desenha o que está no ar agora, e não a peça a
   assert.match(ap, /<ATv cfg=\{t\.depois\} comparar=\{t\.antes\} rotulo="Depois \(se aprovar\)" \/>/);
   assert.match(ap, /<ATv cfg=\{t\.antes\} rotulo="Antes \(agora na TV\)" \/>/);
 });
+
+// A peça de faixa como o Prontos a põe na TV: o HTML da peça-ouro.
+const faixaOuro = (id, papel) => ({ item: { type: 'peca-html', versao: 1, papel, html: ler('pecas-ouro', id + '.html'), campos: {} }, papel });
+
+test('3. o rodapé que passa as frases, numa TV sem frase: o "Pôr na TV" pede a primeira, e ela entra só onde falta', () => {
+  const L = require('../js/lote-tv.js');
+  const comFrase = { settings: { layoutId: 'corporate' }, zonas: { principal: { items: [] }, rodape: { messages: ['Ramal do RH: 2040'] } } };
+  const semFrase = { settings: { layoutId: 'corporate' }, zonas: { principal: { items: [] }, rodape: { messages: ['  '] } } };
+  // As quatro faixas do reteste passam as frases; sem frase, a TV não as mostra (js/player.js, pecasDaFaixa).
+  for (const id of ['rodape-selo', 'rodape-pagamento', 'rodape-relogio', 'rodape-contagem']) {
+    const p = faixaOuro(id, 'rodape');
+    assert.match(p.item.html, /data-vivo="mensagens"/, id);
+    assert.equal(L.comoEntraAPeca(semFrase, p).semFrase, true, id + ': o painel não perguntaria a frase');
+    assert.equal(L.comoEntraAPeca(comFrase, p).semFrase, false, id);
+    // Sem a resposta, a regra é a de antes (a frase não se inventa).
+    assert.deepEqual(L.aplicarPeca(semFrase, p).zonas.rodape.messages, ['  ']);
+    const com = L.aplicarPeca(semFrase, { ...p, frases: ['Bom trabalho a todos!', ''] });
+    assert.deepEqual(com.zonas.rodape.messages, ['Bom trabalho a todos!'], id);
+    assert.equal(com.zonas.rodape.pecas.length, 1);
+    // A TV que já tem frase fica com as dela.
+    assert.deepEqual(L.aplicarPeca(comFrase, { ...p, frases: ['Outra'] }).zonas.rodape.messages, ['Ramal do RH: 2040']);
+  }
+  // A faixa que não passa as frases (o rodapé de contatos) não pergunta.
+  assert.equal(L.comoEntraAPeca(semFrase, faixaOuro('rodape-faixa', 'rodape')).semFrase, false);
+  // O mesmo que a TV decide: com a frase que entrou, a faixa vai ao ar.
+  const p = ler('js/player.js');
+  assert.match(p, /return lista\.filter\(\(p\) => temMensagem \|\| !\/data-vivo="mensagens"\/\.test\(p\.html \|\| ''\)\);/);
+  // O diálogo pede a frase e não deixa pôr sem ela.
+  const d = ler('web/src/components/tela/PorNaTV.jsx');
+  assert.match(d, /const faltaFrase = semFrase\.length > 0 && !frase\.trim\(\);/);
+  assert.match(d, /disabled=\{!recebem\.length \|\| enviando \|\| falta \|\| faltaFrase \|\| conferindo\}/);
+  assert.match(d, /frases: semFrase\.length \? \[frase\] : \[\]/);
+});
+
+test('4. a faixa numa TV sem essa parte (Tela cheia): o "Pôr na TV" pergunta se troca o formato, e não diz que pôs', () => {
+  const L = require('../js/lote-tv.js');
+  const cheia = { settings: { layoutId: 'full' }, zonas: { principal: { items: [{ type: 'text', titulo: 'Fica' }] } } };
+  const emPe = { settings: { layoutId: 'portrait-hero' }, zonas: { principal: { items: [] }, rodape: { messages: ['a'] } } };
+  const cab = faixaOuro('cabecalho-classico', 'cabecalho');
+  const rod = faixaOuro('rodape-faixa', 'rodape');
+  assert.deepEqual(L.comoEntraAPeca(cheia, cab), { faixa: 'cabecalho', semFaixa: true, layoutAtual: 'full', layoutNovo: 'corporate', semFrase: false });
+  assert.equal(L.comoEntraAPeca(cheia, rod).semFaixa, true);
+  // Em pé com rodapé e sem cabeçalho: o formato em pé com as duas faixas.
+  assert.deepEqual([L.comoEntraAPeca(emPe, cab).semFaixa, L.comoEntraAPeca(emPe, cab).layoutNovo], [true, 'portrait-stack']);
+  assert.equal(L.comoEntraAPeca(emPe, rod).semFaixa, false);
+  // A peça do meio entra em qualquer formato: nada a perguntar.
+  assert.deepEqual(L.comoEntraAPeca(cheia, { item: { type: 'text' }, formato: '16/9' }), { faixa: '', semFaixa: false, layoutAtual: 'full', layoutNovo: '', semFrase: false });
+  // Sem trocar, nada muda (o painel tira a TV do envio e diz); trocando, a faixa entra e o meio fica.
+  assert.deepEqual(L.aplicarPeca(cheia, cab), cheia);
+  const trocada = L.aplicarPeca(cheia, cab, { trocarLayout: true });
+  assert.equal(trocada.settings.layoutId, 'corporate');
+  assert.equal(trocada.zonas.cabecalho.pecas.length, 1);
+  assert.equal(trocada.zonas.cabecalho.header, true);
+  assert.deepEqual(trocada.zonas.principal.items, cheia.zonas.principal.items);
+  // Quem já tem a faixa não troca de formato.
+  assert.equal(L.aplicarPeca(emPe, rod, { trocarLayout: true }).settings.layoutId, 'portrait-hero');
+  // O servidor aplica com a mesma regra, e o plano é a mesma conta (server/routes/telas.js, a operação 'peca').
+  const s = ler('server/routes/telas.js');
+  assert.match(s, /aplicar: \(cfg, tela, op\) => loteTv\.aplicarPeca\(cfg, op\.peca, \{ trocarLayout: op\.trocarLayout \}\),\n\s+simular: \(cfg, tela, op\) => loteTv\.comoEntraAPeca\(cfg, op\.peca\),/);
+  // O diálogo: a TV sem a parte troca (marcado) ou fica de fora, e o aviso conta só as que receberam.
+  const d = ler('web/src/components/tela/PorNaTV.jsx');
+  assert.match(d, /const \[trocarLayout, setTrocarLayout\] = useState\(true\);/);
+  assert.match(d, /const recebem = alvos\.filter\(\(id\) => \{ const x = daTv\(id\); return !\(x && x\.semFaixa && !trocarLayout\); \}\);/);
+  assert.match(d, /'Na TV \(' \+ frasesDoQuando\(escolha\) \+ '\): ' \+ recebem\.length/);
+  assert.match(d, /ficou de fora: não tem /);
+});
