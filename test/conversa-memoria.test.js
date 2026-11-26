@@ -129,7 +129,9 @@ test('o prompt não cresce sem fim: 60 voltas decidindo coisas novas, o tamanho 
 test('a rota guarda as decisões, a pessoa corrige no cartão, e o gerador recebe o combinado', () => {
   const R = ler('server/routes/conversas.js');
   // Desde o assistente (24/10), a rota passa pelo maestro, que leva as decisões à conversa da campanha.
-  assert.match(R, /assistente\.responder\(\{ mensagens, escopo, decisoes: \(atual && atual\.decisoes\) \|\| \[\], ctx: c \}\)/);
+  // Desde o agente (25/11), pelo agente, que leva as mesmas decisões — e, desligado ou caindo, entrega tudo ao maestro.
+  assert.match(R, /agente\.responder\(\{ mensagens, escopo, decisoes: \(atual && atual\.decisoes\) \|\| \[\], ctx: c, sess, db, conversa: atual \}\)/);
+  assert.match(ler('server/agente/index.js'), /return assistente\.responder\(x\);/);
   assert.match(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'server', 'assistente.js'), 'utf8'), /conversa\.conversar\(\{ mensagens, escopo, decisoes, ctx \}\)/);
   assert.match(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'server', 'assistente.js'), 'utf8'), /await fazer\(nome, args, \{ mensagens, escopo: atual, decisoes, tarefa, ctx: c, base \}\)/);
   assert.match(R, /decisoes: out\.decisoes \|\| \(atual && atual\.decisoes\) \|\| \[\],/);

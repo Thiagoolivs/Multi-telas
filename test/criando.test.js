@@ -45,5 +45,6 @@ test('o painel: aba Criando com o número, observador global e aviso ao terminar
   assert.match(ler('web/src/App.jsx'), /case 'criando': return <CriandoPage onIr=\{go\} \/>;/);
   assert.match(ler('web/src/components/layout/Navegacao.jsx'), /p === 'criando' && rodando > 0/, 'o número continua na aba, quando ela aparece');
   // Começar uma geração acorda a lista na hora.
-  assert.equal((ler('web/src/api.js').match(/avisarQueComecou\(\);/g) || []).length, 2);
+  // (Três: rodar, o Criar e o "Validar" do agente.)
+  assert.equal((ler('web/src/api.js').match(/avisarQueComecou\(\);/g) || []).length, 3);
 });

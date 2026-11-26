@@ -682,6 +682,8 @@ function montarCtx() {
     relatorio: require('./server/routes/relatorio')(ctx),
     redes: redesRotas(ctx),
     conversas: require('./server/routes/conversas')(ctx),
+    // O agente do Criar: validar e pôr no ar o plano, e a chave de cada conta na Plataforma (server/agente/).
+    agente: require('./server/agente/rotas')(ctx),
     campanhas: require('./server/routes/campanhas')(ctx),
     // O calendário da empresa (D23).
     calendario: require('./server/routes/calendario')(ctx),
@@ -841,6 +843,8 @@ async function handleApi(req, res, pathname, query) {
     ajustar: 'ajuste',
     // Editar com a IA (D50): uma volta da conversa de edição — texto, medido como o ajuste.
     editar: 'ajuste',
+    // O agente (25/11): validar e executar o plano — os textos e os desenhos; as fotos cobram à parte, em fotoDaConta.
+    agente: 'agente',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -2901,6 +2905,7 @@ const negocioCache = new Map();
   if (await ctx.routes.aprovacoes(req, res, parts, query, sess)) return;
   if (await ctx.routes.relatorio(req, res, parts, query, sess)) return;
   if (await ctx.routes.redes(req, res, parts, query, sess)) return;
+  if (await ctx.routes.agente(req, res, parts, query, sess)) return;
   if (await ctx.routes.conversas(req, res, parts, query, sess)) return;
   if (await ctx.routes.campanhas(req, res, parts, query, sess)) return;
   if (await ctx.routes.calendario(req, res, parts, query, sess)) return;
