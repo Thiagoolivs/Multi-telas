@@ -83,24 +83,30 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
   .cta { left: 8cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2.2cqw); border-bottom-width: .25cqw; }
 }
 /*
- * Quase quadrada: em coluna não cabe (nove linhas de passo mais o título).
- * Os passos voltam lado a lado, como deitada, na largura toda; o título numa
- * linha só. Os passos assentam sobre o pedido, longe do título.
+ * Quase quadrada (reteste 4, 26/11): os passos lado a lado em três colunas
+ * de 300 px quebravam o detalhe palavra a palavra ("Documento / e /
+ * carteirinha"), a peça ficava com o meio vazio e o pedido de duas linhas
+ * ("Prioridade: idosos e gestantes") subia por cima do último detalhe — na
+ * TV em pé o piso cedia a 88%. Agora a peça corre de cima para baixo, sem
+ * nada preso no pé: a marca, o título, os passos um embaixo do outro (o
+ * número na frente, o detalhe ao lado dele) e o pedido, que empurra em vez
+ * de cobrir. Se ainda não couber, o detalhe sai (data-cede), não a letra.
  */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .marca-nome { left: 5cqw; top: 5cqh; letter-spacing: .16em; }
-  .cabeca { left: 5cqw; right: 5cqw; top: 11.2cqh; }
+  .mt-peca { display: flex; flex-direction: column; justify-content: center; gap: 3.2cqh; padding: 5cqh 6cqw; }
+  .marca-nome, .cabeca, .passos, .cta { position: static; }
+  .marca-nome { letter-spacing: .16em; }
   .kicker { letter-spacing: .12em; }
   .kicker i { width: 5cqw; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 7cqw); margin-top: .36em; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 7cqw); margin-top: .3em; }
   h1 span, h1 em { display: inline; white-space: normal; }
-  .passos { left: 5cqw; right: 5cqw; bottom: 13.4cqh; grid-template-columns: repeat(3, 1fr); column-gap: 2.4cqw; }
-  .passos li { display: block; padding: 2.2cqw 0 0; border-top-width: .2cqw; }
+  .passos { grid-template-columns: 1fr; row-gap: 0; }
+  .passos li { display: grid; grid-template-columns: 10cqw 1fr; column-gap: 2.6cqw; align-items: baseline; padding: 1.6cqh 0; border-top-width: .2cqw; }
   .passos li::before { top: -.7cqw; width: 1.4cqw; height: 1.4cqw; }
-  .num { font-size: max(var(--mt-piso, 0cqw), 7cqw); }
-  .passos b { margin-top: 1cqw; font-size: max(var(--mt-piso, 0cqw), 4cqw); text-wrap: balance; }
-  .passos small { margin-top: .8cqw; font-size: max(var(--mt-piso, 0cqw), 2.1cqw); line-height: 1.3; }
-  .cta { left: 5cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .1em; }
+  .num { grid-row: 1 / 3; font-size: max(var(--mt-piso, 0cqw), 7cqw); }
+  .passos b { margin: 0; font-size: max(var(--mt-piso, 0cqw), 4cqw); line-height: 1.08; }
+  .passos small { margin-top: .5cqh; font-size: max(var(--mt-piso, 0cqw), 2.4cqw); line-height: 1.2; max-width: none; }
+  .cta { align-self: flex-start; max-width: 100%; font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .08em; line-height: 1.15; text-wrap: balance; }
 }
 /* A principal do Corporativo com a margem contra o corte de 3,5% ou mais (1279×707 e menor): o último detalhe passava do pé. Os passos apertam. */
 @container (aspect-ratio >= 1.74) and (min-height: 600px) and (max-height: 715px) {
@@ -124,9 +130,9 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
     <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Sua cor nova</span> <em data-campo="titulo2">em três tempos</em></h1>
   </div>
   <ol class="passos">
-    <li data-entrada="subir" data-ordem="3"><span class="num" aria-hidden="true">01</span><b data-campo="passo1">Avaliação dos fios</b><small data-campo="passo1-detalhe">Vemos o histórico do cabelo e o que ele aguenta.</small></li>
-    <li data-entrada="subir" data-ordem="4"><span class="num" aria-hidden="true">02</span><b data-campo="passo2">Escolha do tom</b><small data-campo="passo2-detalhe">Mecha de teste na luz natural, antes de decidir.</small></li>
-    <li data-entrada="subir" data-ordem="5"><span class="num" aria-hidden="true">03</span><b data-campo="passo3">Aplicação e finalização</b><small data-campo="passo3-detalhe">Com tratamento para a cor durar mais.</small></li>
+    <li data-entrada="subir" data-ordem="3"><span class="num" aria-hidden="true">01</span><b data-campo="passo1">Avaliação dos fios</b><small data-cede="1" data-campo="passo1-detalhe">Vemos o histórico do cabelo e o que ele aguenta.</small></li>
+    <li data-entrada="subir" data-ordem="4"><span class="num" aria-hidden="true">02</span><b data-campo="passo2">Escolha do tom</b><small data-cede="1" data-campo="passo2-detalhe">Mecha de teste na luz natural, antes de decidir.</small></li>
+    <li data-entrada="subir" data-ordem="5"><span class="num" aria-hidden="true">03</span><b data-campo="passo3">Aplicação e finalização</b><small data-cede="1" data-campo="passo3-detalhe">Com tratamento para a cor durar mais.</small></li>
   </ol>
   <div class="cta" data-entrada="aparecer" data-ordem="6"><span data-campo="cta">A avaliação não tem custo</span></div>
 </section>
