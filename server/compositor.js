@@ -705,6 +705,8 @@ async function refazerPeca(o) {
   const problemas = (o.problemas || []).map((x) => String(x).slice(0, 200)).filter(Boolean).slice(0, 10);
   return comporPeca({
     pedido: it.origem.pedido, papel: it.papel, marca: it.marca, modo: it.modo, motor: o.motor,
+    // A frente da conta: a mesma biblioteca (e o mesmo prefixo em cache) da peça que está sendo refeita, e as regras de conteúdo dela.
+    perfil: o.perfil || '',
     foto: it.campos.foto || null, camposDe: it.campos, textosCampos,
     anterior: '<style>' + it.css + '</style>\n' + it.html,
     critica: 'A peça abaixo foi desenhada e MEDIDA na tela, e tem estes problemas:\n- ' + (problemas.join('\n- ') || 'texto que não cabe')

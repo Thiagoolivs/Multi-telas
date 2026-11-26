@@ -19,6 +19,8 @@ import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 import { usePerfil, perfilDe, perfilAtual } from '../lib/perfil.js';
 import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
+import { garantirTodas } from '../lib/encaixeAuto.js';
+import { passosDoEncaixe, SeloDoEncaixe } from '../components/criar/EncaixeAutomatico.jsx';
 
 /*
  * CRIAÇÃO RÁPIDA. Era o Criar até 21/10. Desde o item 24 (EXECUTOR §2b), o
@@ -234,6 +236,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
   const [pronto, setPronto] = useState(null);       // { pecas, nTelas, titulo }
   const [erro, setErro] = useState('');
   const [redesAberto, setRedesAberto] = useState(false);
+  const [revisarEncaixe, setRevisarEncaixe] = useState(null); // [{ i, avisos, item }]: não couberam, esperando a pessoa decidir
 
   const perfil = usePerfil();
   const op = opcaoDoPerfil(opcao, perfil.id);
@@ -254,7 +257,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
   }, [telaInicial]);
 
   function recomecar() {
-    setOpcao(null); setFrase(''); setFoto(null); setPlano(null); setPronto(null); setErro(''); setEtapa(null); feito.current = null;
+    setOpcao(null); setFrase(''); setFoto(null); setPlano(null); setPronto(null); setErro(''); setEtapa(null); setRevisarEncaixe(null); feito.current = null;
   }
 
   async function escolherFoto(e) {
@@ -307,8 +310,12 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
    */
   const feito = React.useRef(null);
   const conferida = React.useRef(null);
-  async function publicar() {
-    setErro(''); setEtapa({ etapa: 'desenhando a peça', segundos: 0 });
+  /*
+   * `mesmoAssim`: a pessoa viu que uma peça não coube e mandou pôr assim
+   * mesmo. Sem isso, a peça que não cabe não vai para a TV.
+   */
+  async function publicar(mesmoAssim) {
+    setErro(''); setRevisarEncaixe(null); setEtapa({ etapa: 'desenhando a peça', segundos: 0 });
     try {
       let pecas = feito.current && feito.current.pecas;
       const titulo = (feito.current && feito.current.titulo) || frase.trim().split('\n')[0].slice(0, 60) || op.titulo;
@@ -328,17 +335,36 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
         if (barrado) throw new Error('Esta peça não pode ir para a TV: “' + barrado.trecho + '” ' + barrado.motivo + '.' + (barrado.sugestao ? ' Peça de novo com algo como “' + barrado.sugestao + '”.' : ' Peça de novo com outras palavras.'));
         conferida.current = conf;
         /*
-         * O nome é a frase, não o "Campanha" que o diretor devolve sem IA. Além
-         * de ser a pasta em Meus Designs, ele é a ORIGEM na tela: publicar troca
-         * o que veio da mesma origem — com um nome fixo, cada criação nova
-         * tiraria a anterior do ar.
+         * A PEÇA CABE NA TV? (lib/encaixeAuto.js) A Criação rápida publicava
+         * logo depois de gerar, sem conferir: a manchete saindo da borda ia
+         * para a parede. Agora cada peça é conferida no tamanho da TV; a que
+         * não cabe volta uma vez à IA, depois vira a peça-ouro aprovada. A
+         * que nem assim coube não vai sem a pessoa saber: para aqui e pergunta.
          */
-        await library.save(titulo, pecas);
-        feito.current = { pecas, titulo };
+        const lista = pecas.map((p, i) => ({ chave: i, item: p.item })).filter((x) => x.item && x.item.type === 'peca-html');
+        const FASE = { conferindo: 'conferindo se a peça cabe na TV', refazendo: 'a peça não coube na TV: a IA está redesenhando', reserva: 'a peça não coube: pondo o modelo aprovado' };
+        const encaixe = await garantirTodas(lista, passosDoEncaixe({ onEtapa: setEtapa }), {
+          onPeca: (k, x) => {
+            if (x.estado) return;
+            setEtapa({ etapa: FASE[x.fase] || FASE.conferindo, detalhe: (x.avisos && x.avisos[0]) || (pecas.length > 1 ? 'peça ' + (k + 1) + ' de ' + pecas.length : ''), segundos: 0 });
+          },
+        });
+        pecas = pecas.map((p, i) => (encaixe[i] && encaixe[i].item !== p.item ? { ...p, item: { ...encaixe[i].item, formato: p.item.formato || p.formato } } : p));
+        feito.current = { pecas, titulo, encaixe, salvo: false };
       }
+      const encaixe = feito.current.encaixe || {};
+      const naoCouberam = Object.keys(encaixe).filter((k) => encaixe[k].estado === 'nao-cabe').map((k) => ({ i: Number(k), avisos: encaixe[k].avisos, item: pecas[k].item }));
+      if (naoCouberam.length && !mesmoAssim) { setRevisarEncaixe(naoCouberam); return; }
+      /*
+       * O nome é a frase, não o "Campanha" que o diretor devolve sem IA. Além
+       * de ser a pasta em Meus Designs, ele é a ORIGEM na tela: publicar troca
+       * o que veio da mesma origem — com um nome fixo, cada criação nova
+       * tiraria a anterior do ar.
+       */
+      if (!feito.current.salvo) { await library.save(titulo, pecas); feito.current.salvo = true; }
       if (alvos.length) await publicarPecas({ alvos, pecas, titulo, telas });
       feito.current = null;
-      setPronto({ pecas, nTelas: alvos.length, titulo, conferencia: conferida.current });
+      setPronto({ pecas, nTelas: alvos.length, titulo, conferencia: conferida.current, encaixe });
       aviso.ok(alvos.length ? 'Na TV: ' + alvos.length + (alvos.length === 1 ? ' tela.' : ' telas.') : 'Guardado na Biblioteca.');
     } catch (e) { setErro(e.message || 'Não deu para pôr na TV. Tente de novo.'); }
     finally { setEtapa(null); }
@@ -487,6 +513,28 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
             </div>
           </Panel>
 
+          {/* Não coube nem redesenhada: a pessoa decide (nada foi guardado nem publicado ainda). */}
+          {revisarEncaixe && (
+            <Panel>
+              <div className="space-y-3 border-l-4 border-warn p-4" role="alert">
+                <div className="text-sm font-semibold text-ink">{revisarEncaixe.length === 1 ? 'A peça não coube na TV' : revisarEncaixe.length + ' peças não couberam na TV'}, nem redesenhada{revisarEncaixe.length === 1 ? '' : 's'} pela IA</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {revisarEncaixe.map((x) => (
+                    <div key={x.i} className="space-y-1">
+                      <div className="overflow-hidden rounded-lg border border-line"><DesignThumb item={x.item} /></div>
+                      <ul className="space-y-0.5 text-xs text-ink-2">{x.avisos.slice(0, 3).map((a) => <li key={a}>{a}.</li>)}</ul>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-ink-3">Uma frase mais curta quase sempre resolve. Se puser assim, o texto vai sair da borda na TV.</p>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="secondary" onClick={() => { feito.current = null; setRevisarEncaixe(null); setPlano(null); }}>Mudar a frase</Button>
+                  <Button variant="ghost" onClick={() => publicar(true)}>{alvos.length ? 'Pôr na TV mesmo assim' : 'Guardar mesmo assim'}</Button>
+                </div>
+              </div>
+            </Panel>
+          )}
+
           {/* 4 · publicar, na tela já marcada */}
           <Panel>
             <div className="space-y-3 p-4">
@@ -515,7 +563,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
               )}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs text-ink-3">{custo ? custo + (custo === 1 ? ' criação com foto' : ' criações com foto') : 'Sem foto gerada · não usa criação'}</span>
-                <Button variant="primary" size="lg" icon={Rocket} onClick={publicar}>
+                <Button variant="primary" size="lg" icon={Rocket} onClick={() => publicar(false)}>
                   {alvos.length ? 'Pôr na TV' : 'Guardar'}
                 </Button>
               </div>
@@ -537,7 +585,11 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
             <Conferencia conferencia={pronto.conferencia} />
             <div className="grid gap-3 sm:grid-cols-2">
               {pronto.pecas.map((p, i) => (
-                <div key={i} className="overflow-hidden rounded-lg border border-line"><DesignThumb item={p.item} /></div>
+                <div key={i} className="space-y-1">
+                  <div className="overflow-hidden rounded-lg border border-line"><DesignThumb item={p.item} /></div>
+                  {/* O que o encaixe fez: redesenhada, o modelo aprovado no lugar, ou posta mesmo sem caber. */}
+                  <SeloDoEncaixe r={pronto.encaixe && pronto.encaixe[i]} />
+                </div>
               ))}
             </div>
             <div className="flex flex-wrap gap-2">

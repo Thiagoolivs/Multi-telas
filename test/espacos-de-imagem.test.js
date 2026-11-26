@@ -508,8 +508,11 @@ test('servidor: gera sem IA, registra o uso, freia por hora, e a TV recebe a fot
   const um = await pedir('/api/ia/imagem', { method: 'POST', cookie: dono, json: pedido });
   assert.equal(um.status, 200, JSON.stringify(um.json));
   const item = um.json.item;
-  assert.match(item.url, /^\/media\/[^/]+\/[\w-]+\.png$/);
-  assert.deepEqual([item.mime, item.origem, item.formato, um.json.exemplo], ['image/png', 'ia', '9/16', true]);
+  // A foto de exemplo é PNG; guardada, ela passa pela foto leve (server/foto-leve.js) como a da IA: JPEG, com a miniatura do fundo.
+  assert.match(item.url, /^\/media\/[^/]+\/[\w-]+\.jpg$/);
+  assert.deepEqual([item.mime, item.origem, item.formato, um.json.exemplo], ['image/jpeg', 'ia', '9/16', true]);
+  assert.match(item.fundo, /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/);
+  assert.ok(item.size < 120 * 1024, 'a foto de exemplo guardada tem ' + item.size + ' bytes');
   const arquivo = await pedir(item.url);
   assert.equal(arquivo.status, 200);
   assert.deepEqual(medidas(arquivo.buf), [720, 1280], 'a foto em pé para o espaço em pé');
