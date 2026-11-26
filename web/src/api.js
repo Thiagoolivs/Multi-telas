@@ -609,6 +609,15 @@ export const library = {
 };
 
 /*
+ * A peça-ouro aprovada do papel, com os textos da peça que não coube
+ * (server/reserva-da-peca.js). Sem IA e sem custo; 404 quando nenhuma leva
+ * todos os textos dela.
+ */
+export const pecas = {
+  reserva: (item) => api('POST', '/api/pecas/reserva', { item }),
+};
+
+/*
  * Mural de fotos: o público envia pelo QR e aparece na TV.
  *
  * `ocultarFoto`/`limpar` escondem em vez de apagar — moderação tem que ser
