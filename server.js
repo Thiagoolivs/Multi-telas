@@ -2507,7 +2507,9 @@ const negocioCache = new Map();
       qualidade.contar(db, qualidade.chavesDoRefazer(b.item, b.problemas));
       return emTrabalho(res, sess, 'peca', { brief: 'redesenhar a peça' }, async (progresso) => {
         progresso('redesenhando a peça', String((b.problemas || [])[0] || ''));
-        const r = await compositor.refazerPeca({ item: b.item, problemas: b.problemas, motor: compositor.motorDoHtml() });
+        // Com a frente da conta: a biblioteca passou do teto, ela muda por frente — sem isto o redesenho mandava outro prefixo (sem cache) e sem as regras de Saúde.
+        const perfil = await paletaInicial.perfilDaConta(db, sess.tenant_id).catch(() => '');
+        const r = await compositor.refazerPeca({ item: b.item, problemas: b.problemas, motor: compositor.motorDoHtml(), perfil });
         if (!r.ok) throw new Error('a IA não conseguiu redesenhar a peça agora');
         return { item: Object.assign({}, r.item, { formato: b.item.formato || '16/9' }) };
       });

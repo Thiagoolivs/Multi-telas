@@ -94,7 +94,7 @@ for (const motor of ['claude-sonnet', 'gemini', 'groq']) {
       await noDia('2027-03-02T22:40:00Z', 'Asia/Tokyo', () => C.comporPeca(Object.assign({ motor, papel, tentativas: 1 }, PEDIDOS[1])));
       // O redesenho da peça que não coube (POST /api/ai/refazer-peca) usa o mesmo prefixo.
       const item = { type: 'peca-html', versao: 1, papel, ...C.preencherPapel({ papel, textos: PEDIDOS[1].textos, empresa: PEDIDOS[1].empresa }), campos: {} };
-      await noDia('2027-07-14T03:00:00Z', 'Europe/Lisbon', () => C.refazerPeca({ item, problemas: ['TV em pé: "Título" passa da borda'], motor }));
+      await noDia('2027-07-14T03:00:00Z', 'Europe/Lisbon', () => C.refazerPeca({ item, problemas: ['TV em pé: "Título" passa da borda'], motor, perfil: 'comercio' }));
       // Um de cada pedido e o redesenho (que pede de novo, com o motivo, se a porta recusar a resposta: o prefixo é o mesmo também).
       assert.ok(corpos.length >= 3, papel + ': ' + corpos.length + ' chamadas');
       const [a, b, ...redesenho] = corpos.map(prefixo);
@@ -123,3 +123,30 @@ test('o fixo não depende de hora nem de fuso, e as horas que ele traz são as d
     }
   }
 });
+
+/*
+ * A biblioteca passou do teto (a galeria aprovou mais peças que o teto do
+ * papel): aí ela é uma amostra por frente, e o prefixo muda de uma frente
+ * para outra — no máximo um por frente. O que não pode: o redesenho da
+ * peça mandar a amostra de OUTRA frente (sem a frente, era a amostra
+ * "geral": prefixo novo, sem cache, e sem as regras de conteúdo da Saúde).
+ */
+test('com a galeria acima do teto: o redesenho usa o prefixo da frente da conta, o mesmo da peça', () => comChaves(() => comFetch(async (corpos) => {
+  const m = JSON.parse(ler('pecas-ouro', 'manifesto.json'));
+  const todas = m.pecas.filter((p) => p.papeis.includes('destaque') && fs.existsSync(path.join(__dirname, '..', 'pecas-ouro', p.id + '.html')));
+  assert.ok(todas.length > C.MAX_EXEMPLOS.destaque, 'o manifesto não passa do teto: o teste não diz nada');
+  C.definirDecisoes(todas.map((p) => ({ tipo: 'peca', id: p.id, estado: 'aprovada' })));
+  try {
+    assert.notEqual(C.fixo('destaque', 'saude'), C.fixo('destaque', 'comercio'), 'acima do teto a amostra devia mudar com a frente');
+    const pedido = Object.assign({}, PEDIDOS[0], { perfil: 'saude', motor: 'claude-sonnet', papel: 'destaque', tentativas: 1 });
+    await C.comporPeca(pedido);
+    await C.comporPeca(Object.assign({}, PEDIDOS[1], { perfil: 'saude', motor: 'claude-sonnet', papel: 'destaque', tentativas: 1 }));
+    const item = { type: 'peca-html', versao: 1, papel: 'destaque', ...C.preencherPapel({ papel: 'destaque', textos: PEDIDOS[1].textos, empresa: 'X' }), campos: {} };
+    await C.refazerPeca({ item, problemas: ['não cabe'], motor: 'claude-sonnet', perfil: 'saude' });
+    const [a, b, ...refazer] = corpos.map(prefixo);
+    assert.equal(b, a, 'dois pedidos da mesma frente, dois prefixos');
+    refazer.forEach((c) => assert.equal(c, a, 'o redesenho mandou o prefixo de outra frente'));
+    // E a rota do redesenho passa a frente da conta.
+    assert.match(ler('server.js'), /perfilDaConta\(db, sess\.tenant_id\)[\s\S]{0,200}compositor\.refazerPeca\(\{[^}]*perfil \}\)/);
+  } finally { C.definirDecisoes([]); }
+})));
