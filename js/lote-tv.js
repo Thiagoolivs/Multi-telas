@@ -338,23 +338,65 @@
   /* ---------------- A peça pronta e a publicação ---------------- */
 
   /*
+   * A PEÇA DE FAIXA QUE A TV NÃO MOSTRARIA (reteste 4, 25/11). Duas vezes o
+   * "Pôr na TV" dizia "Na TV: 1 tela" e a TV ficava igual:
+   *   - a faixa de cabeçalho ou de rodapé numa TV cujo formato não tem essa
+   *     parte (Tela cheia): a peça não tinha onde entrar, e saía calada;
+   *   - o rodapé que passa as frases do rodapé (`data-vivo="mensagens"`:
+   *     rodape-selo, rodape-pagamento, rodape-relogio, rodape-contagem) numa
+   *     TV sem frase: a TV não mostra a pele de rodapé passando vazia
+   *     (js/player.js, pecasDaFaixa — de propósito).
+   * Agora o painel pergunta antes (o `simular` da operação 'peca' devolve
+   * isto por TV): trocar o formato, como a campanha já pergunta, e a
+   * primeira frase. O que a pessoa responde vai em `opcoes.trocarLayout` e
+   * em `peca.frases`.
+   */
+  const papelDaPeca = (peca) => (peca && (peca.papel || (peca.item && peca.item.papel))) || '';
+  const passaAsFrases = (item) => !!item && item.type === 'peca-html' && /data-vivo="mensagens"/.test(String(item.html || ''));
+  const temFrase = (zona) => !!zona && Array.isArray(zona.messages) && zona.messages.some((m) => String(m || '').trim());
+  const frasesLimpas = (l) => (Array.isArray(l) ? l : []).map((m) => String(m == null ? '' : m).trim().slice(0, 200)).filter(Boolean).slice(0, 5);
+
+  // O que a peça faria nesta TV: { faixa, semFaixa, layoutAtual, layoutNovo, semFrase }.
+  function comoEntraAPeca(cfg, peca) {
+    const papel = papelDaPeca(peca);
+    const layoutAtual = (cfg && cfg.settings && cfg.settings.layoutId) || '';
+    if (papel !== 'cabecalho' && papel !== 'rodape') return { faixa: '', semFaixa: false, layoutAtual, layoutNovo: '', semFrase: false };
+    const semFaixa = !zonasPorPapel(cfg)[papel];
+    const layoutNovo = semFaixa ? layoutPara(cfg) : '';
+    // A frase conta no rodapé onde a peça vai entrar (o do formato novo, se trocar).
+    const rodape = papel === 'rodape' ? zonasPorPapel(semFaixa ? { settings: { layoutId: layoutNovo } } : cfg).rodape : null;
+    const semFrase = !!rodape && passaAsFrases(peca.item) && !temFrase((cfg && cfg.zonas || {})[rodape]);
+    return { faixa: papel, semFaixa, layoutAtual, layoutNovo, semFrase };
+  }
+
+  /*
    * UMA PEÇA PRONTA (EXECUTOR §2c, item 34): a zona sai do papel da peça —
    * faixa no cabeçalho ou no rodapé, em pé na lateral, deitada na principal —
    * e, sem a zona certa, ela vai para a principal. Entra no fim da zona.
+   * `opcoes.trocarLayout`: a TV sem a faixa passa para o formato com as
+   * quatro partes (layoutPara), como na campanha. `peca.frases`: as
+   * primeiras frases do rodapé, só na TV que não tem nenhuma.
    */
-  function aplicarPeca(cfg, peca) {
+  function aplicarPeca(cfg, peca, opcoes) {
+    const o = opcoes || {};
     const next = copia(cfg);
     if (!next.zonas) next.zonas = {};
+    const papel = papelDaPeca(peca);
+    const faixa = papel === 'cabecalho' || papel === 'rodape';
+    if (faixa && o.trocarLayout && !zonasPorPapel(next)[papel]) {
+      next.settings = Object.assign({}, next.settings || {}, { layoutId: layoutPara(next) });
+    }
     const z = zonasPorPapel(next);
     const item = Object.assign({}, peca.item, peca.campanha ? { _campanha: peca.campanha } : {});
-    const papel = peca.papel || (peca.item && peca.item.papel) || '';
-    if ((papel === 'cabecalho' || papel === 'rodape') && z[papel]) {
+    if (faixa && z[papel]) {
       const atual = next.zonas[z[papel]] || {};
       const lista = (Array.isArray(atual.pecas) && atual.pecas.length ? atual.pecas : (atual.peca ? [atual.peca] : [])).concat(Object.assign({ duracao: 20 }, item));
-      next.zonas[z[papel]] = Object.assign({}, atual, papel === 'cabecalho' ? { header: true } : {}, { pecas: lista, peca: lista[0] });
+      const frases = papel === 'rodape' && !temFrase(atual) ? frasesLimpas(peca.frases) : [];
+      next.zonas[z[papel]] = Object.assign({}, atual, papel === 'cabecalho' ? { header: true } : {}, { pecas: lista, peca: lista[0] },
+        frases.length ? { messages: frases } : {});
       return next;
     }
-    if (papel === 'cabecalho' || papel === 'rodape') return next; // a TV não tem essa faixa: nada a fazer
+    if (faixa) return next; // a TV não tem essa faixa e não troca de formato: nada a fazer (o painel perguntou antes)
     const vertical = String(peca.formato || item.formato || '').indexOf('9/') === 0;
     const zona = (vertical && z.lateral) ? z.lateral : (z.principal || z.lateral);
     if (!zona) return next;
@@ -559,7 +601,7 @@
     CHAVES_ORIGEM, origemDoItem, aplicarConteudo, removerOrigem,
     FAIXAS, agendarPeca, cobrirODia, distribuirPorZona, diasAte, comQuando,
     zonasDe, zonaPrimaria, zonasPorPapel, LAYOUT_COMPLETO, layoutPara, zonasQueFaltam,
-    aplicarCampanha, tirarCampanha, quandoNaCampanha, aplicarPeca, montarPublicacao,
+    aplicarCampanha, tirarCampanha, quandoNaCampanha, aplicarPeca, comoEntraAPeca, montarPublicacao,
     periodoDoEvento, aplicarCalendario, tirarDoCalendario,
     porNaPrincipal, porIndicador, porPlanilha,
     GRUPO_DA_ZONA, grupoDaZona, aplicarTelaPronta,

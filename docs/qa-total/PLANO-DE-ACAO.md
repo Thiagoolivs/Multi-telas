@@ -405,13 +405,17 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
     - Aprovar a galeria: 170 itens pendentes, 86 recomendados ([galeria-para-aprovar](galeria-para-aprovar/index.html)).
     - Com o nome da conta e o clima, 20 de 101 telas caem para 3,5–4,4% de letra; 12 delas são o cabeçalho com frase. A régua não pega porque usa as marcas de exemplo e não mostra o clima.
     - 8 peças propostas com foto de pessoa ficam meio vazias sem a foto do cliente.
-    - A logo escura de conta antiga: o dono usa o "Melhorar" na Marca.
-    - Sem nenhum aviso, estas peças não fazem nada:
-      - a de rodapé, numa TV sem mensagem de rodapé;
-      - a de cabeçalho ou rodapé, num layout sem essa zona.
-    - Painel:
-      - na lista da TV, o cartão do indicador ao vivo mostra "—";
-      - em Aprovações, "Antes (agora na TV)" mostra uma peça que só entra depois.
+    - [x] ~~A logo escura de conta antiga: o dono usa o "Melhorar" na Marca.~~ **Consertado (25/11):** o Início e a Marca avisam "Sua logo some no fundo escuro da TV", com a logo no fundo escuro, e "Fazer a versão branca" faz só ela. A logo não muda sozinha, e o aviso traz o Desfazer.
+    - [x] ~~Sem nenhum aviso, estas peças não fazem nada.~~ **Consertado (25/11):** o "Pôr na TV" confere cada TV antes e pergunta:
+      - a de rodapé, numa TV sem mensagem de rodapé: pede a primeira frase, que entra só onde não há nenhuma;
+      - a de cabeçalho ou rodapé, num layout sem essa zona: troca o formato (marcado, como na campanha) ou a TV fica de fora, e o aviso conta só as TVs que receberam.
+    - [x] **Painel (consertado em 25/11):**
+      - ~~na lista da TV, o cartão do indicador ao vivo mostra "—"~~: mostra o número, com a mesma conta da TV;
+      - ~~em Aprovações, "Antes (agora na TV)" mostra uma peça que só entra depois~~: mostra o que está no ar agora (a janela agendada, na hora da loja); o "Depois" mostra a peça que o pedido traz.
+    - [x] **Também consertado (25/11),** do [RETESTE-4.md](RETESTE-4.md) e do B2:
+      - a primeira TV pede o nome na hora (vinha "TV 1"), com as sugestões da frente; Telas › Ligar uma TV também sugere;
+      - "Esta TV parece ser a X?": "Não, é outra TV" é o botão principal, cada TV parecida mostra o grupo e o último sinal, e "É a X, que voltou" pede confirmação ([ROTEIRO-DE-INSTALACAO.md](../implantacao/ROTEIRO-DE-INSTALACAO.md), parte 2, passo 2);
+      - Saúde sem dado inventado: `servico-convenios` só com "Particular", e a `gente-equipe` sem dentistas nem CRO inventados (a equipe sem nome não vai ao ar). Nenhum `estado` mudou.
     - Não medido:
       - a IA real;
       - o TV box de verdade;

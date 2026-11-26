@@ -16,6 +16,7 @@ import { usePerfil } from '../lib/perfil.js';
 import { deviceStatus, ONLINE_WINDOW_MS } from '../lib/deviceStatus.js';
 import { formatBytes } from '../lib/format.js';
 import { ResumoDasPessoas } from '../components/pessoas/ResumoDasPessoas.jsx';
+import { AvisoDaLogoEscura } from '../components/content/AvisoDaLogoEscura.jsx';
 
 const today = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
   .format(new Date()).replace(/^\w/, (c) => c.toUpperCase());
@@ -95,6 +96,8 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
         actions={<Button variant="secondary" icon={RefreshCw} onClick={reload}>Atualizar</Button>}
       />
       <AvisoDoSistema onAbrir={onGoSystem} operador={operador} />
+      {/* Reteste 4: a logo escura de quem já tinha conta, sem a versão branca. Avisa e faz com um toque; nunca troca sozinho. */}
+      <AvisoDaLogoEscura logo={globalThis.MT_LOGO} onIrParaMarca={onIr ? () => onIr('brand') : undefined} />
       {/*
         "Sua primeira TV em 5 minutos" (PrimeiraTvPage): na conta nova, o cartão com o passo em que a pessoa
         parou; depois, "Montar a TV de novo". Enquanto o cartão aparece, o "Comece por aqui" espera.

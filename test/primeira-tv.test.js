@@ -265,7 +265,8 @@ test('o painel: abre sozinho na conta nova, fica no Início, e cada passo tem um
   assert.match(pronto, /'Pedido mandado!'/);
   // O "Ligar a TV" é o de Telas: o mesmo endereço e o mesmo pedido.
   assert.match(ler('web/src/pages/ScreensPage.jsx'), /import \{ EnderecoDaTv \} from '\.\.\/components\/tela\/EnderecoDaTv\.jsx';/);
-  assert.match(ler('web/src/components/primeira-tv/PassoTv.jsx'), /await devices\.pair\(code, '', extra\);/);
+  // Reteste 4: o mesmo pedido, agora com o nome que a pessoa deu (era '': a TV virava "TV 1").
+  assert.match(ler('web/src/components/primeira-tv/PassoTv.jsx'), /await devices\.pair\(code, nome\.trim\(\) \|\| proximoNomeDeTv\(tvs\), extra\);/);
 });
 
 /* ---------------- servidor de verdade ---------------- */
@@ -399,7 +400,9 @@ test('passo 2: a logo que some num fundo ganha a versão para ele, e o passo diz
   assert.match(marca, /fiz uma versão branca para ele/);
   const lib = ler('web/src/lib/logo.js');
   const f = lib.slice(lib.indexOf('export async function versoesQueFaltam'));
-  assert.match(f, /const tintaEscura = \(a\.cores \|\| \[\]\)\.some\(\(c\) => luminancia\(\.\.\.rgb\(c\)\) < 0\.15\);/, 'a tinta escura vira o cabeçalho: precisa da versão branca');
+  // A regra da tinta escura saiu para temTintaEscura (o aviso da logo de conta antiga usa a mesma, reteste 4).
+  assert.match(lib, /export const temTintaEscura = \(a\) => !!a && \(a\.cores \|\| \[\]\)\.some\(\(c\) => luminancia\(\.\.\.rgb\(c\)\) < 0\.15\);/, 'a tinta escura vira o cabeçalho: precisa da versão branca');
+  assert.match(f, /const tintaEscura = temTintaEscura\(a\);/);
   assert.match(f, /if \(a\.escuro\.ok && a\.claro\.ok && !tintaEscura\) return \{\};/, 'a logo clara que lê nos dois fundos não ganha versão');
   assert.match(lib, /if \(!escuro\.ok \|\| \(opcoes && opcoes\.clara\)\) \{ versoes\.clara =/);
   assert.match(f, /return p\.versoes \|\| \{\};/, 'só as versões, nunca a logo principal trocada');

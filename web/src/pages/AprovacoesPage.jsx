@@ -220,7 +220,8 @@ function TelaDoPedido({ t, nomesDasMidias, refDaSecao, carregando, falhou }) {
       ) : (
         <div className="mt-2 grid grid-cols-2 gap-2 sm:gap-4">
           {t.antes ? <ATv cfg={t.antes} rotulo="Antes (agora na TV)" /> : <SemPrevia rotulo="Antes (agora na TV)" texto="A TV ainda não tinha nada." />}
-          {t.depois ? <ATv cfg={t.depois} rotulo="Depois (se aprovar)" /> : <SemPrevia rotulo="Depois (se aprovar)" texto="Sem prévia." />}
+          {/* O depois mostra a peça que o pedido traz (mesmo agendada para depois): é ela que o dono aprova. */}
+          {t.depois ? <ATv cfg={t.depois} comparar={t.antes} rotulo="Depois (se aprovar)" /> : <SemPrevia rotulo="Depois (se aprovar)" texto="Sem prévia." />}
           <ListaDoQuePassa nomes={oQuePassa(t.antes, nomesDasMidias)} />
           <ListaDoQuePassa nomes={oQuePassa(t.depois, nomesDasMidias)} antes={oQuePassa(t.antes, nomesDasMidias)} />
         </div>
@@ -263,13 +264,15 @@ function ListaDoQuePassa({ nomes, antes }) {
 /*
  * O antes e o depois com a TV de verdade (reteste 2: o desenho saía vazio,
  * só a moldura): o próprio player num quadro, como "Na TV agora" na página
- * da TV. O antes é a programação que está na TV; o depois, a do pedido.
+ * da TV. O antes é a programação que está na TV, no que está no ar AGORA
+ * (reteste 4: a peça agendada para depois não é o "agora na TV" —
+ * lib/tvAoVivo.js, noArAgora); o depois, a do pedido, na peça que ele traz.
  */
-function ATv({ cfg, rotulo }) {
+function ATv({ cfg, rotulo, comparar = null }) {
   return (
     <figure className="m-0 min-w-0">
       <figcaption className="mb-1 text-2xs font-semibold uppercase tracking-wide text-ink-3">{rotulo}</figcaption>
-      <TvAoVivo cfg={cfg} alturaMaxima={260} rotulo={rotulo} />
+      <TvAoVivo cfg={cfg} comparar={comparar} alturaMaxima={260} rotulo={rotulo} />
     </figure>
   );
 }

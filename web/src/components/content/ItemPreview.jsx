@@ -8,6 +8,7 @@ import { ICONS } from '../../lib/icons.js';
 import { murais } from '../../api.js';
 import { PecaHtml } from './PecaHtml.jsx';
 import { nomeDoTipo } from '../../lib/contentTypes.js';
+import { kpiNoPainel, useIndicadores } from '../../lib/kpiAoVivo.js';
 import '../../../../js/precos.js';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
@@ -21,6 +22,27 @@ const ANN_ROTULO = {
   comunicado: 'Comunicado', urgente: 'Urgente', evento: 'Evento', rh: 'Recursos Humanos', seguranca: 'Segurança',
   manutencao: 'Manutenção programada', conquista: 'Conquista', treinamento: 'Treinamento', saude: 'Saúde e bem-estar',
 };
+
+// O indicador: o número, a variação e o detalhe.
+function Kpi({ item }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-0.5">
+      {item.rotulo && <div className="text-xs uppercase tracking-wide opacity-60">{item.rotulo}</div>}
+      <div className="text-3xl font-bold tabular-nums">{item.valor || '—'}</div>
+      {item.variacao && (
+        <div className={'text-xs font-semibold ' + (item.tendencia === 'subiu' ? 'text-emerald-300' : item.tendencia === 'desceu' ? 'text-rose-300' : 'opacity-60')}>
+          {item.tendencia === 'subiu' ? '▲' : item.tendencia === 'desceu' ? '▼' : '▬'} {item.variacao}
+        </div>
+      )}
+      {item.detalhe && <div className="text-[10px] opacity-50">{item.detalhe}</div>}
+    </div>
+  );
+}
+// Reteste 4: o cartão "Ao vivo" mostrava "—" na lista da TV; a TV mostrava o número.
+function KpiAoVivo({ item }) {
+  const lista = useIndicadores(true);
+  return <Kpi item={kpiNoPainel(item, lista)} />;
+}
 
 export function ItemPreview({ item, className }) {
   // A peça em HTML tem prévia fiel: o mesmo desenhista da TV.
@@ -113,18 +135,9 @@ export function Body({ item }) {
       );
     }
     case 'kpi':
-      return (
-        <div className="flex h-full flex-col items-center justify-center gap-0.5">
-          {item.rotulo && <div className="text-xs uppercase tracking-wide opacity-60">{item.rotulo}</div>}
-          <div className="text-3xl font-bold tabular-nums">{item.valor || '—'}</div>
-          {item.variacao && (
-            <div className={'text-xs font-semibold ' + (item.tendencia === 'subiu' ? 'text-emerald-300' : item.tendencia === 'desceu' ? 'text-rose-300' : 'opacity-60')}>
-              {item.tendencia === 'subiu' ? '▲' : item.tendencia === 'desceu' ? '▼' : '▬'} {item.variacao}
-            </div>
-          )}
-          {item.detalhe && <div className="text-[10px] opacity-50">{item.detalhe}</div>}
-        </div>
-      );
+      // O cartão ao vivo (posto por Indicadores) não guarda o número: vem da conta, como na TV (lib/kpiAoVivo.js).
+      if (item.indicador) return <KpiAoVivo item={item} />;
+      return <Kpi item={item} />;
     case 'social':
       return (
         <div className="flex h-full flex-col items-center justify-center gap-1.5">

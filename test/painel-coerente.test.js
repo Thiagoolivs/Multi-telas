@@ -159,7 +159,8 @@ test('item 34: Mídias por propósito, com as peças prontas e o disco discreto'
   assert.doesNotMatch(s, /<Progress/, 'o disco não é mais o destaque');
   const p = semComentarios(ler('web/src/pages/PecasProntasPage.jsx'));
   assert.match(p, /<PorNaTV peca=\{porNaTv\} telas=\{telas\}/);
-  assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /await porPecaNasTelas\(\{ \.\.\.peca, item \}, alvos, telas\);/);
+  // Reteste 4: vão as TVs que mostram a peça (a sem a faixa só se trocar o formato) e as respostas do diálogo.
+  assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /await porPecaNasTelas\(\{ \.\.\.peca, item \}, recebem, telas, \{ trocarLayout: semFaixa\.length > 0 && trocarLayout, frases: semFrase\.length \? \[frase\] : \[\] \}\);/);
   /*
    * Fase 10 (reteste do bloco 8: "a mesma campanha aparece em 3 lugares"):
    * as peças das campanhas saíram de Prontos para você. A casa delas é a
