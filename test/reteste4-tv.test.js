@@ -170,6 +170,15 @@ test('o "R$" que o cliente digita no preço não aparece duas vezes', () => {
   assert.equal(R.semMoedaRepetida(campo('preco', ['R$']), '29,90'), '29,90');
 });
 
+test('o kicker do numero-grande na coluna estreita tem folga: sem o espaçado, quebra entre palavras e nunca passa da borda', () => {
+  // "SEM ACIDENTE" (o texto da Empresas) ocupava a caixa sem folga na lateral com borda de 5%, e a linha a mais fazia a letra ceder no CI.
+  const css = daPeca('numero-grande').css;
+  const lateral = css.slice(css.indexOf('@container (max-width: 700px) {'));
+  assert.match(lateral, /\.kicker \{ font-size: max\(var\(--mt-piso, 0cqw\), 3\.4cqw\); letter-spacing: 0; \}/);
+  assert.match(lateral, /\.kicker span \{ min-width: 0; overflow-wrap: anywhere; text-wrap: balance; \}/);
+  assert.equal(manifesto().pecas.find((p) => p.id === 'numero-grande').textos.empresa.kicker, 'Sem acidente', 'o texto da Empresas continua o mesmo');
+});
+
 /* ---------------- 3. A régua confere a tela com o nome da conta e o clima ---------------- */
 
 test('a régua monta cada tela pronta também com o nome de uma conta longa, e a letra que cede reprova', () => {

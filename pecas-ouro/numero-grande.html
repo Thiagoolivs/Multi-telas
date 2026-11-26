@@ -86,7 +86,16 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
   .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .08em; line-height: 1.1; }
   .numero small { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), 4.4cqw); letter-spacing: .14em; }
   .texto { padding-top: 3.6cqw; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .06em; }
+  /*
+   * Reteste 4: o kicker que cabia "sem folga" na coluna ("NOSSA HISTÓRIA",
+   * "SEM ACIDENTE" na lateral com borda de 5%) ora ficava numa linha, ora
+   * quebrava, conforme o Chromium — e a linha a mais fazia a letra ceder.
+   * Sem o espaçado ele ganha folga, quebra entre as palavras com as linhas
+   * equilibradas, e a palavra que sozinha não cabe quebra no meio em vez de
+   * passar da borda.
+   */
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: 0; }
+  .kicker span { min-width: 0; overflow-wrap: anywhere; text-wrap: balance; }
   h1 { margin: 2cqw 0 0; font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
   /* Com a letra da TV, o endereço espaçado passava da margem na lateral: fica justo e pode quebrar.
      3,4cqw: o cqw aqui é da peça sem o respiro dela (o padding acima), e sem piso (a miniatura) ele não pode ficar abaixo de 14px. */
