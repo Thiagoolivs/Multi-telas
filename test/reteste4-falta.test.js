@@ -259,3 +259,61 @@ test('7. a logo escura de quem já tinha conta: o painel avisa e faz a versão b
   // O passo 2 da primeira TV segue com a mesma regra (a função saiu dele, a conta é a mesma).
   assert.match(ler('web/src/lib/logo.js'), /const tintaEscura = temTintaEscura\(a\);\n\s+if \(a\.escuro\.ok && a\.claro\.ok && !tintaEscura\) return \{\};/);
 });
+
+test('8. Saúde sem dado inventado: convênios e dentistas com CRO não vão à TV de quem não editou', async () => {
+  const M = JSON.parse(ler('pecas-ouro/manifesto.json'));
+  const PH = require('../js/peca-html.js');
+  globalThis.MTPecaHtml = globalThis.MTPecaHtml || PH;
+  const modelo = (id) => ({ ...M.pecas.find((p) => p.id === id), arq: PH.doArquivo(ler('pecas-ouro', id + '.html')) });
+  const INVENTADO = /OdontoVida|Sorriso Pleno|Dental Mais|Bem Odonto|Odonto Litoral|CRO-SP \d+|Paula Mendes|Rafael Alves|Lia Campos/;
+  // O manifesto: nem o texto da Saúde nem as telas do dentista trazem os convênios e os registros inventados.
+  const semLista = { ...M };
+  delete semLista.dadosDeExemplo;
+  delete semLista.sobre;
+  const conv = M.pecas.find((p) => p.id === 'servico-convenios');
+  const equipe = M.pecas.find((p) => p.id === 'gente-equipe');
+  assert.doesNotMatch(JSON.stringify(conv), INVENTADO);
+  assert.doesNotMatch(JSON.stringify(equipe.textos.saude), INVENTADO);
+  for (const id of ['l3-dentista-em-pe', 'l3-dentista-quadrada']) assert.doesNotMatch(JSON.stringify(M.telas.find((t) => t.id === id)), INVENTADO, id);
+  assert.equal(conv.textos.saude.plano6, 'Particular');
+  assert.deepEqual(equipe.precisaDeUm, ['nome1', 'nome2', 'nome3']);
+  // Nenhuma aprovação mudou: as quatro seguem esperando o dono.
+  for (const x of [conv, equipe, ...['l3-dentista-em-pe', 'l3-dentista-quadrada'].map((id) => M.telas.find((t) => t.id === id))]) assert.equal(x.estado, 'proposta', x.id);
+  // O HTML da peça ainda traz os exemplos do desenho: a lista do manifesto os tira (vazio) em todo caminho do painel.
+  assert.match(ler('pecas-ouro/servico-convenios.html'), /OdontoVida/);
+  const T = await importar('web/src/lib/telasProntas.js');
+  const exemplos = T.nomesDeExemplo(M.marcas, M.dadosDeExemplo);
+  const clinica = { nome: 'Clínica Bem Estar', cores: ['#0f766e', '#f59e0b'], site: '', endereco: '' };
+  const solta = T.pecaDoProntos(modelo('servico-convenios'), clinica, 'saude', exemplos);
+  assert.deepEqual(['plano1', 'plano2', 'plano3', 'plano4', 'plano5', 'plano6'].map((k) => solta.campos[k]), ['', '', '', '', '', 'Particular']);
+  // Até o campo que não veio do manifesto (o desenho trocado, o texto que só o HTML tem) sai em branco.
+  const semTexto = T.camposSemExemplo(modelo('servico-convenios'), {}, clinica, exemplos);
+  assert.equal(semTexto.campos.plano1, '');
+  assert.equal(semTexto.campos.plano6, undefined, '"Particular" não é inventado: fica');
+  const regs = T.camposSemExemplo(modelo('gente-equipe'), {}, clinica, exemplos);
+  assert.deepEqual([regs.campos.registro1, regs.campos.registro2, regs.campos.registro3], ['', '', '']);
+  assert.ok(regs.pendentes.includes('registro1'), 'o editor pede o registro de verdade');
+  // O que a pessoa escreveu fica (só o valor igual ao do exemplo sai).
+  assert.equal(T.limparDoExemplo('CRO-SP 12345', null, clinica, exemplos), 'CRO-SP 12345');
+  // A equipe sem nome não vai ao ar: entra como exemplo, e o editor pede os nomes.
+  const time = T.pecaDoProntos(modelo('gente-equipe'), clinica, 'saude', exemplos);
+  assert.equal(time.meta.exemplo, true);
+  assert.deepEqual(time.meta.precisa, ['nome1', 'nome2', 'nome3']);
+  assert.ok(['nome1', 'nome2', 'nome3'].every((n) => time._pendentes.includes(n)));
+  const tela = M.telas.find((t) => t.id === 'l3-dentista-em-pe');
+  const daTela = T.itemDaTela(modelo('gente-equipe'), tela.zonas.principal.pecas[0], 'claro', 'destaque', clinica, exemplos);
+  assert.equal(daTela.meta.exemplo, true, 'a tela pronta poria "Nossa equipe" vazia no ar');
+  // Na Empresas e no Comércio a equipe vem com o texto da frente: vai ao ar como antes.
+  assert.equal(T.pecaDoProntos(modelo('gente-equipe'), clinica, 'empresa', exemplos).meta.exemplo, undefined);
+  // Com um nome escrito (no editor, ou na página da TV), deixa de ser exemplo; apagado, volta a ser.
+  const C = await importar('web/src/lib/contentTypes.js');
+  const comNome = C.semExemplo(time, { ...time, campos: { ...time.campos, nome1: 'Dra. Ana Souza' } });
+  assert.equal(comNome.meta.exemplo, undefined);
+  assert.equal(C.semExemplo(comNome, { ...comNome, campos: { ...comNome.campos, titulo: 'Equipe' } }).meta.exemplo, undefined);
+  assert.equal(C.semExemplo(time, { ...time, campos: { ...time.campos, titulo: 'Só o título' } }).meta.exemplo, true, 'mudar só o título não põe a equipe vazia no ar');
+  assert.equal(C.conferirPrecisa({ ...comNome, ocultos: ['nome1'] }).meta.exemplo, true, 'o nome escondido não conta');
+  // A TV não põe no ar o item marcado como exemplo (o mesmo de sempre, sem mudar a TV).
+  assert.match(ler('js/player.js'), /if \(it\.meta && it\.meta\.exemplo\) return true;/);
+  assert.match(ler('web/src/components/content/EditarPeca.jsx'), /return conferirPrecisa\(\{ \.\.\.resto, \.\.\.doDesenho, campos: gravados/);
+  assert.match(ler('web/src/components/content/EditarPeca.jsx'), /nomesDeExemplo\(m && m\.marcas, m && m\.dadosDeExemplo\)/);
+});

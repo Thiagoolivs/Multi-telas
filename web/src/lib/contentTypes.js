@@ -440,7 +440,30 @@ export function ajustesDoEditor(antes, depois) {
   if (antes && d && antes.duracao !== d.duracao && !(d.meta && d.meta.duracaoManual)) d = { ...d, meta: { ...(d.meta || {}), duracaoManual: true } };
   return d;
 }
+/*
+ * A PEÇA QUE SÓ VAI AO AR COM UM CAMPO PREENCHIDO (reteste 4, 25/11). A
+ * equipe da clínica (gente-equipe) vinha com dentistas e registros do CRO
+ * inventados; agora vem com os nomes em branco, e a TV não mostra pessoa
+ * sem nome. Sem nenhum nome, a peça seria só o título: `meta.precisa`
+ * (do manifesto, `precisaDeUm`) lista os campos de que ela precisa de
+ * pelo menos um, e enquanto todos estão vazios ela é exemplo
+ * (meta.exemplo) — a TV não a põe no ar (js/player.js, ehExemplo) e a
+ * lista da TV diz "troque o texto para ir ao ar".
+ */
+export function conferirPrecisa(item) {
+  const m = item && item.meta;
+  if (!m || !Array.isArray(m.precisa) || !m.precisa.length) return item;
+  const campos = item.campos && typeof item.campos === 'object' ? item.campos : {};
+  const ocultos = Array.isArray(item.ocultos) ? item.ocultos : [];
+  const tem = m.precisa.some((n) => String(campos[n] == null ? '' : campos[n]).trim() !== '' && !ocultos.includes(n));
+  const meta = { ...m };
+  if (tem) delete meta.exemplo; else meta.exemplo = true;
+  return { ...item, meta };
+}
+
 export function semExemplo(antes, depois) {
+  // A peça com `meta.precisa` deixa de ser exemplo quando ganha o campo, e não por qualquer mudança.
+  if (depois && depois.meta && Array.isArray(depois.meta.precisa)) return conferirPrecisa(depois);
   if (!depois || !depois.meta || !depois.meta.exemplo || !antes) return depois;
   const mudou = Object.keys({ ...antes, ...depois }).some((k) => !FORA_DO_CONTEUDO[k] && JSON.stringify(antes[k]) !== JSON.stringify(depois[k]));
   if (!mudou) return depois;
