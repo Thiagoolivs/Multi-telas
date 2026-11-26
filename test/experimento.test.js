@@ -72,7 +72,10 @@ test('o exemplo fixo é a biblioteca inteira do papel, igual em todo pedido — 
   const m = JSON.parse(ler('pecas-ouro', 'manifesto.json'));
   // A biblioteca aprovada: a peça do lote novo, ainda em proposta, não ensina a IA.
   const aprovada = (x) => !x.estado || x.estado === 'aprovada';
-  for (const p of m.pecas.filter((x) => x.papeis.includes('destaque') && aprovada(x))) assert.ok(f.includes('### ' + p.nome), p.id + ' fora dos exemplos');
+  const aprovadas = m.pecas.filter((x) => x.papeis.includes('destaque') && aprovada(x));
+  // Até o teto do papel vão todas; passou dele, a amostra (test/ouro-da-galeria.test.js).
+  if (aprovadas.length <= C.MAX_EXEMPLOS.destaque) for (const p of aprovadas) assert.ok(f.includes('### ' + p.nome), p.id + ' fora dos exemplos');
+  else assert.equal((f.match(/^### /gm) || []).length, C.MAX_EXEMPLOS.destaque);
   const proposta = m.pecas.find((x) => x.papeis.includes('destaque') && !aprovada(x));
   if (proposta) assert.ok(!f.includes('### ' + proposta.nome + ' ('), proposta.id + ' (em proposta) nos exemplos');
   assert.ok(!f.includes('Faixa fixa com chamada'), 'peça de rodapé nos exemplos de destaque');
