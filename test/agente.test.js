@@ -231,6 +231,18 @@ test('guardas: preço, hora e pratos que a pessoa não deu viram pergunta (nunca
   assert.equal(G.fatoQueFalta({ tipo: 'peca', pedido: 'troca o cardápio da semana', respostas: ['Só a chamada, sem os pratos'] }), null);
 }));
 
+test('a resposta à pergunta da TV muda o alvo da tarefa (e não pergunta de novo)', async () => comAgente(async () => {
+  const p1 = await responder('põe um aviso de piso molhado na TV do galpão C');
+  assert.match(p1.resposta, /Não achei “TV do galpão C”/);
+  const msgs = fala('põe um aviso de piso molhado na TV do galpão C').concat(p1.mensagem, { papel: 'pessoa', texto: 'Recepção', em: Date.now() });
+  const p2 = await A.responder({ mensagens: msgs, escopo: null, decisoes: [], ctx: CTX, sess: SESS, db: null });
+  assert.equal(p2.agente.estado, 'esperando', p2.resposta);
+  assert.deepEqual(p2.agente.itens[0].alvo.ids, ['t1']);
+  const msgs3 = fala('põe um aviso de piso molhado na TV do galpão C').concat(p1.mensagem, { papel: 'pessoa', texto: 'Todas as TVs', em: Date.now() });
+  const p3 = await A.responder({ mensagens: msgs3, escopo: null, decisoes: [], ctx: CTX, sess: SESS, db: null });
+  assert.equal(p3.agente.itens[0].alvo.tipo, 'todas');
+}));
+
 test('guardas: no máximo duas perguntas de uma vez', async () => comAgente(async () => {
   const out = await responder('aviso da reunião de amanhã, uma promoção de pão de queijo e troca o cardápio da semana', { ctx: Object.assign({}, CTX, { perfil: 'comercio' }) });
   assert.equal(out.agente.estado, 'perguntando');

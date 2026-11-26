@@ -94,9 +94,14 @@ function tarefasDaVolta(texto, mensagens, ctx, extra) {
   // 1. A pessoa respondeu às perguntas do agente: as mesmas tarefas, com a resposta junto.
   if (ag && ag.aguardando && Array.isArray(ag.aguardando.tarefas) && !novo) {
     const perguntadas = new Set(ag.aguardando.perguntas || []);
+    // A resposta que diz as TVs ("Recepção", "só no RH", "todas as TVs") muda o alvo da tarefa perguntada.
+    const alvoDaResposta = D.alvoDe(texto, ctx);
+    const disseTodas = /\btodas\b/.test(s);
+    const comAlvo = (t) => (alvoDaResposta.tipo !== 'todas' || disseTodas ? { alvo: disseTodas ? { tipo: 'todas' } : alvoDaResposta } : {});
     return {
       origem: 'resposta',
-      tarefas: ag.aguardando.tarefas.map((t, i) => (perguntadas.has(i) ? Object.assign({}, t, { respostas: (t.respostas || []).concat(corta(texto, 600)) }, t.tipo === 'quiz' && /\b(sim|pode|ok)\b/.test(s) && ag.aguardando.ajustes && ag.aguardando.ajustes[i] ? ag.aguardando.ajustes[i] : {}) : t)),
+      tarefas: ag.aguardando.tarefas.map((t, i) => (perguntadas.has(i) ? Object.assign({}, t, { respostas: (t.respostas || []).concat(corta(texto, 600)) }, comAlvo(t),
+        t.tipo === 'quiz' && /\b(sim|pode|ok)\b/.test(s) && ag.aguardando.ajustes && ag.aguardando.ajustes[i] ? ag.aguardando.ajustes[i] : {}) : t)),
     };
   }
   // 2. A campanha que está sendo combinada (a conversa de sempre): segue nela, se a fala não é outra coisa.
@@ -303,7 +308,9 @@ function concluir({ estado, base, ctx, notas, registroBase, sobra }) {
 
   // Perguntas: no máximo duas, das tarefas que precisam (ou a da IA, se o pedido inteiro era vago).
   const comPergunta = itens.filter((i) => i.pergunta);
-  if (comPergunta.length || (fim.nome === 'perguntar' && !itens.some((i) => i.rascunho))) {
+  // A IA perguntou por conta dela (ex.: "em quais TVs?") com os rascunhos prontos: a resposta vale para todas as tarefas.
+  const daIA = !comPergunta.length && fim.nome === 'perguntar' && corta(fim.args.pergunta, 300);
+  if (comPergunta.length || (fim.nome === 'perguntar' && (!itens.some((i) => i.rascunho) || daIA))) {
     const perguntas = comPergunta.slice(0, L.LIMITES.perguntas);
     const varias = perguntas.length > 1;
     const texto = perguntas.length
@@ -313,7 +320,7 @@ function concluir({ estado, base, ctx, notas, registroBase, sobra }) {
     const prontos = itens.filter((i) => !i.pergunta && i.rascunho).length;
     const aguardando = {
       tarefas: itens.map((i) => ({ tipo: i.tipo, pedido: i.pedido, alvo: i.alvo, respostas: i.respostas || [], ...(i.tipo === 'quiz' ? { tema: (i.rascunho && i.rascunho.quiz && i.rascunho.quiz.titulo) || '', quantidade: 3, zona: 'principal' } : {}) })),
-      perguntas: comPergunta.map((i) => i.indice),
+      perguntas: comPergunta.length ? comPergunta.map((i) => i.indice) : itens.map((i) => i.indice),
       ajustes: Object.fromEntries(comPergunta.filter((i) => i.ajusteDaTarefa).map((i) => [i.indice, i.ajusteDaTarefa])),
     };
     // A tarefa de quiz guarda o tema e a quantidade que veio (a pergunta pode ser sobre ela).

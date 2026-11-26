@@ -247,7 +247,7 @@ function conferirTarefa(t, ctx, o) {
     else if (a.tipo === 'telas' && Array.isArray(a.ids)) {
       const achadas = ((ctx && ctx.telas) || []).filter((tv) => a.ids.includes(tv.id));
       if (achadas.length) alvo = { tipo: 'telas', ids: achadas.map((tv) => tv.id), nomes: achadas.map((tv) => tv.nome) };
-    } else if (a.tipo === 'todas') alvo = a.naoAchei ? { tipo: 'todas', naoAchei: corta(a.naoAchei, 50) } : (alvo.naoAchei ? alvo : { tipo: 'todas' });
+    } else if (a.tipo === 'todas') alvo = a.naoAchei ? { tipo: 'todas', naoAchei: corta(a.naoAchei, 50) } : { tipo: 'todas' };
   }
   const saida = { tipo, pedido, alvo };
   if (Array.isArray(x.respostas) && x.respostas.length) saida.respostas = x.respostas.map((r) => corta(r, 600)).filter(Boolean).slice(-6);
