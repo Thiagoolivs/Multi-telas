@@ -70,9 +70,10 @@ function dividir(texto) {
 const AJUSTE = /\b(deixa|deixe|faz|fa[cç]a)\b.{0,30}\b(maior|menor|mais (grande|claro|escuro|forte|leve|chamativ\w*|elegante|vis[ií]vel)|em (azul|verde|vermelho|amarelo|preto|branco|roxo|rosa|laranja))\b|\b(troca|troque|muda|mude)\b.{0,15}\b(a |o )?(cor|cores|fonte|letra|foto|imagem|t[ií]tulo|texto|fundo da pe[cç]a)\b|\b(tira|tire|sem)\b.{0,10}\b(a |o )?(foto|imagem|pre[cç]o|selo|logo)\b(?!.{0,20}\b(da tv|na tv)\b)|\b(essa|esta|aquela|a) pe[cç]a\b|\bpe[cç]a \d\b/i;
 const TELA = /\b(fundo|tema|layout|rel[oó]gio|clima|apar[eê]ncia|visual|cores? da tv|letra da tv|tela (clara|escura)|modo (claro|escuro))\b/i;
 const DUVIDA = /^(como|onde|qual|quais|quanto|posso|d[aá] pra|da para|tem como|o que [eé])\b.*\?|\?\s*$|^(como (fa[cç]o|ligo|coloco|ponho|troco)|onde (fica|vejo|acho))\b/i;
-const CAMPANHA = /\b(campanha|redes sociais|instagram|whats(app)?|facebook|stories|story|post para|para as redes)\b/i;
+// A campanha de verdade (várias peças, redes): "campanha de vacinação" é um aviso, não um pedido de campanha.
+const CAMPANHA = /\b(redes sociais|instagram|whats(app)?|facebook|stories|story|post para|para as redes)\b|\b(uma|nova|a) campanha (completa|inteira|com|de (natal|p[aá]scoa|black friday|dia d[aoe]s? \w+|lan[cç]amento|inver?no|ver[aã]o|promo[cç]\w*|anivers[aá]rio da loja))\b|\bcampanha (inteira|completa)\b/i;
 const QUIZ = /\bqui[sz]\b|perguntas? e respostas?|teste de conhecimento/i;
-const AVISO = /\b(aviso|recado|comunicado|lembrete|alerta|reuni[aã]o|treinamento|palestra|dds|piso molhado|fechad[oa]s?|feriado|hor[aá]rio de funcionamento|vamos fechar|abriremos|abrimos|n[aã]o haver[aá]|cancelad[oa]|manuten[cç][aã]o|falta de (luz|energia|[aá]gua)|vacina[cç][aã]o)\b/i;
+const AVISO = /\b(aviso|recado|comunicado|lembrete|alerta|urgente|emerg[eê]ncia|evacu\w*|vazamento|inc[eê]ndio|reuni[aã]o|treinamento|palestra|dds|piso molhado|fechad[oa]s?|feriado|expediente|hor[aá]rio de funcionamento|vamos fechar|abriremos|abrimos|n[aã]o haver[aá]|cancelad[oa]|manuten[cç][aã]o|falta de (luz|energia|[aá]gua)|vacina[cç][aã]o)\b/i;
 
 /*
  * A tarefa de um pedaço: { tipo, pedido, alvo, zona?, quantidade?, tema? }.

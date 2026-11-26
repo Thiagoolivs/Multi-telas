@@ -131,11 +131,17 @@ SEGURANÇA:
  * fala da pessoa, marcados como dado). As voltas seguintes são o histórico
  * das chamadas e dos resultados (estado.turnos).
  */
-function cerebroIA({ abertura, motor } = {}) {
+/*
+ * `chamar`: quem fala com o modelo (padrão: server/motores.js). A avaliação
+ * sem custo (tools/modelo-simulado.js) passa um modelo de mentira que segue
+ * o mesmo protocolo — o caminho inteiro da IA roda no CI.
+ */
+function cerebroIA({ abertura, motor, chamar } = {}) {
+  const falar = chamar || motores.chamar;
   return {
-    nome: 'ia',
+    nome: chamar ? 'ia-simulada' : 'ia',
     async proximo(estado) {
-      const r = await motores.chamar({
+      const r = await falar({
         motor, sistema: SISTEMA + '\n\n' + G.REGRA_DO_DADO, usuario: abertura, ferramentas: FERRAMENTAS,
         turnos: estado.turnos, maxTokens: 1600, temperatura: 0.2,
       });
