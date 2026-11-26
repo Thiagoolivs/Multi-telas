@@ -42,13 +42,15 @@ Toda chamada de texto e visão passa por `motores.chamar({ motor, sistema, fixo,
 - **Saída:** padrão de 8192 tokens (cabe uma peça em HTML); as trilhas prontas usam 4096.
 - **Visão nos três provedores:** `imagens: [{ mime, data }]` (base64).
 - **Cache:** o que se repete entre chamadas (a biblioteca-ouro, regras longas) vai em `fixo` e entra **antes** do sistema — no Claude com `cache_control`, no Gemini e no Groq pelo cache implícito de prefixo.
+- **Biblioteca-ouro** (`server/compositor.js`): só as peças aprovadas, no arquivo ou na galeria (Plataforma › Conteúdo pronto). O `server.js` entrega as decisões no boot, depois de cada decisão e a cada 5 minutos. Teto por papel (`MAX_EXEMPLOS`): 32 no destaque, 24 na lateral, 16 nas faixas. Passou do teto, vai uma amostra fixa: uma peça de cada família por vez, primeiro as da frente da conta, um prefixo por frente.
 - **Tokens medidos:** cada chamada devolve entrada, saída e cache lido/escrito. A requisição inteira é somada (`motores.medir` no `server.js`) e o `uso_ia` grava modelo, tokens e `custo_medido` (centavos com fração).
 - **Preço é configuração:** `MT_PRECOS_IA` (JSON, US$ por milhão de tokens, por motor, ex.: `{"claude-sonnet":{"entrada":3,"saida":15}}`) e `MT_COTACAO_DOLAR` (padrão 5,5). Os padrões do código são referência e **precisam ser conferidos** na página de cada provedor antes do experimento.
 
 ### Ligar o Gemini (Railway)
 Em Variables adicione `GEMINI_API_KEY=<sua chave>` (deixe `GEMINI_MODEL` vazio) e redeploy. Pronto — a geração passa a usar o Gemini.
 
-Imagens ficam para depois; por ora só texto.
+### Imagens
+A foto das peças sai de `generateImage` (`server/ai.js`), com a direção de arte de `server/direcao-arte.js` (sem texto desenhado, um lado limpo para o título) e, se houver, a foto do produto real como referência. Precisa de `GEMINI_API_KEY`; sem ela, a peça sai sem foto, com o motivo, e nada se cobra. Em `AI_PROVIDER=dev` sai a reserva local (degradê da marca, sem texto), também sem cobrança.
 
 ## Schema dos itens (subconjunto seguro do player)
 - `text`: `titulo`, `corpo`, `align`, `tamanho`, `duracao`
