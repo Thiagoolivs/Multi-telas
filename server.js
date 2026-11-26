@@ -2437,7 +2437,8 @@ const negocioCache = new Map();
           }
         } finally { await reserva.fechar(); }
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
-        return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
+        // `fundo`: a miniatura borrada da foto (server/foto-leve.js), a mesma que o envio do celular leva.
+        return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9', ...(saved.fundo ? { fundo: saved.fundo } : {}) };
       });
     });
   }

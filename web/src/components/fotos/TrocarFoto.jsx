@@ -368,7 +368,8 @@ function ComIA({ papel, ramo, titulo, formato, onEscolher }) {
     setGerando(true); setErro('');
     try {
       const r = await ia.imagem({ prompt: t, formato: forma, papel });
-      onEscolher({ src: r.item.url });
+      // A miniatura borrada já vem do servidor (server/foto-leve.js), como a do envio do celular.
+      onEscolher({ src: r.item.url, fundo: r.item.fundo || '' });
     } catch (e) {
       setErro(e.message || 'A IA não conseguiu fazer a foto agora. Tente de novo.');
     } finally { setGerando(false); }
