@@ -624,13 +624,34 @@ Armadilhas da rodada 2:
 **O modelo dirige; o código garante que dê para ler.**
 
 A IA decide quantas peças, o que cada uma diz, qual direção de arte e se precisa
-de foto. Nada disso chega à tela sem passar por `server/composer.js`, que corrige
-contraste, área segura, sobreposição e texto que não cabe. Uma peça bonita e
-ilegível é uma peça errada, e modelo nenhum garante legibilidade sozinho.
+de foto. Uma peça bonita e ilegível é uma peça errada, e modelo nenhum garante
+legibilidade sozinho.
 
-O pipeline hoje: **briefing → plano → imagens → composição → crítica**. A crítica
-devolve ao modelo o que o validador precisou consertar e refaz a peça, mas só
-onde houve problema, e só substitui se a nova versão tiver *menos* conserto.
+O caminho hoje (26/11): **briefing → plano (para; a pessoa aprova) → imagens →
+peça em HTML → porta → reserva**.
+
+- **Plano.** A primeira chamada para no plano, com o rascunho de cada peça e o
+  custo. A segunda vem com `planoAprovado` e não replaneja: o briefing vem
+  dentro do plano, sem ler as referências, catalogar o acervo ou deduzir o
+  briefing de novo.
+- **Peça em HTML** (`server/compositor.js`). A IA escreve a peça imitando a
+  biblioteca-ouro, que vai no prefixo fixo (cache do provedor). A biblioteca
+  segue as decisões da galeria (Plataforma › Conteúdo pronto) e tem teto por
+  papel (`MAX_EXEMPLOS`: 32 no destaque, 24 na lateral, 16 nas faixas).
+  Passou do teto, vai uma amostra: uma peça de cada família por vez, primeiro
+  as da frente da conta.
+- **Porta.** `js/peca-html.js` recusa o que quebra regra (cor fora dos tokens,
+  medida fixa, tag ou CSS proibidos); o compositor recusa também a foto sem
+  lugar, a letra abaixo do mínimo (`js/regras-composicao.js`) e o texto que a
+  régua de conteúdo barra (`js/regras-de-conteudo.js`). Recusou: até 3
+  tentativas, cada uma com o motivo da anterior.
+- **Reserva.** A IA fora do ar ou recusada três vezes: uma peça-ouro aprovada
+  recebe os textos aprovados (`preencherOuro`, `preencherPapel`). Peça
+  recusada na galeria não entra.
+
+`server/composer.js` (peça por coordenadas, que corrige contraste e área
+segura) é o motor antigo: fica só no caminho do diretor sem `motorHtml`, que
+o servidor não usa mais.
 
 Roda como trabalho em segundo plano (`server/jobs.js`) porque leva minutos.
 
