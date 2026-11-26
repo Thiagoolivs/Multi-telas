@@ -1,5 +1,5 @@
 {
-  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens). Telas prontas (D18): lotes de 20, por perfil ('perfil') e estrutura ('estrutura'), em estado 'proposta' até o dono aprovar na bancada. 'sazonal' (reteste 2): a época de uma peça ou tela de campanha — { de: 'MM-DD', ate: 'MM-DD' } para ela inteira, ou { <frente>: { de, ate } } quando só o texto daquela frente é de campanha. Fora da época, ela não aparece nos Prontos (web/src/lib/modelosOuro.js, naEpoca). fotosDaFrente (reteste 4): a foto de exemplo de uma frente para o espaço de foto que, sem ela, levaria a foto padrão do ramo — o cardápio do refeitório levava a mesa de escritório ({ <frente>: { <campo>: /pecas-ouro/fotos/… } }).",
+  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens). Telas prontas (D18): lotes de 20, por perfil ('perfil') e estrutura ('estrutura'), em estado 'proposta' até o dono aprovar na bancada. 'sazonal' (reteste 2): a época de uma peça ou tela de campanha — { de: 'MM-DD', ate: 'MM-DD' } para ela inteira, ou { <frente>: { de, ate } } quando só o texto daquela frente é de campanha. Fora da época, ela não aparece nos Prontos (web/src/lib/modelosOuro.js, naEpoca). fotosDaFrente (reteste 4): a foto de exemplo de uma frente para o espaço de foto que, sem ela, levaria a foto padrão do ramo — o cardápio do refeitório levava a mesa de escritório ({ <frente>: { <campo>: /pecas-ouro/fotos/… } }). 'dadosDeExemplo' (reteste 4): o dado inventado que parece real (os convênios e o número de registro do conselho) que o HTML de uma peça ainda traz como exemplo; o painel o tira (vazio) antes de ir para a TV do cliente. 'precisaDeUm' numa peça: os campos de que ela precisa de pelo menos um preenchido para ir ao ar (sem nenhum, entra como exemplo e a TV não a mostra).",
   "marcas": [
     {
       "id": "otica",
@@ -109,6 +109,16 @@
       "fonteTitulo": "condensada",
       "fonteApoio": "sans"
     }
+  ],
+  "dadosDeExemplo": [
+    "OdontoVida",
+    "Sorriso Pleno",
+    "Dental Mais",
+    "Bem Odonto",
+    "Odonto Litoral",
+    "CRO-SP 85421",
+    "CRO-SP 91307",
+    "CRO-SP 77815"
   ],
   "pecas": [
     {
@@ -1725,13 +1735,13 @@
       "textos": {
         "saude": {
           "kicker": "Atendemos",
-          "titulo": "Convênios aceitos",
-          "apoio": "Não achou o seu? Pergunte na recepção.",
-          "plano1": "OdontoVida",
-          "plano2": "Sorriso Pleno",
-          "plano3": "Dental Mais",
-          "plano4": "Bem Odonto",
-          "plano5": "Odonto Litoral",
+          "titulo": "Convênios",
+          "apoio": "Pergunte na recepção se atendemos o seu.",
+          "plano1": "",
+          "plano2": "",
+          "plano3": "",
+          "plano4": "",
+          "plano5": "",
           "plano6": "Particular"
         }
       },
@@ -1756,18 +1766,18 @@
         "saude": {
           "kicker": "Quem cuida do seu sorriso",
           "titulo": "Nossa equipe",
-          "iniciais1": "PM",
-          "nome1": "Dra. Paula Mendes",
-          "funcao1": "Ortodontia",
-          "registro1": "CRO-SP 85421",
-          "iniciais2": "RA",
-          "nome2": "Dr. Rafael Alves",
-          "funcao2": "Implantes",
-          "registro2": "CRO-SP 91307",
-          "iniciais3": "LC",
-          "nome3": "Dra. Lia Campos",
-          "funcao3": "Odontopediatria",
-          "registro3": "CRO-SP 77815"
+          "iniciais1": "",
+          "nome1": "",
+          "funcao1": "",
+          "registro1": "",
+          "iniciais2": "",
+          "nome2": "",
+          "funcao2": "",
+          "registro2": "",
+          "iniciais3": "",
+          "nome3": "",
+          "funcao3": "",
+          "registro3": ""
         },
         "comercio": {
           "kicker": "Quem cuida de você",
@@ -1802,6 +1812,11 @@
           "registro3": "Ramal 280"
         }
       },
+      "precisaDeUm": [
+        "nome1",
+        "nome2",
+        "nome3"
+      ],
       "estado": "proposta",
       "marca": "dentista",
       "lote": 3
@@ -10397,18 +10412,18 @@
               "campos": {
                 "kicker": "Quem cuida do seu sorriso",
                 "titulo": "Nossa equipe",
-                "iniciais1": "PM",
-                "nome1": "Dra. Paula Mendes",
-                "funcao1": "Ortodontia",
-                "registro1": "CRO-SP 85421",
-                "iniciais2": "RA",
-                "nome2": "Dr. Rafael Alves",
-                "funcao2": "Implantes",
-                "registro2": "CRO-SP 91307",
-                "iniciais3": "LC",
-                "nome3": "Dra. Lia Campos",
-                "funcao3": "Odontopediatria",
-                "registro3": "CRO-SP 77815"
+                "iniciais1": "",
+                "nome1": "",
+                "funcao1": "",
+                "registro1": "",
+                "iniciais2": "",
+                "nome2": "",
+                "funcao2": "",
+                "registro2": "",
+                "iniciais3": "",
+                "nome3": "",
+                "funcao3": "",
+                "registro3": ""
               }
             },
             {
@@ -10429,13 +10444,13 @@
               "id": "servico-convenios",
               "campos": {
                 "kicker": "Atendemos",
-                "titulo": "Convênios aceitos",
-                "apoio": "Não achou o seu? Pergunte na recepção.",
-                "plano1": "OdontoVida",
-                "plano2": "Sorriso Pleno",
-                "plano3": "Dental Mais",
-                "plano4": "Bem Odonto",
-                "plano5": "Odonto Litoral",
+                "titulo": "Convênios",
+                "apoio": "Pergunte na recepção se atendemos o seu.",
+                "plano1": "",
+                "plano2": "",
+                "plano3": "",
+                "plano4": "",
+                "plano5": "",
                 "plano6": "Particular"
               }
             },
@@ -10501,31 +10516,31 @@
               "campos": {
                 "kicker": "Quem cuida do seu sorriso",
                 "titulo": "Nossa equipe",
-                "iniciais1": "PM",
-                "nome1": "Dra. Paula Mendes",
-                "funcao1": "Ortodontia",
-                "registro1": "CRO-SP 85421",
-                "iniciais2": "RA",
-                "nome2": "Dr. Rafael Alves",
-                "funcao2": "Implantes",
-                "registro2": "CRO-SP 91307",
-                "iniciais3": "LC",
-                "nome3": "Dra. Lia Campos",
-                "funcao3": "Odontopediatria",
-                "registro3": "CRO-SP 77815"
+                "iniciais1": "",
+                "nome1": "",
+                "funcao1": "",
+                "registro1": "",
+                "iniciais2": "",
+                "nome2": "",
+                "funcao2": "",
+                "registro2": "",
+                "iniciais3": "",
+                "nome3": "",
+                "funcao3": "",
+                "registro3": ""
               }
             },
             {
               "id": "servico-convenios",
               "campos": {
                 "kicker": "Atendemos",
-                "titulo": "Convênios aceitos",
-                "apoio": "Não achou o seu? Pergunte na recepção.",
-                "plano1": "OdontoVida",
-                "plano2": "Sorriso Pleno",
-                "plano3": "Dental Mais",
-                "plano4": "Bem Odonto",
-                "plano5": "Odonto Litoral",
+                "titulo": "Convênios",
+                "apoio": "Pergunte na recepção se atendemos o seu.",
+                "plano1": "",
+                "plano2": "",
+                "plano3": "",
+                "plano4": "",
+                "plano5": "",
                 "plano6": "Particular"
               }
             },

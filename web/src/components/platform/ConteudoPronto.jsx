@@ -57,7 +57,7 @@ export function ConteudoPronto() {
       // Todas as peças, de qualquer estado: a galeria mostra também as que ainda não foram aprovadas.
       const abertas = await Promise.all((m.pecas || []).map((p) => fetch('/pecas-ouro/' + p.id + '.html')
         .then((r) => (r.ok ? r.text() : '')).then((t) => (t ? { ...p, arq: globalThis.MTPecaHtml.doArquivo(t) } : null)).catch(() => null)));
-      setDados({ m, modelos: new Map(abertas.filter(Boolean).map((x) => [x.id, x])), exemplos: nomesDeExemplo(m.marcas) });
+      setDados({ m, modelos: new Map(abertas.filter(Boolean).map((x) => [x.id, x])), exemplos: nomesDeExemplo(m.marcas, m.dadosDeExemplo) });
     } catch (e) { setErro(e.message || 'Não deu para abrir o conteúdo pronto.'); }
   }
   useEffect(() => { carregar(); }, []);

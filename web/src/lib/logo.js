@@ -346,17 +346,41 @@ export async function propor(url, analise, opcoes) {
  * mostra na TV desenhada e diz o que foi feito. Devolve { clara?, escura? }
  * com os arquivos, ou {} quando a logo já lê nos dois fundos.
  */
+/*
+ * A tinta escura da logo vira a cor do cabeçalho: a paleta da TV sai da
+ * própria logo (passo 2). A logo "Sol", laranja e marrom, lia no preto
+ * puro da análise — e o "Sol" marrom sumia no cabeçalho marrom. Com tinta
+ * escura, a versão branca sai sempre.
+ */
+export const temTintaEscura = (a) => !!a && (a.cores || []).some((c) => luminancia(...rgb(c)) < 0.15);
+// A logo pede a versão branca? (sem ela, some no cabeçalho, no rodapé e na espera escuros da TV). `a`: o que analisar() devolve.
+export const pedeVersaoBranca = (a) => !!a && (!(a.escuro && a.escuro.ok) || temTintaEscura(a));
+
 export async function versoesQueFaltam(url) {
   const a = await analisar(url);
-  /*
-   * A tinta escura da logo vira a cor do cabeçalho: a paleta da TV sai da
-   * própria logo (passo 2). A logo "Sol", laranja e marrom, lia no preto
-   * puro da análise — e o "Sol" marrom sumia no cabeçalho marrom. Com tinta
-   * escura, a versão branca sai sempre.
-   */
-  const tintaEscura = (a.cores || []).some((c) => luminancia(...rgb(c)) < 0.15);
+  const tintaEscura = temTintaEscura(a);
   if (a.escuro.ok && a.claro.ok && !tintaEscura) return {};
   const p = await propor(url, a, { clara: tintaEscura });
   for (const k of Object.keys(p.previa || {})) { try { if (p.previa[k]) URL.revokeObjectURL(p.previa[k]); } catch (e) { /* já solto */ } }
   return p.versoes || {};
 }
+
+/*
+ * A VERSÃO BRANCA DA LOGO QUE JÁ ESTÁ NA CONTA (reteste 4, 25/11). O
+ * versoesQueFaltam age quando a logo chega no passo 2 da primeira TV; quem
+ * já tinha a logo escura sem a versão branca seguia com ela sumindo no
+ * fundo escuro. O dono: "nunca troca calado" — então nada é feito sozinho:
+ * o Início e a Marca avisam (components/content/AvisoDaLogoEscura.jsx), e o
+ * toque em "Fazer a versão branca" faz só ela, sem trocar a logo. Devolve
+ * { blob, nome } ou null, quando a logo não precisa.
+ */
+export async function versaoBranca(url, analise) {
+  const a = analise || await analisar(url);
+  if (!pedeVersaoBranca(a)) return null;
+  const p = await propor(url, a, { clara: true });
+  for (const k of Object.keys(p.previa || {})) { try { if (p.previa[k]) URL.revokeObjectURL(p.previa[k]); } catch (e) { /* já solto */ } }
+  return (p.versoes && p.versoes.clara) || null;
+}
+
+// O aviso aparece? Há logo, sem a versão branca, e a análise diz que ela some no fundo escuro.
+export const avisaLogoEscura = (logo, analise) => !!(logo && logo.url && !logo.clara && pedeVersaoBranca(analise));

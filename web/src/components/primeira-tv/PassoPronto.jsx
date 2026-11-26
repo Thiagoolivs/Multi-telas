@@ -13,7 +13,7 @@ import { aplicarHorario, configDaTela } from '../../lib/primeiraTv.js';
  * o botão diz "Pedir para pôr na TV" e o fim diz que espera o dono.
  * A TV que ficou para depois é ligada aqui mesmo, antes do botão.
  */
-export function PassoPronto({ opcao, horario, frente, nomeDaConta, tv, podeLigar, precisaAprovar, souRevisor, resultado, onLigada, onPorNaTv, onIr, onInicio, onIrParaPlano }) {
+export function PassoPronto({ opcao, horario, frente, nomeDaConta, tv, tvs = [], podeLigar, precisaAprovar, souRevisor, resultado, onLigada, onPorNaTv, onIr, onInicio, onIrParaPlano }) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
   const [naTv, setNaTv] = useState(null);
@@ -77,7 +77,7 @@ export function PassoPronto({ opcao, horario, frente, nomeDaConta, tv, podeLigar
     return (
       <>
         <TituloDoPasso titulo="Falta ligar a TV" frase="A tela está pronta. Ligue a TV para ela ir para lá." />
-        <LigarTv onLigada={onLigada} onIrParaPlano={onIrParaPlano} secundario={{ rotulo: 'Fazer isso depois', onClick: onInicio }} />
+        <LigarTv tvs={tvs} onLigada={onLigada} onIrParaPlano={onIrParaPlano} secundario={{ rotulo: 'Fazer isso depois', onClick: onInicio }} />
       </>
     );
   }

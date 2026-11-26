@@ -15,6 +15,7 @@ import { carregarModelos, espacosDoModelo } from '../../lib/modelosOuro.js';
 import { carregarManifesto } from '../../lib/pacoteOuro.js';
 import { pecaDoProntos, marcaDaConta, nomesDeExemplo } from '../../lib/telasProntas.js';
 import { qrDoWifi, temQrDeWifi } from '../../lib/qrDoWifi.js';
+import { conferirPrecisa } from '../../lib/contentTypes.js';
 import { usePerfil } from '../../lib/perfil.js';
 import { CURADAS } from '../../lib/paletas.js';
 import { MiniConversa, comPergunta } from '../tela/MiniConversa.jsx';
@@ -238,7 +239,7 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   // Os outros desenhos só carregam quando a aba abre.
   useEffect(() => {
     if (aba === 'desenho' && !modelos) carregarModelos().then(setModelos).catch(() => setModelos([]));
-    if (aba === 'desenho' && !exemplos) carregarManifesto().then((m) => setExemplos(nomesDeExemplo(m && m.marcas))).catch(() => setExemplos(nomesDeExemplo([])));
+    if (aba === 'desenho' && !exemplos) carregarManifesto().then((m) => setExemplos(nomesDeExemplo(m && m.marcas, m && m.dadosDeExemplo))).catch(() => setExemplos(nomesDeExemplo([])));
   }, [aba, modelos, exemplos]);
 
   /*
@@ -263,8 +264,9 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
     const vivos = Object.fromEntries(Object.entries(creditos).filter(([n]) => gravados[n]));
     // Os espaços que têm papel ou foto. Vai mesmo vazio quando a peça tinha: quem junta com a de antes não fica com o foco da foto velha.
     const espacosVivos = Object.fromEntries(Object.entries(espacos).filter(([n, e]) => e && (e.papel || gravados[n])));
-    return { ...resto, ...doDesenho, campos: gravados, modo, marca, ...(ocultos.length ? { ocultos } : {}), ...(Object.keys(guardados).length ? { guardados } : {}), ...(Object.keys(vivos).length ? { creditos: vivos } : {}),
-      ...(item.espacos || Object.keys(espacosVivos).length ? { espacos: espacosVivos } : {}) };
+    // Reteste 4: a peça que só vai ao ar com um campo (a equipe da clínica, sem nome) deixa de ser exemplo quando ganha o campo.
+    return conferirPrecisa({ ...resto, ...doDesenho, campos: gravados, modo, marca, ...(ocultos.length ? { ocultos } : {}), ...(Object.keys(guardados).length ? { guardados } : {}), ...(Object.keys(vivos).length ? { creditos: vivos } : {}),
+      ...(item.espacos || Object.keys(espacosVivos).length ? { espacos: espacosVivos } : {}) });
   }, [item, desenho, campos, modo, marca, ocultos, creditos, espacos, definicao]);
 
   // Confere meio segundo depois da última mudança (nos três formatos, ou no lugar da peça).
