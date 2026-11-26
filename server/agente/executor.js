@@ -316,7 +316,8 @@ function mensagemFinal(res, plano) {
   const noAr = res.itens.filter((x) => x.estado === 'no-ar');
   const pedido = res.itens.filter((x) => x.estado === 'aprovacao');
   const nao = res.itens.filter((x) => ['barrado', 'erro', 'nao-mudou'].includes(x.estado));
-  if (noAr.length) linhas.push('Pronto: ' + noAr.map((x) => corta(x.titulo, 40) + ' ' + (x.onde || '')).join('; ') + '.');
+  if (noAr.length === 1) linhas.push('Pronto: “' + corta(noAr[0].titulo, 50) + '” está no ar ' + (noAr[0].onde || '') + '.');
+  else if (noAr.length) linhas.push('Pronto: ' + noAr.length + ' itens estão no ar (veja abaixo). Dá para desfazer.');
   if (pedido.length) linhas.push('Foi para a aprovação do dono: ' + pedido.map((x) => corta(x.titulo, 40)).join('; ') + '. Entra nas TVs quando ele aprovar.');
   for (const x of res.itens.filter((y) => y.estado === 'salvo')) linhas.push(x.motivo);
   for (const x of nao) linhas.push('Não foi: ' + corta(x.titulo, 40) + ' — ' + corta(x.motivo || 'deu erro', 160));

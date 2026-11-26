@@ -35,7 +35,7 @@ export function PlanoDoAgente({ mensagem, conversaId, ativo, onConversa, onIr })
     return (
       <Caixa>
         <p className="mb-1 text-2xs font-semibold uppercase tracking-wider text-ink-3">Já pronto</p>
-        {(ag.itens || []).map((i) => <Item key={i.indice} item={i} compacto />)}
+        <ol className="space-y-1.5">{(ag.itens || []).map((i) => <Item key={i.indice} item={i} compacto />)}</ol>
       </Caixa>
     );
   }
@@ -216,14 +216,15 @@ function ResultadoDoAgente({ resultado, onIr }) {
       <ul className="space-y-1.5 text-xs">
         {itens.map((i) => (
           <li key={i.indice} className="flex items-start gap-1.5">
-            {i.estado === 'no-ar' ? <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-ok" />
+            {i.estado === 'no-ar' && desfeito ? <Undo2 size={13} className="mt-0.5 shrink-0 text-ink-3" />
+              : i.estado === 'no-ar' ? <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-ok" />
               : i.estado === 'aprovacao' ? <Clock size={13} className="mt-0.5 shrink-0 text-warn" />
                 : i.estado === 'manual' || i.estado === 'salvo' ? <Circle size={13} className="mt-0.5 shrink-0 text-ink-3" />
                   : <XCircle size={13} className="mt-0.5 shrink-0 text-danger" />}
             <div className="min-w-0">
               <p className="text-ink">
                 <span className="font-medium">{i.titulo}</span>
-                {i.estado === 'no-ar' && <span className="text-ink-3"> · {desfeito ? 'desfeito' : 'na TV ' + (i.onde || '')}</span>}
+                {i.estado === 'no-ar' && <span className="text-ink-3"> · {desfeito ? 'desfeito' : 'no ar ' + (i.onde || '')}</span>}
                 {i.estado === 'aprovacao' && <span className="text-ink-3"> · esperando a aprovação do dono</span>}
               </p>
               {i.motivo && i.estado !== 'no-ar' && <p className="text-ink-3">{i.motivo}</p>}

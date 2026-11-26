@@ -25,7 +25,7 @@ const MOTIVO = {
   'recusa:laco': 'pedido em laço', 'recusa:proibido': 'apagar, plano ou equipe', 'recusa:freio': 'freio de pedidos', 'recusa:ia': 'a IA recusou',
   'queda:prazo': 'caiu: prazo', 'queda:passos': 'caiu: passos', 'queda:orcamento': 'caiu: gasto', 'queda:ia-fora': 'caiu: IA fora', 'queda:erro': 'caiu: erro', 'queda:execucao': 'caiu na execução',
 };
-const centavos = (c) => 'R$ ' + ((Number(c) || 0) / 100).toFixed(2);
+const centavos = (c) => 'R$ ' + ((Number(c) || 0) / 100).toFixed(2).replace('.', ',');
 
 export function AgenteResumo({ dias }) {
   const { data, loading } = useAsync(() => agente.resumo(dias), [dias]);
