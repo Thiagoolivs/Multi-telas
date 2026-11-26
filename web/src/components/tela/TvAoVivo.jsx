@@ -5,6 +5,7 @@ import { paginaDaTv, configDaPrevia, tamanhoDaTv } from '../../lib/tvAoVivo.js';
 import { perfilAtual } from '../../lib/perfil.js';
 import { contagensDasPartes } from '../../lib/tela.js';
 import { cn } from '../../lib/cn.js';
+import { useIndicadores, temKpiAoVivo, indicadoresParaATv } from '../../lib/kpiAoVivo.js';
 
 /*
  * A TV DE VERDADE, EM MINIATURA (fase 10, reteste do bloco 8).
@@ -77,10 +78,14 @@ export function TvAoVivo({ cfg, estado, foco, alturaMaxima, leve = false, onPart
   const previa = useMemo(() => configDaPrevia(cfg, { estado, foco, logo: globalThis.MT_LOGO || null, frente: perfilAtual() }),
     [cfg, estado, foco && foco.zona, foco && foco.indice]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // O cartão ao vivo do indicador (reteste 4): o número vem da conta, como na TV (a prévia não busca nada sozinha).
+  const indicadores = useIndicadores(useMemo(() => temKpiAoVivo(cfg), [cfg]));
+
   useEffect(() => {
     if (!pronto || !previa) return undefined;
     const w = quadro.current && quadro.current.contentWindow;
     if (!w || !w.MTPrevia) { setFalhou(true); return undefined; }
+    if (indicadores) { try { w.MT_KPIS = indicadoresParaATv(indicadores); } catch (e) { /* o quadro de outra origem não deixa */ } }
     let ok = false;
     try { ok = w.MTPrevia.mostrar(JSON.stringify(previa.config), { relogio: previa.relogio }); } catch (e) { ok = false; }
     setFalhou(!ok);
@@ -95,7 +100,7 @@ export function TvAoVivo({ cfg, estado, foco, alturaMaxima, leve = false, onPart
       }).filter(Boolean));
     } catch (e) { setPartes([]); }
     return undefined;
-  }, [pronto, previa]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pronto, previa, indicadores]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const maxAltura = alturaMaxima || (typeof window !== 'undefined' ? window.innerHeight * 0.62 : 600);
   const escala = largura ? Math.min(largura / W, maxAltura / H) : 0;
