@@ -44,6 +44,18 @@ const motores = require('./server/motores');
 const { AsyncResource } = require('node:async_hooks');
 const director = require('./server/ai-director');
 const compositor = require('./server/compositor');
+/*
+ * As decisões da galeria (Conteúdo pronto) também valem para a IA: a
+ * biblioteca-ouro que vai de exemplo e a peça de reserva seguem o mesmo
+ * estado do manifesto servido (server/compositor.js, definirDecisoes). No
+ * boot, depois de cada decisão e a cada 5 minutos; o compositor só refaz a
+ * biblioteca quando alguma mudou. Banco fora do ar: fica o que já estava.
+ */
+function ouroDaIA() {
+  return Promise.resolve().then(() => db.decisoesDoConteudo())
+    .then((decisoes) => { compositor.definirDecisoes(decisoes); })
+    .catch((e) => { log.aviso('conteudo.ia-sem-decisoes', { erro: String((e && e.message) || e) }); });
+}
 const ajustePeca = require('./server/ajuste-peca');
 const quizIA = require('./server/quiz-ia');
 const calendario = require('./server/calendario');
@@ -1492,6 +1504,8 @@ const negocioCache = new Map();
               }
             }
           }
+          // A IA aprende já com o que foi aprovado (e esquece o recusado).
+          await ouroDaIA();
           return sendJson(res, 200, { ok: true, estado, decididos: lote.itens, pecas });
         });
       }
@@ -1516,6 +1530,7 @@ const negocioCache = new Map();
               pecas.push(pid);
             }
           }
+          await ouroDaIA();
           return sendJson(res, 200, { ok: true, tipo, id, estado, pecas });
         });
       }
@@ -3680,6 +3695,8 @@ erros.instalarRedeDeSeguranca();
 jobs.usarBanco(db);
 
 db.init()
+  // A biblioteca da IA já com as decisões da galeria antes do primeiro pedido.
+  .then(() => ouroDaIA())
   .then(() => server.listen(PORT, () => {
     const s3 = storage.s3Info();
     log.info('servidor.no-ar', {
@@ -3829,6 +3846,8 @@ db.init()
       } catch (e) { erros.registrar(e, { onde: 'conectores de indicadores' }); }
     };
     setInterval(buscarIndicadores, 60 * 1000).unref();
+    // A decisão da galeria gravada por outro caminho (ou com o banco fora do ar na hora) chega à IA aqui.
+    setInterval(ouroDaIA, 5 * 60 * 1000).unref();
     // As planilhas de preço (fase 11): de 5 em 5 minutos, e a TV só é avisada quando muda.
     require('./server/routes/planilha').ligarRelogio({ db, avisarTelas, erros });
     // As integrações (docs/INTEGRACOES.md): a pasta e os comunicados vão às TVs, e a faxina da mídia que saiu.
