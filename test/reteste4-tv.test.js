@@ -185,7 +185,7 @@ test('a régua monta cada tela pronta também com o nome de uma conta longa, e a
   const regua = ler('tools', 'regua-tv.mjs');
   assert.match(regua, /const CONTAS_LONGAS = \(process\.env\.REGUA_CONTAS \|\| 'Metalúrgica Horizonte Ltda'\)/);
   assert.match(regua, /for \(const conta of CONTAS_LONGAS\) telas = telas\.concat\(await conferirTelas\(navegador, conta\)\);/);
-  assert.match(regua, /const ruins = prontas\.filter\(\(t\) => t\.naoCoube\.length \|\| t\.pisoCedeu\.length\);/);
+  assert.match(regua, /const ruins = daConta\.filter\(\(t\) => t\.naoCoube\.length \|\| \(!t\.rascunho && t\.pisoCedeu\.length\)\);/);
   assert.match(regua, /if \(ruins\.length\) reprova = true;/);
   // As faixas também, nas 11 fontes.
   assert.match(regua, /for \(const conta of CONTAS_LONGAS\) faixas = faixas\.concat\(await conferirPecas\(navegador, 'balcao', ZONAS_DAS_FAIXAS, \{ todasAsMarcas: true, faixas: true, conta \}\)\);/);

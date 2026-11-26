@@ -835,14 +835,14 @@ async function main() {
   for (const conta of [''].concat(CONTAS_LONGAS)) {
     const daConta = telas.filter((t) => t.conta === conta);
     if (!daConta.length) continue;
-    const prontas = daConta.filter((t) => !t.rascunho);
-    const ruins = prontas.filter((t) => t.naoCoube.length || t.pisoCedeu.length);
-    console.log('Telas prontas montadas' + (conta ? ' com a conta "' + conta + '" e o clima' : '') + ' (' + prontas.length + ', no layout de cada uma, no local da frente, na letra padrão): '
-      + (prontas.length - ruins.length) + ' de ' + prontas.length + ' sem nada sobre nada, cortado ou para fora, e com a letra inteira');
+    // O que sobrepõe ou corta reprova em toda tela, como antes; a letra que cede, em toda que não é rascunho.
+    const ruins = daConta.filter((t) => t.naoCoube.length || (!t.rascunho && t.pisoCedeu.length));
+    console.log('Telas prontas montadas' + (conta ? ' com a conta "' + conta + '" e o clima' : '') + ' (' + daConta.length + ', no layout de cada uma, no local da frente, na letra padrão): '
+      + (daConta.length - ruins.length) + ' de ' + daConta.length + ' sem nada sobre nada, cortado ou para fora, e com a letra inteira (a do rascunho só medida)');
     for (const t of ruins.slice(0, 15)) console.log('  ✗ ' + t.id + ' (' + t.layout + ', ' + t.local + '): ' + t.naoCoube.concat(t.pisoCedeu).slice(0, 2).join(' | '));
     if (ruins.length) reprova = true;
-    const rascunhos = daConta.filter((t) => t.rascunho && (t.naoCoube.length || t.pisoCedeu.length));
-    if (rascunhos.length) console.log('  · rascunho (só medida): ' + rascunhos.map((t) => t.id).join(', '));
+    const rascunhos = daConta.filter((t) => t.rascunho && t.pisoCedeu.length);
+    if (rascunhos.length) console.log('  · rascunho, a letra cede (só medida): ' + rascunhos.map((t) => t.id + ' (' + t.pisoCedeu[0] + ')').join(', '));
   }
   // Fase 10: o contraste de todo texto, em todo arranjo.
   for (const [, , nome] of ARRANJOS) {
