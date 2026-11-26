@@ -6,9 +6,11 @@
  *   - 'groq'      → API compatível com OpenAI (rápido/barato) via GROQ_API_KEY.
  *   - 'anthropic' → Claude via ANTHROPIC_API_KEY.
  *   - 'dev'       → gerador local (sem chave/rede), para testar o fluxo.
- * Imagens ficam para depois; por ora só texto.
+ * Imagens: `generateImage`, mais abaixo (a foto das peças e da campanha,
+ * com a direção de server/direcao-arte.js). Precisa de GEMINI_API_KEY; sem
+ * ela, erro com o motivo e nada se cobra. Em 'dev', a reserva local.
  *
- * Saída: sempre um array de itens válidos para uma zona (ver ITEM_SCHEMA).
+ * Saída das trilhas: um array de itens válidos para uma zona (ver ITEM_SCHEMA).
  * Quem grava no config é o painel/editor; aqui só geramos sugestões.
  */
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
