@@ -19,6 +19,8 @@ import { useIndicadores, temKpiAoVivo, indicadoresParaATv } from '../../lib/kpiA
  * `estado`: o que a TV contou estar no ar (o "Ver a tela agora"); sem ele,
  *   vale o primeiro item de cada parte.
  * `foco`: { zona, indice } — a peça que a pessoa está editando.
+ * `comparar`: a programação de antes (o "Depois" das Aprovações): cada parte
+ *   mostra a peça nova do pedido; sem ela, a que está no ar agora.
  * `leve`: o modo das TVs fracas (sem vidro), para as miniaturas em lista.
  * `onParte`: tocar numa parte da TV escolhe a parte (a página da TV).
  */
@@ -39,7 +41,7 @@ const VERSAO = (() => {
  * só a imagem cinza — a linha de baixo e o `selo` ("Última imagem · …")
  * continuam legíveis.
  */
-export function TvAoVivo({ cfg, estado, foco, alturaMaxima, leve = false, onParte, parteAtiva, className, rotulo, contagem = true, apagada = false, selo = '' }) {
+export function TvAoVivo({ cfg, estado, foco, comparar = null, alturaMaxima, leve = false, onParte, parteAtiva, className, rotulo, contagem = true, apagada = false, selo = '' }) {
   const caixa = useRef(null);
   const quadro = useRef(null);
   const [largura, setLargura] = useState(0);
@@ -75,8 +77,8 @@ export function TvAoVivo({ cfg, estado, foco, alturaMaxima, leve = false, onPart
   const pagina = useMemo(() => paginaDaTv({ leve, versao: VERSAO }), [leve]);
 
   // A programação do quadro muda a cada rascunho; o quadro troca só a parte que mudou, como a TV.
-  const previa = useMemo(() => configDaPrevia(cfg, { estado, foco, logo: globalThis.MT_LOGO || null, frente: perfilAtual() }),
-    [cfg, estado, foco && foco.zona, foco && foco.indice]); // eslint-disable-line react-hooks/exhaustive-deps
+  const previa = useMemo(() => configDaPrevia(cfg, { estado, foco, comparar, logo: globalThis.MT_LOGO || null, frente: perfilAtual() }),
+    [cfg, estado, comparar, foco && foco.zona, foco && foco.indice]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // O cartão ao vivo do indicador (reteste 4): o número vem da conta, como na TV (a prévia não busca nada sozinha).
   const indicadores = useIndicadores(useMemo(() => temKpiAoVivo(cfg), [cfg]));

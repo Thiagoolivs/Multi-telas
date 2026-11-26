@@ -63,3 +63,38 @@ test('1. o cartão "Ao vivo" do indicador mostra o número na lista da TV, o mes
   assert.match(prev, /<Kpi item=\{kpiNoPainel\(item, lista\)\} \/>/);
   assert.match(ler('web/src/components/tela/TvAoVivo.jsx'), /w\.MT_KPIS = indicadoresParaATv\(indicadores\)/);
 });
+
+test('2. "Antes (agora na TV)" desenha o que está no ar agora, e não a peça agendada para depois', async () => {
+  const V = await importar('web/src/lib/tvAoVivo.js');
+  const natal = { type: 'announce', titulo: 'Feliz Natal', agendamento: { ativo: true, dataInicio: '2026-12-05', dataFim: '2026-12-26', dias: [] } };
+  const aviso = { type: 'announce', titulo: 'Reunião na sexta' };
+  const cfg = { settings: { layoutId: 'full' }, zonas: { principal: { items: [natal, aviso] } } };
+  const no = (c) => c.config.zonas.principal.items[0].titulo;
+  // 26/11, 9h em São Paulo (12h UTC): o Natal ainda não entrou.
+  assert.equal(no(V.configDaPrevia(cfg, { agora: '2026-11-26T12:00:00Z' })), 'Reunião na sexta');
+  // 06/12: entrou, e é o primeiro da lista.
+  const dez = V.configDaPrevia(cfg, { agora: '2026-12-06T12:00:00Z' });
+  assert.equal(no(dez), 'Feliz Natal');
+  assert.equal(dez.config.zonas.principal.items[0].agendamento.ativo, false, 'a prévia mostra a peça parada nela');
+  // A hora da loja, não a do navegador: 23h30 de 04/12 em São Paulo já é 05/12 em UTC.
+  assert.equal(no(V.configDaPrevia(cfg, { agora: '2026-12-05T02:30:00Z' })), 'Reunião na sexta');
+  // A janela do dia (só de manhã) e o urgente que já venceu também ficam de fora, como na TV.
+  const manha = { type: 'text', titulo: 'Café da manhã', agendamento: { ativo: true, horaInicio: '06:00', horaFim: '11:29', dias: [] } };
+  const vencido = { type: 'announce', titulo: 'Falta de água', meta: { prioridade: 'urgente', expiraEm: Date.parse('2026-11-26T10:00:00Z') } };
+  const cfg2 = { settings: { layoutId: 'full' }, zonas: { principal: { items: [vencido, manha, aviso] } } };
+  assert.equal(no(V.configDaPrevia(cfg2, { agora: '2026-11-26T12:00:00Z' })), 'Café da manhã', '9h na loja');
+  assert.equal(no(V.configDaPrevia(cfg2, { agora: '2026-11-26T18:00:00Z' })), 'Reunião na sexta', '15h na loja');
+  // Nada no ar agora: a parte fica com a lista, e o player faz o que a TV faz (o relógio).
+  const so = V.configDaPrevia({ zonas: { principal: { items: [natal] } } }, { agora: '2026-11-26T12:00:00Z' });
+  assert.equal(so.config.zonas.principal.items.length, 1);
+  assert.equal(so.config.zonas.principal.items[0].agendamento.ativo, true);
+  // O "Depois" do pedido mostra a peça que ele traz, mesmo agendada para depois.
+  const pedido = { settings: { layoutId: 'full' }, zonas: { principal: { items: [aviso, natal] } } };
+  const antes = { settings: { layoutId: 'full' }, zonas: { principal: { items: [aviso] } } };
+  assert.equal(no(V.configDaPrevia(pedido, { agora: '2026-11-26T12:00:00Z', comparar: antes })), 'Feliz Natal');
+  assert.equal(no(V.configDaPrevia(antes, { agora: '2026-11-26T12:00:00Z' })), 'Reunião na sexta');
+  // A página de Aprovações usa isso.
+  const ap = ler('web/src/pages/AprovacoesPage.jsx');
+  assert.match(ap, /<ATv cfg=\{t\.depois\} comparar=\{t\.antes\} rotulo="Depois \(se aprovar\)" \/>/);
+  assert.match(ap, /<ATv cfg=\{t\.antes\} rotulo="Antes \(agora na TV\)" \/>/);
+});
