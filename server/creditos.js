@@ -126,6 +126,8 @@ const OPERACOES = {
   'aviso-rapido': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Aviso rápido' },
   // Layout e tema numa frase (D28): uma chamada de texto.
   'ajuste-tela': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Mudar a tela' },
+  // O agente do Criar (server/agente/): gerar, conferir e pôr no ar o plano validado. A foto cobra à parte, como campanha-peca.
+  agente: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Agente do Criar' },
 };
 
 function operacao(tipo) { return OPERACOES[tipo] || null; }

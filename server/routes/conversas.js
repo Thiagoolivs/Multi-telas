@@ -30,6 +30,8 @@
 
 const conversa = require('../ai-conversa');
 const assistente = require('../assistente');
+// O agente (25/11): planeja, divide em tarefas, confere e, depois da validação, põe no ar. Desligado ou caindo, a volta é a do assistente.
+const agente = require('../agente');
 const memory = require('../ai-memoria');
 const E = require('../../js/escopo.js');
 const paleta = require('../paleta.js');
@@ -120,7 +122,7 @@ module.exports = function (ctx) {
          * especialista faz. A campanha continua sendo a conversa de sempre
          * (server/ai-conversa.js), com as decisões (D48) indo e voltando.
          */
-        const out = await assistente.responder({ mensagens, escopo, decisoes: (atual && atual.decisoes) || [], ctx: c });
+        const out = await agente.responder({ mensagens, escopo, decisoes: (atual && atual.decisoes) || [], ctx: c, sess, db, conversa: atual });
         /*
          * Na falha, a frase aparece para a pessoa mas é marcada: a próxima
          * volta não a manda para a IA como se fosse fala dela (transcricao),
@@ -162,7 +164,7 @@ module.exports = function (ctx) {
         return sendJson(res, 200, {
           conversa: salva, pronto: out.tipo === 'duvida' ? prontoAntes : out.pronto, gerar: !!out.gerar,
           sugestoes: out.sugestoes, modo: out.modo, falha: out.falha || '', tipo: out.tipo || '',
-          intencao: out.intencao || '', acao: out.acao || null,
+          intencao: out.intencao || '', acao: out.acao || null, agente: out.agente || null,
         });
       } catch (e) {
         erros.registrar(e, { rota: '/api/ai/conversa' });

@@ -2568,3 +2568,6 @@ async function salvarClimaDaMarca(id, tenantId, clima) {
 async function salvarPrimeiraTv(id, estado) {
   await pool.query('UPDATE tenants SET primeira_tv = $1 WHERE id = $2', [JSON.stringify(estado || null), id]);
 }
+
+// O agente (server/agente/banco.js): o registro de cada volta e a chave de cada conta.
+Object.assign(module.exports, require('./agente/banco').postgres(pool, module.exports));
