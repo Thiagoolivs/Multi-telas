@@ -226,3 +226,36 @@ test('6. "Esta TV parece ser a X?": "Não, é outra TV" na frente, o último sin
   assert.match(roteiro, /\*\*"É a Recepção, que voltou"\*\*/);
   assert.match(roteiro, /toque em \*\*Cancelar\*\*/);
 });
+
+test('7. a logo escura de quem já tinha conta: o painel avisa e faz a versão branca com um toque, sem trocar a logo', async () => {
+  const L = await importar('web/src/lib/logo.js');
+  const azulMarinho = { escuro: { ok: false, contraste: 1.3 }, claro: { ok: true }, cores: ['#1a2a5e'] };
+  const sol = { escuro: { ok: true }, claro: { ok: true }, cores: ['#f59e0b', '#3b1d0a'] };
+  const branca = { escuro: { ok: true }, claro: { ok: false }, cores: ['#ffffff'] };
+  const laranja = { escuro: { ok: true }, claro: { ok: true }, cores: ['#f59e0b'] };
+  // A mesma regra do passo 2 da primeira TV (versoesQueFaltam): some no escuro, ou tem tinta escura.
+  assert.equal(L.pedeVersaoBranca(azulMarinho), true);
+  assert.equal(L.pedeVersaoBranca(sol), true, 'o marrom do "Sol" some no cabeçalho marrom');
+  assert.equal(L.pedeVersaoBranca(branca), false);
+  assert.equal(L.pedeVersaoBranca(laranja), false);
+  assert.equal(L.pedeVersaoBranca(null), false, 'sem análise, nada de aviso');
+  // O aviso: há logo, sem a versão branca, e ela some.
+  assert.equal(L.avisaLogoEscura({ url: '/media/logo.png', clara: '' }, azulMarinho), true);
+  assert.equal(L.avisaLogoEscura({ url: '/media/logo.png', clara: '/media/logo-clara.png' }, azulMarinho), false, 'já tem a versão branca');
+  assert.equal(L.avisaLogoEscura(null, azulMarinho), false);
+  assert.equal(L.avisaLogoEscura({ url: '/media/logo.png' }, laranja), false);
+  // "Nunca troca calado": o aviso só sobe a versão branca (logo-clara), nunca a logo; e traz o Desfazer.
+  const c = ler('web/src/components/content/AvisoDaLogoEscura.jsx');
+  assert.match(c, /Sua logo some no fundo escuro da TV/);
+  assert.match(c, /brand\.addAsset\('logo-clara', up\.url, 'logo para fundo escuro'\)/);
+  assert.doesNotMatch(c, /addAsset\('logo',/, 'o aviso trocaria a logo');
+  assert.match(c, /rotulo: 'Desfazer', on: async \(\) => \{\n\s+try \{\n\s+await brand\.removeAsset\(asset\.id\);/);
+  assert.match(c, /const v = await versaoBranca\(url, analise\);/);
+  // Só com o toque: nada roda sem o botão (o analisar só lê a imagem).
+  assert.match(c, /<Button variant="primary" size="sm" [^>]*onClick=\{fazer\}>/);
+  // No Início e na Marca.
+  assert.match(ler('web/src/pages/DashboardPage.jsx'), /<AvisoDaLogoEscura logo=\{globalThis\.MT_LOGO\} onIrParaMarca=/);
+  assert.match(ler('web/src/components/content/LogoDaMarca.jsx'), /\{a && <AvisoDaLogoEscura logo=\{\{ url: logo\.url, clara: logoClara \? logoClara\.url : '' \}\} analise=\{a\}/);
+  // O passo 2 da primeira TV segue com a mesma regra (a função saiu dele, a conta é a mesma).
+  assert.match(ler('web/src/lib/logo.js'), /const tintaEscura = temTintaEscura\(a\);\n\s+if \(a\.escuro\.ok && a\.claro\.ok && !tintaEscura\) return \{\};/);
+});
