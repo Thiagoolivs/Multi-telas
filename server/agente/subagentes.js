@@ -215,7 +215,7 @@ async function campanha(t, ctx, o) {
   const custo = E.custo(escopo);
   return {
     conversa: r, titulo: 'Campanha: ' + (escopo.nome || corta(t.pedido, 40)),
-    rascunho: { escopo, descricao: E.descrever(escopo), custo, fotos: escopo.imagens === 'gerar' || escopo.imagens === 'mistura' ? { gerar: custo && custo.creditos ? custo.creditos : 0 } : null },
+    rascunho: { escopo, descricao: E.descrever(escopo), custo, fotos: escopo.imagens === 'gerar' || escopo.imagens === 'mistura' ? { gerar: (custo && custo.criacoes) || 0 } : null },
     problemas: [], avisos: [],
   };
 }
