@@ -32,10 +32,21 @@ function pedir(caminho, o = {}) {
   });
 }
 const cookieDe = (r) => r.cookies.map((c) => c.split(';')[0]).filter((c) => !c.endsWith('=')).join('; ');
-async function esperarJob(id, cookie) {
+/*
+ * Acompanha o trabalho. `painel`: faz o papel do painel aberto no encaixe —
+ * pega as peças anunciadas ("e:<código>") e devolve o que `painel(pecas)` diz.
+ */
+async function esperarJob(id, cookie, painel) {
+  const feitos = new Set();
   for (let i = 0; i < 240; i++) {
     const r = await pedir('/api/ai/job/' + id, { cookie });
     if (r.json && (r.json.estado === 'pronto' || r.json.estado === 'erro')) return r.json;
+    const m = /(?:^|\|)e:([^|]+)/.exec((r.json && r.json.detalhe) || '');
+    if (painel && m && !feitos.has(m[1])) {
+      feitos.add(m[1]);
+      const pecas = (await pedir('/api/agente/encaixe/' + m[1], { cookie })).json.pecas;
+      assert.equal((await pedir('/api/agente/encaixe/' + m[1], { method: 'POST', cookie, json: { resultados: painel(pecas) } })).status, 200);
+    }
     await new Promise((ok) => setTimeout(ok, 150));
   }
   throw new Error('o trabalho não terminou');
@@ -47,7 +58,7 @@ test('servidor: o agente divide, pergunta, apresenta, valida, publica com Desfaz
   const operador = 'operador' + n + '@teste.local';
   const servidor = spawn(process.execPath, ['server.js'], {
     cwd: RAIZ, stdio: 'ignore',
-    env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '', DATA_DIR: dados, MEDIA_DIR: dados, AI_PROVIDER: 'dev', MT_AGENTE: 'ligado', ADMIN_EMAILS: operador, TRUST_PROXY: '', RAILWAY_ENVIRONMENT: '' },
+    env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '', DATA_DIR: dados, MEDIA_DIR: dados, AI_PROVIDER: 'dev', MT_AGENTE: 'ligado', ADMIN_EMAILS: operador, MT_AGENTE_ENCAIXE_PAINEL_MS: '1500', TRUST_PROXY: '', RAILWAY_ENVIRONMENT: '' },
   });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
   let ok = false;
@@ -106,10 +117,18 @@ test('servidor: o agente divide, pergunta, apresenta, valida, publica com Desfaz
   assert.equal(semConversa.status, 404);
   const job = await pedir('/api/ai/agente', { method: 'POST', cookie: dono, json: { conversaId: conv.id, chave: ia2.agente.chave } });
   assert.equal(job.status, 202);
-  const fim = await esperarJob(job.json.id, dono);
+  // O painel aberto confere o encaixe: o cardápio "não cabe" e vai com o aviso; as outras cabem.
+  let pecasDoEncaixe = [];
+  const fim = await esperarJob(job.json.id, dono, (pecas) => {
+    pecasDoEncaixe = pecas;
+    return Object.fromEntries(pecas.map((x) => [x.chave, x.chave === '2:1' ? { estado: 'nao-cabe', avisos: ['TV deitada: "titulo" passa da borda'] } : { estado: 'cabe', avisos: [] }]));
+  });
   assert.equal(fim.estado, 'pronto', fim.erro);
+  assert.deepEqual(pecasDoEncaixe.map((x) => x.chave).sort(), ['0:1', '1:1', '2:1'], 'as peças não passaram pelo encaixe');
   const res = fim.resultado.resultado;
   assert.deepEqual(res.itens.map((x) => x.estado), ['no-ar', 'no-ar', 'no-ar'], JSON.stringify(res.itens));
+  assert.ok(res.itens[2].avisos.some((a) => /Pode não caber na TV/.test(a)), 'a peça que não coube não foi marcada');
+  assert.match(fim.resultado.texto, /Confira: .*Pode não caber na TV/);
   assert.ok(res.lotes.length === 3, 'cada item tem o seu Desfazer');
   const naRecepcao = await itensDa(recepcao);
   assert.ok(naRecepcao.some((it) => it._aviso && it.campos && /Reuni/.test(it.campos.titulo)), 'o aviso não chegou na TV do RH');
@@ -164,6 +183,7 @@ test('servidor: o agente divide, pergunta, apresenta, valida, publica com Desfaz
   assert.match(iam.texto, /mandar para aprovação/);
   const antesDoMembro = (await itensDa(corredor)).length;
   const jm = await pedir('/api/ai/agente', { method: 'POST', cookie: membro, json: { conversaId: rm.json.conversa.id, chave: iam.agente.chave } });
+  // Sem o painel (ninguém pega o encaixe): o prazo curto vence e vai só com a conferência do servidor.
   const fm = await esperarJob(jm.json.id, membro);
   assert.equal(fm.estado, 'pronto', fm.erro);
   assert.equal(fm.resultado.resultado.itens[0].estado, 'aprovacao', 'o envio do membro passou por fora da aprovação');
@@ -178,6 +198,9 @@ test('servidor: o agente divide, pergunta, apresenta, valida, publica com Desfaz
   const ficha = await pedir('/api/agente/plataforma/contas/' + me.tenant.id, { cookie: op });
   assert.equal(ficha.status, 200);
   assert.ok(ficha.json.voltas.some((v) => v.tipo === 'execucao' && v.publicado), 'a execução não ficou no registro');
+  const execucoes = ficha.json.voltas.filter((v) => v.tipo === 'execucao');
+  assert.ok(execucoes.some((v) => v.checks.encaixe.respondeu === true), 'o registro não diz que o painel conferiu');
+  assert.ok(execucoes.some((v) => v.passos.some((p) => /sem o painel aberto/.test(p.resultado))), 'o registro não diz que foi sem o painel');
   assert.ok(ficha.json.voltas.some((v) => v.tipo === 'recusa'), 'a recusa não ficou no registro');
   const resumo = await pedir('/api/agente/plataforma?dias=1', { cookie: op });
   assert.ok(resumo.json.execucoes >= 2 && resumo.json.publicados >= 3, JSON.stringify(resumo.json));

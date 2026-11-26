@@ -24,6 +24,35 @@ import { cn } from '../../lib/cn.js';
  *     resultado    o que foi feito, com o Desfazer
  */
 const ICONE = { aviso: Megaphone, quiz: HelpCircle, peca: ImageIcon, campanha: LayoutTemplate, tela: Palette, ajuste: Pencil };
+/*
+ * O ENCAIXE (server/agente/encaixe.js): antes de pôr no ar, a execução para
+ * em "Conferindo o encaixe…" e anuncia um código no andamento ("e:<código>").
+ * Este painel, aberto, pega as peças, roda o encaixe de sempre
+ * (lib/encaixeAuto.js: conferir no tamanho da TV, UM redesenho pela IA, a
+ * peça-ouro pela reserva) e devolve o que deu em cada uma. Fechado, o
+ * servidor espera um pouco e publica só com a conferência dele.
+ */
+export const codigoDoEncaixe = (detalhe) => {
+  const parte = String(detalhe || '').split('|').find((x) => x.slice(0, 2) === 'e:');
+  return parte ? parte.slice(2) : '';
+};
+const TROCOU = ['redesenhada', 'reserva'];
+export function respostaDoEncaixe(resultados) {
+  const saida = {};
+  for (const [chave, r] of Object.entries(resultados || {})) {
+    saida[chave] = Object.assign({ estado: r.estado, avisos: (r.avisos || []).slice(0, 6) }, TROCOU.includes(r.estado) ? { item: r.item } : {});
+  }
+  return saida;
+}
+async function conferirEncaixe(codigo) {
+  const r = await agenteApi.encaixe(codigo);
+  if (!r || !Array.isArray(r.pecas) || !r.pecas.length) return;
+  // Sob demanda: o conferidor e o redesenho só carregam quando há peça para conferir.
+  const [{ garantirTodas }, { passosDoEncaixe }] = await Promise.all([import('../../lib/encaixeAuto.js'), import('./EncaixeAutomatico.jsx')]);
+  const resultados = await garantirTodas(r.pecas, passosDoEncaixe());
+  await agenteApi.responderEncaixe(codigo, respostaDoEncaixe(resultados));
+}
+
 const FASE = { espera: 'na fila', fazendo: 'fazendo', feito: 'pronto', barrado: 'não foi', erro: 'não foi', 'nao-mudou': 'não mudou', manual: 'você aplica', salvo: 'salvo' };
 
 export function PlanoDoAgente({ mensagem, conversaId, ativo, onConversa, onIr }) {
@@ -52,9 +81,16 @@ function Plano({ plano, conversaId, ativo, onConversa }) {
   const vaoAoAr = itens.filter((i) => !i.recusa && !i.manual && !(i.problemas || []).length);
   const podeValidar = ativo && plano.estado === 'esperando' && vaoAoAr.length > 0;
 
+  const encaixes = useRef(new Set());
   const acompanhar = (job) => {
+    // O servidor espera o encaixe: este painel confere (uma vez por código), mesmo que a pessoa role a conversa.
+    const codigo = codigoDoEncaixe(job.detalhe);
+    if (codigo && !encaixes.current.has(codigo)) {
+      encaixes.current.add(codigo);
+      conferirEncaixe(codigo).catch(() => { /* o servidor segue só com a conferência dele */ });
+    }
     if (!montado.current) return;
-    const estados = String(job.detalhe || '').split('|').map((x) => x.split(':')[1]).filter(Boolean);
+    const estados = String(job.detalhe || '').split('|').filter((x) => x.slice(0, 2) !== 'e:').map((x) => x.split(':')[1]).filter(Boolean);
     setRodando({ etapa: job.etapa || 'trabalhando', estados, segundos: job.segundos || 0 });
   };
   const terminou = (r) => {

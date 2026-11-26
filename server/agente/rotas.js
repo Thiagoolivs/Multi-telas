@@ -7,6 +7,8 @@
  *                                painel acompanha). Só a chave do plano que
  *                                está na conversa vale: plano mudado, 409.
  *   GET  /api/agente             { ligado } — o painel sabe se o agente está ligado para esta conta
+ *   GET  /api/agente/encaixe/:código   as peças que a execução espera o painel conferir (o painel pega)
+ *   POST /api/agente/encaixe/:código   { resultados } o que deu em cada uma (server/agente/encaixe.js)
  *
  *   Só operador (Plataforma):
  *   GET  /api/agente/plataforma?dias=30            as contagens (Qualidade das gerações)
@@ -23,6 +25,7 @@ const R = require('./registro');
 const C = require('./contexto');
 const X = require('./executor');
 const Pub = require('./publicar');
+const Enc = require('./encaixe');
 const { chaveDoPlano } = require('./index');
 const paleta = require('../paleta');
 const permissoes = require('../permissoes');
@@ -106,7 +109,8 @@ module.exports = function (ctx) {
           const { ctx: c, ctxConta } = await contextoDaConta(sess);
           let res2;
           try {
-            res2 = await X.executar({ db, sess, rotas: { operacao: ctx.publicar.operacao, fotoDaConta: ctx.fotoDaConta, estiloDasReferencias: ctx.estiloDasReferencias }, conversa: atual, plano, validacao, ctx: c, ctxConta, progresso, chaveDoPlano });
+            // `encaixe`: as peças param no "Conferindo o encaixe…" e o painel aberto confere se cabem.
+            res2 = await X.executar({ db, sess, rotas: { operacao: ctx.publicar.operacao, fotoDaConta: ctx.fotoDaConta, estiloDasReferencias: ctx.estiloDasReferencias }, conversa: atual, plano, validacao, ctx: c, ctxConta, progresso, chaveDoPlano, encaixe: {} });
           } catch (e) {
             R.salvar(db, { tenantId: sess.tenant_id, userId: sess.user_id, conversaId: conv.id, tipo: 'queda', motivo: 'execucao: ' + corta(e && e.message, 80), pedido: titulo }).catch(() => {});
             throw e;
@@ -127,7 +131,7 @@ module.exports = function (ctx) {
           R.salvar(db, {
             tenantId: sess.tenant_id, userId: sess.user_id, conversaId: conv.id, tipo: 'execucao', cerebro: 'executor', pedido: titulo,
             passos: res2.passos, custoCentavos: res2.gastoCentavos, ms: res2.ms, resumo: corta(texto, 300),
-            checks: { avisos: resultado.itens.reduce((t, x) => t + x.avisos.length, 0), barrados: resultado.itens.filter((x) => x.estado === 'barrado').length },
+            checks: { avisos: resultado.itens.reduce((t, x) => t + x.avisos.length, 0), barrados: resultado.itens.filter((x) => x.estado === 'barrado').length, encaixe: res2.encaixe },
             publicado: { itens: resultado.itens.map((x) => ({ tipo: x.tipo, estado: x.estado, telas: x.telas, lote: x.lote || '', aprovacao: x.aprovacao || '' })) },
           }).catch(() => {});
           return { resultado, texto, conversa: atual };
@@ -180,6 +184,21 @@ module.exports = function (ctx) {
       return true;
     }
     if (parts[2] === 'plataforma') { await plataforma(req, res, parts, query, sess); return true; }
+    // O encaixe no painel: só a conta que pediu pega e responde (o código sozinho não basta).
+    if (parts[2] === 'encaixe' && parts[3]) {
+      if (req.method === 'GET') {
+        const pecas = Enc.pegar(parts[3], sess.tenant_id);
+        sendJson(res, pecas ? 200 : 404, pecas ? { pecas } : { error: 'não há conferência esperando' });
+        return true;
+      }
+      if (req.method === 'POST') {
+        readBody(req, res, (b) => {
+          const ok = Enc.responder(parts[3], sess.tenant_id, b && b.resultados);
+          return sendJson(res, ok ? 200 : 404, ok ? { ok: true } : { error: 'a conferência já terminou' });
+        });
+        return true;
+      }
+    }
     if (!parts[2] && req.method === 'GET') { sendJson(res, 200, { ligado: await L.ligadoPara(db, sess.tenant_id) }); return true; }
     sendJson(res, 404, { error: 'não encontrado' });
     return true;

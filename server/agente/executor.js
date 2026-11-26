@@ -40,6 +40,7 @@ const V = require('./variedade');
 const S = require('./subagentes');
 const Cr = require('./critico');
 const Pub = require('./publicar');
+const Enc = require('./encaixe');
 const { emParalelo } = require('./orquestrador');
 
 const corta = G.corta;
@@ -92,33 +93,85 @@ async function executar(env) {
     progresso(fase || 'trabalhando', estados.map((e, k) => k + ':' + e).join('|'));
   };
   const envPub = { operacao: rotas.operacao, sess, ctx, validacao: env.validacao, plano, chaveDoPlano, hoje: hojeIso };
+  /*
+   * O ENCAIXE NO PAINEL (server/agente/encaixe.js): com `env.encaixe`, todas
+   * as peças param no portão antes de ir ao ar, e o painel aberto confere se
+   * cabem (um redesenho, a peça-ouro). Sem resposta no prazo, segue só com a
+   * conferência do servidor — e o registro diz.
+   */
+  const encaixe = { usado: !!env.encaixe, respondeu: false, motivo: env.encaixe ? '' : 'desligado', pecas: 0, trocadas: 0, naoCabem: 0 };
+  const rodarEncaixe = async (pecas) => {
+    const t0 = Date.now();
+    const pedido = Enc.pedir(sess.tenant_id, pecas.map((x) => ({ chave: x.chave, item: x.item })), env.encaixe && env.encaixe.tempos);
+    progresso('Conferindo o encaixe…', 'e:' + pedido.codigo + '|' + estados.map((e, k) => k + ':' + e).join('|'));
+    const r = await pedido.resposta;
+    Object.assign(encaixe, { respondeu: r.respondeu, motivo: r.motivo, pecas: pecas.length });
+    passos.push({ n: passos.length + 1, ferramenta: 'encaixe', ms: Date.now() - t0,
+      resultado: r.respondeu ? 'o painel conferiu ' + pecas.length + (pecas.length === 1 ? ' peça' : ' peças')
+        : (r.motivo === 'demorou' ? 'o painel não terminou no prazo' : 'sem o painel aberto') + ': publicado só com a conferência do servidor' });
+    return r;
+  };
+  const porta = env.encaixe ? Enc.portao(plano.itens.length, rodarEncaixe) : null;
+  // A peça que voltou do painel passa de novo pela porta e pela lei; a que não coube vai com o aviso.
+  const opDoEncaixe = { perfil: ctx.perfil, contexto: ctx.empresa };
+  const aplicar = (item, r) => {
+    if (!r) return { item };
+    if ((r.estado === 'redesenhada' || r.estado === 'reserva') && r.item) {
+      const formato = item.formato || r.item.formato;
+      const v = P.validarItem(Object.assign({}, r.item, { formato }));
+      const novo = v.item && !(v.problemas || []).length ? Object.assign({}, v.item, { formato }) : null;
+      if (novo && Cr.conferir(novo, opDoEncaixe).ok) { encaixe.trocadas++; return { item: novo, troca: r.estado }; }
+      return { item, aviso: 'O redesenho para caber na TV não passou na conferência: a peça foi como estava.' };
+    }
+    if (r.estado === 'nao-cabe') {
+      encaixe.naoCabem++;
+      return { item, aviso: 'Pode não caber na TV: ' + corta((r.avisos || [])[0] || 'o texto passa da borda', 120) + '. Encurte o texto em Biblioteca › Campanhas.' };
+    }
+    return { item };
+  };
   const fotoDaConta = rotas.fotoDaConta ? rotas.fotoDaConta(sess, null) : null;
   const ctxConta = env.ctxConta || {};
 
   const um = async (item) => {
     const i = item.indice;
     const t0 = Date.now();
+    let chegou = false;
+    /*
+     * O portão do item: [{ chave, item }] → { chave: { item, troca?, aviso? } }.
+     * Sem o painel (ou sem portão), as peças voltam como foram.
+     */
+    const encaixar = async (pecas) => {
+      if (!porta) return {};
+      // Sem peça desenhada (o quiz) também espera: o plano vai ao ar junto, depois da conferência.
+      chegou = true;
+      const r = await porta.chegar(pecas);
+      const doItem = {};
+      for (const x of pecas) doItem[x.chave] = aplicar(x.item, r && r.respondeu ? r.resultados[x.chave] : null);
+      return doItem;
+    };
     const saida = { indice: i, tipo: item.tipo, titulo: item.titulo, onde: item.onde, avisos: (item.avisos || []).slice(), problemas: [], estado: 'erro' };
     try {
       if (item.recusa) return Object.assign(saida, { estado: 'barrado', motivo: item.recusa.texto });
       if (item.manual) return Object.assign(saida, { estado: 'manual', motivo: 'Abra o cartão e aplique vendo o antes e o depois.' });
       if (item.tipo === 'aviso') {
         marcar(i, 'fazendo', 'Escrevendo o aviso…');
-        const peca = Pub.itemDoAviso(item.rascunho.aviso, ctxConta.marca || ctx.marca || {});
-        marcar(i, 'fazendo', 'Conferindo o encaixe…');
+        let peca = Pub.itemDoAviso(item.rascunho.aviso, ctxConta.marca || ctx.marca || {});
         const c = Cr.conferir(peca, { perfil: ctx.perfil, contexto: ctx.empresa });
         if (!c.ok) return Object.assign(saida, { estado: 'barrado', problemas: c.problemas, motivo: c.problemas[0].texto });
+        const enc = (await encaixar([{ chave: i + ':1', item: peca }]))[i + ':1'];
+        if (enc) { peca = enc.item; if (enc.aviso) saida.avisos.push(enc.aviso); }
         marcar(i, 'fazendo', 'Pondo nas TVs…');
         Object.assign(saida, await Pub.publicarItem(item, { item: peca }, envPub));
       } else if (item.tipo === 'quiz') {
+        await encaixar([]);
         marcar(i, 'fazendo', 'Pondo o quiz nas TVs…');
         Object.assign(saida, await Pub.publicarItem(item, { id: 'agente:' + (env.conversa ? env.conversa.id : 'c') + ':' + i }, envPub));
       } else if (item.tipo === 'peca') {
-        Object.assign(saida, await fazerPeca(item, { marcar, envPub, ctx, ctxConta, negativos, hoje, temOrcamento, fotoDaConta, db, sess, conversa: env.conversa }));
+        Object.assign(saida, await fazerPeca(item, { marcar, envPub, ctx, ctxConta, negativos, hoje, temOrcamento, fotoDaConta, db, sess, conversa: env.conversa, encaixar }));
       } else if (item.tipo === 'campanha') {
-        Object.assign(saida, await fazerCampanha(item, { marcar, envPub, ctx, ctxConta, hoje, fotoDaConta, rotas, db, sess, conversa: env.conversa }));
+        Object.assign(saida, await fazerCampanha(item, { marcar, envPub, ctx, ctxConta, hoje, fotoDaConta, rotas, db, sess, conversa: env.conversa, encaixar }));
       } else if (item.tipo === 'ajuste') {
-        Object.assign(saida, await fazerAjuste(item, { marcar, envPub, ctx, ctxConta, temOrcamento, fotoDaConta, db, sess }));
+        Object.assign(saida, await fazerAjuste(item, { marcar, envPub, ctx, ctxConta, temOrcamento, fotoDaConta, db, sess, encaixar }));
       } else {
         Object.assign(saida, { estado: 'manual' });
       }
@@ -128,14 +181,17 @@ async function executar(env) {
       require('../erros.js').registrar(e, { onde: 'agente: executar ' + item.tipo, tipo: e && e.tipo });
       return Object.assign(saida, { estado: 'erro', motivo: corta((e && e.message) || 'falhou', 160) });
     } finally {
+      // Quem não passou pelo portão (o quiz, o barrado, o erro) avisa que saiu: os outros não esperam por ele.
+      if (porta && !chegou) porta.sair();
       estados[i] = saida.estado === 'no-ar' || saida.estado === 'aprovacao' ? 'feito' : saida.estado;
       progresso('Conferindo o resultado…', estados.map((e, k) => k + ':' + e).join('|'));
       passos.push({ n: passos.length + 1, ferramenta: 'executar:' + item.tipo, resultado: saida.estado + (saida.motivo ? ' — ' + corta(saida.motivo, 120) : ''), ms: Date.now() - t0 });
     }
   };
 
-  const itens = await emParalelo(plano.itens, L.LIMITES.emParalelo, um);
-  return { itens, passos, gastoCentavos: Math.round((L.gastoAteAgora() - gasto0) * 1000) / 1000, ms: Date.now() - inicio };
+  // Com o portão, todos ao mesmo tempo (no máximo LIMITES.tarefas): um item na fila esperaria os que estão parados no portão.
+  const itens = await emParalelo(plano.itens, porta ? plano.itens.length : L.LIMITES.emParalelo, um);
+  return { itens, passos, encaixe, gastoCentavos: Math.round((L.gastoAteAgora() - gasto0) * 1000) / 1000, ms: Date.now() - inicio };
 }
 
 /*
@@ -194,6 +250,10 @@ async function fazerPeca(item, o) {
   }
   const avisos = [...new Set((item.avisos || []).concat(c.avisos))];
   if (c.repete) avisos.push('O título parece com “' + corta(c.repete, 40) + '”, que já está no ar.');
+  // O encaixe no painel (quando aberto): a peça que não cabia volta redesenhada ou como a peça-ouro.
+  const enc = o.encaixar ? (await o.encaixar([{ chave: i + ':1', item: peca.item }]))[i + ':1'] : null;
+  if (enc && enc.troca) peca = Object.assign({}, peca, { item: enc.item, motor: enc.troca === 'reserva' ? 'ouro' : peca.motor });
+  if (enc && enc.aviso) avisos.push(enc.aviso);
   const conf = { bloqueios: [], avisos: c.avisos.map((a) => ({ onde: 'peça 1', motivo: a })), permitidos };
   const resultado = resultadoDaPeca(r.nome, escopo, peca, conf);
   marcar(i, 'fazendo', 'Pondo nas TVs…');
@@ -231,12 +291,14 @@ async function fazerCampanha(item, o) {
     onProgresso: (etapa) => marcar(i, 'fazendo', etapa.charAt(0).toUpperCase() + etapa.slice(1) + '…'),
   });
   const estadoDaCampanha = conferencia.estadoDepois('pronta', resultado.conferencia);
+  // O encaixe no painel, peça por peça da campanha (a nova entra no lugar dela no resultado).
+  const avisosDoEncaixe = await encaixarPecas(i, resultado, ajuste.numerar(resultado).map((x) => x.n), o.encaixar);
   let camp = null;
   if (db && db.criarCampanha) {
     camp = await db.criarCampanha(sess.tenant_id, sess.user_id, { nome: resultado.nome, conversaId: conv.id, escopo, resultado, estado: estadoDaCampanha, telas: [], capa: capaDe(resultado) });
     await db.salvarConversa(sess.tenant_id, conv.id, Object.assign({}, conv, { escopo, estado: 'gerado', campanhaId: camp.id }));
   }
-  const avisos = ((resultado.conferencia && resultado.conferencia.avisos) || []).map((a) => (a.onde ? a.onde + ': ' : '') + (a.trecho ? '“' + a.trecho + '” ' : '') + a.motivo);
+  const avisos = ((resultado.conferencia && resultado.conferencia.avisos) || []).map((a) => (a.onde ? a.onde + ': ' : '') + (a.trecho ? '“' + a.trecho + '” ' : '') + a.motivo).concat(avisosDoEncaixe);
   if (conferencia.barraAsPecas && conferencia.barraAsPecas(resultado.conferencia)) {
     return { estado: 'barrado', campanhaId: camp && camp.id, avisos, motivo: conferencia.porQueNaoRoda(resultado.conferencia) };
   }
@@ -244,6 +306,25 @@ async function fazerCampanha(item, o) {
   const envio = await Pub.publicarItem(item, { resultado, nome: resultado.nome }, envPub);
   if (camp && envio.estado === 'no-ar') await db.salvarCampanha(sess.tenant_id, camp.id, Object.assign({}, camp, { estado: 'no_ar', telas: Pub.idsDoItem(item, ctx) }));
   return Object.assign(envio, { campanhaId: camp && camp.id, avisos });
+}
+
+/*
+ * As peças `numeros` (a numeração de server/ajuste.js) de um resultado
+ * passam pelo portão do encaixe; a nova entra no lugar dela. Devolve os
+ * avisos (a que não coube, com o número da peça).
+ */
+async function encaixarPecas(i, resultado, numeros, encaixar) {
+  if (!encaixar || !numeros.length) return [];
+  const pecas = ajuste.numerar(resultado).filter((x) => numeros.includes(x.n) && x.peca && x.peca.item && x.peca.item.type === 'peca-html');
+  const r = await encaixar(pecas.map((x) => ({ chave: i + ':' + x.n, item: x.peca.item })));
+  const avisos = [];
+  for (const x of pecas) {
+    const e = r[i + ':' + x.n];
+    if (!e) continue;
+    if (e.troca) x.peca.item = e.item;
+    if (e.aviso) avisos.push('Peça ' + x.n + ': ' + e.aviso);
+  }
+  return avisos;
 }
 
 // Uma peça "mudou de verdade"? O que a TV mostra: o desenho, os campos, as cores, o modo, o que está escondido.
@@ -292,10 +373,12 @@ async function fazerAjuste(item, o) {
   if (!mudou.length) {
     return { estado: 'nao-mudou', motivo: 'Não consegui mudar a peça como você pediu (“' + corta(r.pedido, 60) + '”). Ela ficou como estava. Tente dizer de outro jeito, ou mude à mão em Biblioteca › Campanhas.' };
   }
+  // As peças que mudaram passam pelo encaixe no painel antes de ir ao ar.
+  const avisosDoEncaixe = await encaixarPecas(i, resultado, mudou, o.encaixar);
   const conf = conferencia.reconferir(resultado, Object.assign({ hoje: new Date() }, conferencia.opcoesDaConta(ctxConta, c.escopo)), [r.pedido]);
   resultado.conferencia = conf;
   const salva = await db.salvarCampanha(sess.tenant_id, c.id, Object.assign({}, c, { resultado, capa: capaDe(resultado), estado: conferencia.estadoDepois(c.estado, conf) }));
-  const avisos = (conf.avisos || []).map((a) => (a.trecho ? '“' + a.trecho + '” ' : '') + a.motivo);
+  const avisos = (conf.avisos || []).map((a) => (a.trecho ? '“' + a.trecho + '” ' : '') + a.motivo).concat(avisosDoEncaixe);
   if (conferencia.barraAsPecas(conf)) return { estado: 'barrado', campanhaId: c.id, avisos, motivo: conferencia.porQueNaoRoda(conf) };
   // Estava no ar: vai de novo (a campanha do mesmo nome troca só o que é dela, com Desfazer).
   if (c.estado === 'no_ar' || (c.telas || []).length) {

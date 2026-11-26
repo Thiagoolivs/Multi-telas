@@ -945,6 +945,9 @@ export const agente = {
   },
   acompanhar: (id, onEtapa, sinal) => acompanhar(id, 'agente', onEtapa, sinal),
   pendente: () => pendenteDe('agente'),
+  // O encaixe no painel: as peças que a execução espera conferir, e o que deu em cada uma.
+  encaixe: (codigo) => api('GET', '/api/agente/encaixe/' + encodeURIComponent(codigo)),
+  responderEncaixe: (codigo, resultados) => api('POST', '/api/agente/encaixe/' + encodeURIComponent(codigo), { resultados }),
   // Só operador (Plataforma): as contagens, e a chave e as voltas de uma conta.
   resumo: (dias) => api('GET', '/api/agente/plataforma' + (dias ? '?dias=' + dias : '')),
   daConta: (id) => api('GET', '/api/agente/plataforma/contas/' + encodeURIComponent(id)),
