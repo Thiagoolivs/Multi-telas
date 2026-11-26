@@ -433,7 +433,8 @@ async function conferirPecas(navegador, local, soZonas, extra) {
   const ordem = manifesto.pecas.filter(entra);
   const fila = ordem.slice();
   const busca = (x.todasAsMarcas ? '&marca=todas&modo=claro' : '&modo=todos') + '&tamanho=caber' + (local ? '&local=' + local : '')
-    + (x.margem != null ? '&margem=' + x.margem : '') + (x.rodape ? '&rodape=' + x.rodape : '') + (x.soCorporativo ? '&zonas=corporativo' : '');
+    + (x.margem != null ? '&margem=' + x.margem : '') + (x.rodape ? '&rodape=' + x.rodape : '') + (x.soCorporativo ? '&zonas=corporativo' : '')
+    + (x.conta ? '&conta=' + encodeURIComponent(x.conta) : '');
   const trabalhar = async () => {
     const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
     for (let peca = fila.shift(); peca; peca = fila.shift()) {
@@ -485,7 +486,7 @@ async function conferirPecas(navegador, local, soZonas, extra) {
       for (const { zona, tamanho, marca, cedeu, juntos, cortados } of porZona) {
         const cheia = FORMATOS_CHEIOS.includes(zona);
         // Tela cheia sem local; as zonas com o local do escritório (a Empresas, onde elas moram); a lateral e o destaque no balcão.
-        if (soZonas ? soZonas.includes(zona) : local ? !cheia : cheia) saida.push({ id: peca.id, zona, tamanho, marca, cedeu, cheia, local: local || '', juntos, cortados });
+        if (soZonas ? soZonas.includes(zona) : local ? !cheia : cheia) saida.push({ id: peca.id, zona, tamanho, marca, cedeu, cheia, local: local || '', juntos, cortados, conta: x.conta || '' });
       }
     }
     await p.close();
@@ -507,7 +508,21 @@ async function conferirPecas(navegador, local, soZonas, extra) {
  * nada para fora.
  */
 const LOCAL_DA_FRENTE_NA_TV = { comercio: 'balcao', saude: 'recepcao', empresa: 'escritorio' };
-async function conferirTelas(navegador) {
+/*
+ * A TELA PRONTA COM O NOME DA CONTA E O CLIMA (reteste 4, achado 17,
+ * 26/11). A régua montava as telas com os nomes curtos das marcas de
+ * exemplo ("Rota Sul", 8 letras) e só olhava o que sobrepõe e o que corta:
+ * na TV de verdade, com "Grupo Horizonte" (15 letras) e o clima, o piso
+ * cedia para 3,5% no cabeçalho de 12 telas, e a régua passava. Agora cada
+ * tela vai também com o nome de uma conta longa (a bancada, `?conta=`, o
+ * põe no campo `marca` e no lugar do nome do exemplo, como o "Usar" do
+ * Prontos) e o clima à vista (a bancada sempre o mostra), e a letra que
+ * cede (data-mt-piso-cedeu, peça a peça) reprova, como o que sobrepõe.
+ * O rascunho (estado "rascunho": o manifesto diz que não está pronto) é
+ * só medido. REGUA_CONTAS="Grupo Horizonte,…" troca os nomes.
+ */
+const CONTAS_LONGAS = (process.env.REGUA_CONTAS || 'Metalúrgica Horizonte Ltda').split(',').map((x) => x.trim()).filter(Boolean);
+async function conferirTelas(navegador, conta) {
   const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'manifesto.json'), 'utf8'));
   const fila = (manifesto.telas || []).slice();
   const saida = [];
@@ -515,10 +530,11 @@ async function conferirTelas(navegador) {
     const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
     for (let t = fila.shift(); t; t = fila.shift()) {
       const local = LOCAL_DA_FRENTE_NA_TV[t.perfil] || 'balcao';
-      await p.goto(BASE + '/bancada.html?ver=tela&fonte=padrao&tela=' + t.id + '&layout=' + t.layout + '&tamanho=caber&local=' + local);
+      await p.goto(BASE + '/bancada.html?ver=tela&fonte=padrao&tela=' + t.id + '&layout=' + t.layout + '&tamanho=caber&local=' + local
+        + (conta ? '&conta=' + encodeURIComponent(conta) : ''));
       const ok = await p.waitForFunction(() => document.body.dataset.conferida === 'sim', null, { timeout: 60000 }).then(() => true, () => false);
-      const naoCoube = ok ? await p.evaluate(() => (window.MTTelaConferida || {}).naoCoube || []) : ['a bancada não conferiu a tela'];
-      saida.push({ id: t.id, layout: t.layout, local, naoCoube });
+      const r = ok ? await p.evaluate(() => window.MTTelaConferida || {}) : { naoCoube: ['a bancada não conferiu a tela'] };
+      saida.push({ id: t.id, layout: t.layout, local, conta: conta || '', rascunho: t.estado === 'rascunho', naoCoube: r.naoCoube || [], pisoCedeu: r.pisoCedeu || [] });
     }
     await p.close();
   };
@@ -695,7 +711,10 @@ async function main() {
     }
     semRodape = await conferirPecas(navegador, 'balcao', [DESTAQUE_NO_BALCAO], Object.assign({ todasAsMarcas: true, soDestaque: true, soCorporativo: true }, SEM_RODAPE));
     faixas = await conferirPecas(navegador, 'balcao', ZONAS_DAS_FAIXAS, { todasAsMarcas: true, faixas: true });
+    // Reteste 4: as faixas também com o nome de cada conta longa, nas 11 fontes (o nome é o que mais cresce nelas).
+    for (const conta of CONTAS_LONGAS) faixas = faixas.concat(await conferirPecas(navegador, 'balcao', ZONAS_DAS_FAIXAS, { todasAsMarcas: true, faixas: true, conta }));
     telas = await conferirTelas(navegador);
+    for (const conta of CONTAS_LONGAS) telas = telas.concat(await conferirTelas(navegador, conta));
   } finally {
     await navegador.close();
     parar();
@@ -784,9 +803,10 @@ async function main() {
   }
   // As faixas no balcão, nas 11 marcas: bloqueio (o piso, e sobrepor e cortar logo abaixo).
   if (faixas.length) {
-    console.log('Cabeçalhos e rodapés · balcão (' + PISO + '%, ' + new Set(faixas.map((x) => x.marca)).size + ' marcas, deitada, em pé e quadrada): '
+    console.log('Cabeçalhos e rodapés · balcão (' + PISO + '%, ' + new Set(faixas.map((x) => x.marca)).size + ' marcas, deitada, em pé e quadrada'
+      + (CONTAS_LONGAS.length ? '; com os nomes do exemplo e com ' + CONTAS_LONGAS.map((c) => '"' + c + '"').join(', ') : '') + '): '
       + faixas.filter((x) => x.cedeu >= 1).length + ' de ' + faixas.length + ' com a letra inteira');
-    for (const x of faixas.filter((y) => y.cedeu < 1)) { console.log('  ✗ ' + x.id + ' · ' + x.zona + ' · ' + x.marca + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%'); reprova = true; }
+    for (const x of faixas.filter((y) => y.cedeu < 1)) { console.log('  ✗ ' + x.id + ' · ' + x.zona + ' · ' + x.marca + (x.conta ? ' · ' + x.conta : '') + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%'); reprova = true; }
   }
   const naQuadrada = marcas.filter((x) => x.zona === QUADRADA_COM_RODAPE);
   if (naQuadrada.length) {
@@ -811,11 +831,18 @@ async function main() {
   }
   if (vistos.size > 20) console.log('  … e mais ' + (vistos.size - 20));
   if (comDefeito.length) reprova = true;
-  if (telas.length) {
-    const ruins = telas.filter((t) => t.naoCoube.length);
-    console.log('Telas prontas montadas (' + telas.length + ', no layout de cada uma, no local da frente, na letra padrão): ' + (telas.length - ruins.length) + ' de ' + telas.length + ' sem nada sobre nada, cortado ou para fora');
-    for (const t of ruins.slice(0, 15)) console.log('  ✗ ' + t.id + ' (' + t.layout + ', ' + t.local + '): ' + t.naoCoube.slice(0, 2).join(' | '));
+  // As telas prontas, com os nomes do exemplo e com o de cada conta longa: nada sobre nada, cortado ou para fora, e a letra inteira.
+  for (const conta of [''].concat(CONTAS_LONGAS)) {
+    const daConta = telas.filter((t) => t.conta === conta);
+    if (!daConta.length) continue;
+    const prontas = daConta.filter((t) => !t.rascunho);
+    const ruins = prontas.filter((t) => t.naoCoube.length || t.pisoCedeu.length);
+    console.log('Telas prontas montadas' + (conta ? ' com a conta "' + conta + '" e o clima' : '') + ' (' + prontas.length + ', no layout de cada uma, no local da frente, na letra padrão): '
+      + (prontas.length - ruins.length) + ' de ' + prontas.length + ' sem nada sobre nada, cortado ou para fora, e com a letra inteira');
+    for (const t of ruins.slice(0, 15)) console.log('  ✗ ' + t.id + ' (' + t.layout + ', ' + t.local + '): ' + t.naoCoube.concat(t.pisoCedeu).slice(0, 2).join(' | '));
     if (ruins.length) reprova = true;
+    const rascunhos = daConta.filter((t) => t.rascunho && (t.naoCoube.length || t.pisoCedeu.length));
+    if (rascunhos.length) console.log('  · rascunho (só medida): ' + rascunhos.map((t) => t.id).join(', '));
   }
   // Fase 10: o contraste de todo texto, em todo arranjo.
   for (const [, , nome] of ARRANJOS) {
