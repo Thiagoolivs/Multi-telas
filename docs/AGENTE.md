@@ -113,6 +113,20 @@ uma tarefa por linha.
      atende ao pedido — e no máximo **uma** correção do desenho (os textos
      validados não mudam). A porta recusou o desenho: a peça-ouro com os
      mesmos textos;
+   - **o encaixe no painel** (`encaixe.js`): antes de qualquer item ir ao
+     ar, a execução para em **"Conferindo o encaixe…"** e anuncia um código
+     no andamento do trabalho. O painel aberto (`PlanoDoAgente`, que já
+     acompanha o trabalho) pega as peças (`GET /api/agente/encaixe/:código`),
+     roda o encaixe de sempre (`web/src/lib/encaixeAuto.js`: conferir no
+     tamanho da TV, UM redesenho pela IA, a peça-ouro pelo
+     `POST /api/pecas/reserva`) e devolve o que deu em cada uma (`POST`). A
+     peça nova passa de novo pela porta e pela lei antes de entrar; a que
+     não coube vai ao ar com o aviso **"Confira: Pode não caber na TV: …"**.
+     **Painel fechado**: ninguém pega em 15 s e a execução segue só com a
+     conferência do servidor; pegou e não voltou em 3 min, idem. O registro
+     diz qual foi ("sem o painel aberto: publicado só com a conferência do
+     servidor"). Todos os itens esperam no mesmo portão: o plano vai ao ar
+     junto, depois da conferência;
    - **publicar** (`publicar.js`): pela operação em lote de sempre
      (`ctx.publicar.operacao` = `POST /api/lote/operacao`), com a **sessão de
      quem pediu**: só as TVs dela, a versão de cada TV, tudo ou nada, o
@@ -142,6 +156,8 @@ que não está no ar.
 | gasto de texto do plano, por fala | R$ 0,25 | `MT_AGENTE_ORCAMENTO_PLANO` (centavos) |
 | gasto de texto da execução | R$ 2,50 (acima: sem revisão, peça-ouro) | `MT_AGENTE_ORCAMENTO_EXECUCAO` |
 | tempo da execução | 8 min | `MT_AGENTE_PRAZO_EXECUCAO_MS` |
+| o painel pegar o encaixe (senão, segue sem ele) | 15 s | `MT_AGENTE_ENCAIXE_PAINEL_MS` |
+| o painel devolver o encaixe depois de pegar | 3 min | `MT_AGENTE_ENCAIXE_MS` |
 | falas do agente por conta e hora | 90 | `MT_AGENTE_FALAS_HORA` |
 | execuções por conta e hora | 12 | `MT_AGENTE_EXECUCOES_HORA` |
 | tarefas por fala / perguntas por vez | 5 / 2 | — |
@@ -174,6 +190,7 @@ foto, e o plano diz quantas criações gasta antes da validação.
 | permissão: só as TVs da pessoa; membro com aprovação vai para a fila | `publicar`, operação em lote | "publicar: só as TVs…", servidor (membro), eval `membro-aprovacao` |
 | laço (a mesma fala repetida), freio de falas e de execuções por hora | `guarda.emLaco`, `limites.contar` | "laço…", "o freio de falas…"; eval `laco` |
 | tetos do laço (passos, tempo, gasto) e a queda para o fluxo de antes | `orquestrador.rodar`, `index.responder` | "laço: no máximo 8 passos…", "o gasto… o tempo", "queda: …" |
+| a peça que não cabe na TV: o painel redesenha uma vez ou põe a peça-ouro; a que sobra vai marcada; a peça nova que volta do painel passa de novo pela porta e pela lei | `encaixe.js`, `executor.js` (`aplicar`) | `agente-encaixe.test.js` (pausa, retomada, prazo, portão, peça inválida), servidor (o teste faz o papel do painel; o membro sem painel), navegador |
 | desligar (global e por conta) | `limites.ligadoPara` | "freio: MT_AGENTE=desligado…", servidor (o operador desliga a conta) |
 | Desfazer | o Desfazer de cada envio | servidor ("Desfazer: o envio do aviso volta", e o que estava na TV fica) |
 
@@ -201,13 +218,15 @@ No Criar, embaixo da mensagem da IA (`web/src/components/criar/PlanoDoAgente.jsx
   frase que pode); o botão **Validar e pôr no ar** (ou **Validar e mandar
   para aprovação**) só no plano mais novo; "Quer mudar algo? É só dizer";
 - **o andamento**, item por item (o servidor manda o estado de cada um no
-  trabalho: na fila, fazendo, pronto, não foi);
+  trabalho: na fila, fazendo, pronto, não foi), e o **encaixe**: no
+  "Conferindo o encaixe…" o próprio cartão pega as peças, confere, e
+  devolve (o conferidor e o redesenho carregam só nessa hora);
 - **o resultado**: no ar (onde), esperando a aprovação do dono, não foi (por
   quê), "Confira: …", **Desfazer**, e o link para a campanha em Biblioteca.
 
 A mudança de aparência da TV abre o antes e o depois de sempre. Com o agente
 desligado, o Criar é exatamente o de antes. Conferido no navegador, no
-computador e no celular (390 px).
+computador e no celular (390 px), e o encaixe: o cartão parado em "Conferindo o encaixe…" com cada item fazendo, o painel pegando e devolvendo as peças, e o resultado.
 
 ## Avaliação
 
@@ -231,9 +250,10 @@ node tools/eval-agente.mjs --vivo     # com a IA de verdade (a chave do provedor
 |---|---|---|
 | sem IA (regra) | **47/47** | R$ 0,00 |
 | IA simulada (abertura, ferramentas e voltas de verdade; modelo de mentira, que tenta chamar "publicar" na fala com ordem e escreve o grupo em minúsculas) | **47/47** | R$ 0,00 |
-| **ao vivo** | **não rodou**: a chave recusou na primeira chamada — "créditos pré-pagos esgotados" (cota). Parei aí, como combinado. | **R$ 0,00** |
+| **ao vivo** | **pendente**: a chave guardada para o teste está sem crédito — recusou na primeira chamada ("créditos pré-pagos esgotados"). Parei aí, como combinado. | **R$ 0,00** |
 
-Na tentativa ao vivo, o agente fez o que devia com a IA fora: caiu para o
+**A avaliação ao vivo está pendente porque a chave guardada não tem
+crédito.** Na tentativa, o agente fez o que devia com a IA fora: caiu para o
 maestro, que caiu para a regra — a pessoa teria recebido resposta. Para rodar
 quando houver crédito: o comando `--vivo` acima (a sonda para tudo se a chave
 recusar; o teto de R$ 18 vale).
@@ -279,7 +299,13 @@ agente faz, é dizer que não mudou (com IA, o caso exige que mude).
     operador; a contagem do agente mora ao lado da Qualidade das gerações,
     sem conta nem texto. As linhas com texto curto ficam só na ficha.
 11. **O registro guarda 180 dias** e o pedido com até 200 letras.
-12. O CLAUDE.md pede para perguntar antes de cada tarefa; o pedido desta
+12. **O encaixe é do painel, com prazo curto**: medir se a peça cabe exige
+    desenhá-la no tamanho da TV, e quem desenha é o navegador. Com o
+    painel aberto, nada vai ao ar sem a conferência; com ele fechado (a
+    pessoa validou e saiu), esperar não adianta — 15 s e segue só com a
+    conferência do servidor, dito no registro. O quiz (sem peça desenhada)
+    espera no portão também, para o plano entrar junto.
+13. O CLAUDE.md pede para perguntar antes de cada tarefa; o pedido desta
     noite era trabalhar sozinho até de manhã. As decisões estão todas aqui.
 
 ## Arquivos
@@ -287,11 +313,11 @@ agente faz, é dizer que não mudou (com IA, o caso exige que mude).
 Novos: `server/agente/` (`index.js`, `guarda.js`, `decompor.js`,
 `contexto.js`, `subagentes.js`, `cerebro.js`, `orquestrador.js`,
 `critico.js`, `variedade.js`, `executor.js`, `publicar.js`, `registro.js`,
-`banco.js`, `limites.js`, `rotas.js`), `tools/eval-agente.mjs`,
+`banco.js`, `limites.js`, `rotas.js`, `encaixe.js`), `tools/eval-agente.mjs`,
 `tools/modelo-simulado.js`, `web/src/components/criar/PlanoDoAgente.jsx`,
 `web/src/components/platform/Agente.jsx`, `test/agente.test.js`,
 `test/agente-servidor.test.js`, `test/agente-avaliacao.test.js`,
-`test/agente-painel.test.js`.
+`test/agente-painel.test.js`, `test/agente-encaixe.test.js`.
 
 Mudanças pequenas em arquivos de todos: `server/motores.js` (as voltas de
 chamada de função), `server.js` (a rota e `agente` no `TIPO_IA`),
@@ -306,14 +332,10 @@ e `server/db-postgres.js` (uma linha cada), `server/creditos.js` (o tipo
 
 - **A avaliação ao vivo**, quando a chave tiver crédito (o comando acima).
   É ela que mede o quanto a IA de verdade divide, pergunta e escreve bem.
-- **O encaixe automático no painel** (`web/src/lib/encaixeAuto.js`, de outro
-  ramo, ainda não está no main): a conferência do agente é no servidor (a
-  porta, a régua da letra, a lei), sem medir a peça desenhada na tela. Quando
-  o encaixe chegar, o resultado do agente deve rodar o encaixe nas peças que
-  foram para o ar.
+- **O encaixe sem o painel**: com a página fechada, a peça vai só com a
+  conferência do servidor (ela não mede a peça desenhada). Medir no servidor
+  exigiria um navegador nele.
 - **A agenda como ferramenta**: hoje o agente não grava datas na Agenda
   (o pedido de data vira aviso com validade).
 - **Mexer no plano pelo cartão** (trocar as TVs de um item com um toque):
   hoje é pela conversa ("o parabéns só no RH").
-- **O andamento ao vivo** foi conferido no código e no teste; sem IA a
-  execução é instantânea, então no navegador só se vê o resultado.
