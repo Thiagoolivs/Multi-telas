@@ -28,7 +28,8 @@ const EXCECOES = {
 };
 
 function rotasDeIA() {
-  const arquivos = ['server.js'].concat(fs.readdirSync(path.join(RAIZ, 'server/routes')).filter((f) => f.endsWith('.js')).map((f) => 'server/routes/' + f));
+  // O agente (server/agente/rotas.js) tem a rota dele fora de server/routes/: entra também.
+  const arquivos = ['server.js', 'server/agente/rotas.js'].concat(fs.readdirSync(path.join(RAIZ, 'server/routes')).filter((f) => f.endsWith('.js')).map((f) => 'server/routes/' + f));
   const nomes = new Map();
   for (const f of arquivos) {
     // /api/ai/* e /api/ia/* (o espaço de imagem): as duas portas da IA.
