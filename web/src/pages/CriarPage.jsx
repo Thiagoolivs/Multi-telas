@@ -201,8 +201,9 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       setModo(r.modo || '');
       guardar(r.conversa.id);
       if (!conversa) setVersaoDaLista((v) => v + 1);
-      // A pessoa mandou gerar (item 37): o esboço abre para ela aprovar — gerar só depois (D42). Com o agente, o plano dele é o esboço.
-      if (r.gerar && !(r.agente && r.agente.estado === 'esperando')) setParaAprovar({ escopo: E.normalizar(r.conversa.escopo || {}), conversa: r.conversa });
+      // A pessoa mandou gerar (item 37): o esboço abre para ela aprovar — gerar só depois (D42).
+      // (Com o agente, o plano dele é o esboço: a volta dele nunca vem com `gerar`.)
+      if (r.gerar) setParaAprovar({ escopo: E.normalizar(r.conversa.escopo || {}), conversa: r.conversa });
     } catch (e) {
       setErro(e.message || 'A conversa falhou. Tente mandar de novo.');
       setMensagens((m) => m.slice(0, -1));

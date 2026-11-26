@@ -139,8 +139,9 @@ function alvoDe(texto, ctx) {
   if (citadas.length) return { tipo: 'telas', ids: citadas.map((t) => t.id), nomes: citadas.map((t) => t.nome) };
   if (/\btodas as tvs\b|\bem todas\b|\btodas as telas\b/.test(s)) return { tipo: 'todas' };
   // "na TV da entrada", "nas TVs do galpão": citou e não está na lista.
-  const m = /\b(?:na|nas|para a|para as|pra|pras|da|das)\s+(tvs?\s+(?:d[aoe]s?\s+)?[a-z0-9]+(?:\s+[a-z0-9]+){0,2})/.exec(s);
-  if (m && !/\btvs? (de|da|do) (hoje|amanha|agora|semana)\b/.test(m[1])) return { tipo: 'todas', naoAchei: corta(m[1], 50) };
+  // Com a grafia dela ("TV do galpão C"), para a pergunta repetir o que ela escreveu.
+  const m = /(?:^|\s)(?:na|nas|para a|para as|pra|pras|da|das)\s+(tvs?\s+(?:d[aoe]s?\s+)?[\p{L}\d]+(?:\s+[\p{L}\d]+){0,2})/iu.exec(String(texto || ''));
+  if (m && !/\btvs? (de|da|do) (hoje|amanha|agora|semana)\b/.test(plano(m[1]))) return { tipo: 'todas', naoAchei: corta(m[1], 50).replace(/^tv/i, 'TV') };
   return { tipo: 'todas' };
 }
 

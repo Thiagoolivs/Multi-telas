@@ -141,7 +141,7 @@ test('decompor: três coisas numa fala viram três tarefas, cada uma com as TVs 
   assert.deepEqual(D.dividir('1) aviso de feriado dia 20\n2) peça de segurança com EPI\n3) metas do mês'), ['aviso de feriado dia 20', 'peça de segurança com EPI', 'metas do mês']);
   assert.deepEqual(D.dividir('oi tudo bem? queria um aviso pros funcionarios que amanha nao tem expediente. e tambem uma peça de boas vindas'), ['um aviso pros funcionarios que amanha nao tem expediente', 'uma peça de boas vindas']);
   assert.equal(D.porRegra('promoção de pão de queijo e café', CTX).tarefas.length, 1, 'o "e" dentro da promoção virou duas tarefas');
-  assert.equal(D.alvoDe('aviso na TV da padaria do vizinho', CTX).naoAchei, 'tv da padaria do vizinho', 'a TV que não é da conta virou "todas"');
+  assert.equal(D.alvoDe('aviso na TV da padaria do vizinho', CTX).naoAchei, 'TV da padaria do vizinho', 'a TV que não é da conta virou "todas"');
   // A tarefa que vem da IA é conferida: a TV que não está na lista não vira alvo.
   const t = D.conferirTarefa({ tipo: 'aviso', pedido: 'aviso de reunião', tvs: ['TV do Vizinho'] }, CTX);
   assert.equal(t.alvo.naoAchei, 'TV do Vizinho');

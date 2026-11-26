@@ -14,9 +14,21 @@ const ler = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 test('o Criar mostra o plano do agente e só o mais novo valida', () => {
   const C = ler('web/src/pages/CriarPage.jsx');
   assert.match(C, /<PlanoDoAgente mensagem=\{m\} conversaId=\{conversa && conversa\.id\} ativo=\{planoAtivo === i && !criada\}/);
-  assert.match(C, /if \(r\.gerar && !\(r\.agente && r\.agente\.estado === 'esperando'\)\)/, 'o esboço de antes abriu por cima do plano do agente');
+  assert.match(C, /if \(r\.gerar\) setParaAprovar\(/);
   // Desligado, o Criar é o de sempre: o cartão do assistente continua.
   assert.match(C, /<AcaoDaIA acao=\{m\.acao\}/);
+});
+
+test('a volta do agente com plano nunca vem com "gerar" (o esboço de antes não abre por cima do plano)', async () => {
+  const antes = process.env.MT_AGENTE;
+  process.env.MT_AGENTE = 'ligado';
+  process.env.AI_PROVIDER = 'dev';
+  try {
+    const A = require('../server/agente');
+    const out = await A.responder({ mensagens: [{ papel: 'pessoa', texto: 'aviso de piso molhado', em: Date.now() }], ctx: { telas: [{ id: 't', nome: 'Balcão' }], grupos: [], perfil: 'comercio' }, sess: { tenant_id: 'tp', user_id: 'u' }, db: null });
+    assert.equal(out.agente.estado, 'esperando');
+    assert.equal(out.gerar, false);
+  } finally { if (antes === undefined) delete process.env.MT_AGENTE; else process.env.MT_AGENTE = antes; }
 });
 
 test('o cartão do plano: validar é o toque, o andamento é por item, o resultado tem Desfazer', () => {
