@@ -20,7 +20,7 @@ function pecaDaIA(campos, o) {
   const h = P.higienizar({ html: '<section class="mt-peca">' + corpo + '</section>', css: '.mt-peca { color: var(--mt-texto); }' });
   assert.deepEqual(h.problemas, []);
   return { type: 'peca-html', versao: 1, papel: x.papel || 'destaque', html: h.html, css: h.css, campos: campos.foto ? { foto: campos.foto } : {},
-    marca: { cores: ['#1b2a4a'] }, modo: 'escuro', formato: x.formato || '16/9', origem: { motor: 'gemini', pedido: 'café da manhã' }, ...(x.espacos ? { espacos: x.espacos } : {}) };
+    marca: { cores: ['#1b2a4a'] }, modo: 'escuro', formato: x.formato || '16/9', origem: { motor: 'html', pedido: 'café da manhã' }, ...(x.espacos ? { espacos: x.espacos } : {}) };
 }
 const textos = (item) => Object.values(C.textosDaPeca(item)).join(' | ');
 
@@ -58,7 +58,7 @@ test('com foto: a reserva com foto, a mesma foto, com o ponto que importa', () =
 test('a própria reserva com foto, tirada do lugar (o que o diretor entrega sem IA): os campos dela voltam para ela', () => {
   const ouro = C.preencherPapel({ papel: 'destaque', textos: { kicker: 'Hoje', titulo: 'Aberto no feriado', cta: 'Rua das Flores, 120' }, empresa: 'Padaria', foto: '/media/t1/f.jpg' });
   // A peça "da IA" com o mesmo desenho e os mesmos campos (kicker, título em duas linhas, marca, endereço).
-  const r = R.daPeca(Object.assign({}, ouro, { origem: { motor: 'gemini', pedido: 'x' } }), { empresa: 'Padaria' });
+  const r = R.daPeca(Object.assign({}, ouro, { origem: { motor: 'html', pedido: 'x' } }), { empresa: 'Padaria' });
   assert.ok(r, 'sem reserva para a peça com endereço');
   const tudo = Object.values(C.textosDaPeca(r)).join(' ').replace(/\s+/g, ' ');
   for (const x of ['Hoje', 'Aberto no feriado', 'Rua das Flores, 120']) assert.ok(tudo.includes(x), x + ' em: ' + tudo);

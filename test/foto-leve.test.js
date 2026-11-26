@@ -244,7 +244,7 @@ test('o caminho do dinheiro continua: reserva, gera, guarda leve, cobra uma vez;
       c,
       ctx: {
         db: Object.assign(bancoFalso(), { getTenant: async (id) => ({ id, plan: 'pro' }) }),
-        ai: { mode: () => 'gemini', generateImage: async () => ({ mime: 'image/png', data: pesado.toString('base64') }) },
+        ai: { mode: () => 'provedor', generateImage: async () => ({ mime: 'image/png', data: pesado.toString('base64') }) },
         midia: o && o.quebrado ? { guardarBuffer: async () => { throw new Error('storage fora do ar'); } } : midia,
         usoIA: {
           reservar: async () => { c.reservar++; return { ok: true, reserva: { daFranquia: 1, doComprado: 0 } }; },

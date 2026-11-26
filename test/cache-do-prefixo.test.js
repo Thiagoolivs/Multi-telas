@@ -2,9 +2,9 @@
  * O CACHE DO PREFIXO (server/compositor.js `fixo`, server/motores.js).
  *
  * Cada peça leva a biblioteca-ouro do papel inteira (~43 mil tokens no
- * destaque). Ela só sai barata porque o provedor guarda o prefixo: o
- * Anthropic até o bloco marcado com cache_control, o Gemini e o Groq pelo
- * começo igual do pedido. Basta UM byte diferente no começo — a data de
+ * destaque). Ela só sai barata porque o provedor guarda o prefixo: um até
+ * o bloco marcado com cache_control, os outros pelo começo igual do
+ * pedido. Basta UM byte diferente no começo — a data de
  * hoje, o id da conta, o nome da empresa, a ordem da biblioteca — e toda
  * peça paga a biblioteca inteira de novo, sem erro nenhum aparecer.
  *
@@ -21,6 +21,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const C = require('../server/compositor.js');
+const { MOTORES } = require('../server/motores.js');
+// Um motor de cada provedor (o "dev" não chama ninguém).
+const UM_POR_PROVEDOR = Object.keys(MOTORES).filter((id) => MOTORES[id].provedor !== 'dev')
+  .filter((id, i, l) => l.findIndex((o) => MOTORES[o].provedor === MOTORES[id].provedor) === i);
+// O dialeto do pedido, pelo formato do corpo: blocos de sistema, instrução de sistema, ou mensagens.
+const dialeto = (corpo) => (Array.isArray(corpo.system) ? 'blocos' : corpo.system_instruction ? 'instrucao' : 'mensagens');
 const ler = (...p) => fs.readFileSync(path.join(__dirname, '..', ...p), 'utf8');
 const BOA = ler('pecas-ouro', 'oferta-lista.html');
 const PAPEIS = ['destaque', 'lateral', 'cabecalho', 'rodape'];
@@ -48,9 +54,9 @@ function comFetch(fn) {
   globalThis.fetch = async (url, o) => {
     const corpo = JSON.parse(o.body);
     corpos.push({ url: String(url), corpo });
-    const json = /anthropic/.test(url)
+    const json = dialeto(corpo) === 'blocos'
       ? { model: corpo.model, content: [{ type: 'text', text: BOA }], usage: { input_tokens: 10, output_tokens: 10, cache_read_input_tokens: 40000 } }
-      : /generativelanguage/.test(url)
+      : dialeto(corpo) === 'instrucao'
         ? { candidates: [{ content: { parts: [{ text: BOA }] } }], usageMetadata: { promptTokenCount: 40010, candidatesTokenCount: 10, cachedContentTokenCount: 40000 } }
         : { model: corpo.model, choices: [{ message: { content: BOA } }], usage: { prompt_tokens: 40010, completion_tokens: 10 } };
     return { ok: true, status: 200, json: async () => json };
@@ -58,7 +64,8 @@ function comFetch(fn) {
   return Promise.resolve(fn(corpos)).finally(() => { globalThis.fetch = antes; });
 }
 function comChaves(fn) {
-  const chaves = { ANTHROPIC_API_KEY: 'k-a', GEMINI_API_KEY: 'k-g', GROQ_API_KEY: 'k-q', AI_PROVIDER: 'gemini' };
+  // As chaves (falsas) que ligam os três provedores; o fetch é trocado, nada sai daqui.
+  const chaves = { ANTHROPIC_API_KEY: 'k-a', GEMINI_API_KEY: 'k-g', GROQ_API_KEY: 'k-q', AI_PROVIDER: UM_POR_PROVEDOR[0] };
   const antes = {};
   for (const k of Object.keys(chaves)) { antes[k] = process.env[k]; process.env[k] = chaves[k]; }
   return Promise.resolve().then(fn).finally(() => { for (const k of Object.keys(chaves)) { if (antes[k] == null) delete process.env[k]; else process.env[k] = antes[k]; } });
@@ -75,19 +82,21 @@ const DO_PEDIDO = ['Xilofone', 'Quixabeira', '29/11/2031', '26/11/2031', 't_ab12
 
 // O prefixo que o provedor guarda, como ele o recebe (o texto exato do pedido HTTP).
 function prefixo(c) {
-  if (/anthropic/.test(c.url)) {
+  if (dialeto(c.corpo) === 'blocos') {
     // Até o bloco com cache_control, inclusive (o que vem antes dele também conta: ferramentas e modelo).
     const i = c.corpo.system.findIndex((b) => b.cache_control);
     assert.ok(i >= 0, 'nenhum bloco marcado para o cache');
     return JSON.stringify({ model: c.corpo.model, tools: c.corpo.tools || null, system: c.corpo.system.slice(0, i + 1) });
   }
-  // Gemini e Groq: o cache é implícito, pelo começo do pedido — as instruções de sistema vão antes de tudo.
-  if (/generativelanguage/.test(c.url)) return JSON.stringify({ url: c.url, tools: c.corpo.tools || null, sistema: c.corpo.system_instruction });
+  // Os outros: o cache é implícito, pelo começo do pedido — as instruções de sistema vão antes de tudo.
+  if (dialeto(c.corpo) === 'instrucao') return JSON.stringify({ url: c.url, tools: c.corpo.tools || null, sistema: c.corpo.system_instruction });
   return JSON.stringify({ model: c.corpo.model, tools: c.corpo.tools || null, sistema: c.corpo.messages[0] });
 }
 
-for (const motor of ['claude-sonnet', 'gemini', 'groq']) {
-  test(motor + ': o prefixo em cache é o mesmo byte a byte em todo pedido do papel, e não leva nada do pedido', () => comChaves(() => comFetch(async (corpos) => {
+test('os três provedores: o prefixo em cache é o mesmo byte a byte em todo pedido do papel, e não leva nada do pedido', () => comChaves(() => comFetch(async (corpos) => {
+  // Os três dialetos (blocos de sistema, instrução de sistema, mensagens) passam por aqui.
+  assert.equal(UM_POR_PROVEDOR.length, 3, 'provedores: ' + UM_POR_PROVEDOR.length);
+  for (const motor of UM_POR_PROVEDOR) {
     for (const papel of PAPEIS) {
       corpos.length = 0;
       await noDia('2026-11-26T09:15:00Z', 'America/Sao_Paulo', () => C.comporPeca(Object.assign({ motor, papel, tentativas: 1 }, PEDIDOS[0])));
@@ -98,17 +107,17 @@ for (const motor of ['claude-sonnet', 'gemini', 'groq']) {
       // Um de cada pedido e o redesenho (que pede de novo, com o motivo, se a porta recusar a resposta: o prefixo é o mesmo também).
       assert.ok(corpos.length >= 3, papel + ': ' + corpos.length + ' chamadas');
       const [a, b, ...redesenho] = corpos.map(prefixo);
-      assert.equal(b, a, papel + ': o prefixo mudou de um pedido para o outro (o cache não valeria)');
-      redesenho.forEach((c, i) => assert.equal(c, a, papel + ': o redesenho (chamada ' + (i + 1) + ') mandou outro prefixo'));
-      for (const x of DO_PEDIDO) assert.ok(!a.includes(x), papel + ': "' + x + '" do pedido foi parar no prefixo');
+      assert.equal(b, a, motor + ' ' + papel + ': o prefixo mudou de um pedido para o outro (o cache não valeria)');
+      redesenho.forEach((c, i) => assert.equal(c, a, motor + ' ' + papel + ': o redesenho (chamada ' + (i + 1) + ') mandou outro prefixo'));
+      for (const x of DO_PEDIDO) assert.ok(!a.includes(x), motor + ' ' + papel + ': "' + x + '" do pedido foi parar no prefixo');
       // E o fixo é a biblioteca do papel: ele está inteiro no prefixo.
       assert.ok(a.includes(JSON.stringify(C.fixo(papel)).slice(1, 2000)), papel + ': o fixo não está no começo');
       // O que muda vai DEPOIS do prefixo: o pedido de cada um chega, cada um no seu.
       const resto = corpos.map((k) => JSON.stringify(k.corpo).replace(JSON.stringify(C.fixo(papel)).slice(1, -1), ''));
-      assert.ok(resto[0].includes('Xilofone') && resto[1].includes('Quixabeira'), papel + ': o pedido não chegou');
+      assert.ok(resto[0].includes('Xilofone') && resto[1].includes('Quixabeira'), motor + ' ' + papel + ': o pedido não chegou');
     }
-  })));
-}
+  }
+})));
 
 test('o fixo não depende de hora nem de fuso, e as horas que ele traz são as dos exemplos', async () => {
   const antes = {};
@@ -138,11 +147,11 @@ test('com a galeria acima do teto: o redesenho usa o prefixo da frente da conta,
   C.definirDecisoes(todas.map((p) => ({ tipo: 'peca', id: p.id, estado: 'aprovada' })));
   try {
     assert.notEqual(C.fixo('destaque', 'saude'), C.fixo('destaque', 'comercio'), 'acima do teto a amostra devia mudar com a frente');
-    const pedido = Object.assign({}, PEDIDOS[0], { perfil: 'saude', motor: 'claude-sonnet', papel: 'destaque', tentativas: 1 });
+    const pedido = Object.assign({}, PEDIDOS[0], { perfil: 'saude', motor: UM_POR_PROVEDOR[0], papel: 'destaque', tentativas: 1 });
     await C.comporPeca(pedido);
-    await C.comporPeca(Object.assign({}, PEDIDOS[1], { perfil: 'saude', motor: 'claude-sonnet', papel: 'destaque', tentativas: 1 }));
+    await C.comporPeca(Object.assign({}, PEDIDOS[1], { perfil: 'saude', motor: UM_POR_PROVEDOR[0], papel: 'destaque', tentativas: 1 }));
     const item = { type: 'peca-html', versao: 1, papel: 'destaque', ...C.preencherPapel({ papel: 'destaque', textos: PEDIDOS[1].textos, empresa: 'X' }), campos: {} };
-    await C.refazerPeca({ item, problemas: ['não cabe'], motor: 'claude-sonnet', perfil: 'saude' });
+    await C.refazerPeca({ item, problemas: ['não cabe'], motor: UM_POR_PROVEDOR[0], perfil: 'saude' });
     const [a, b, ...refazer] = corpos.map(prefixo);
     assert.equal(b, a, 'dois pedidos da mesma frente, dois prefixos');
     refazer.forEach((c) => assert.equal(c, a, 'o redesenho mandou o prefixo de outra frente'));
