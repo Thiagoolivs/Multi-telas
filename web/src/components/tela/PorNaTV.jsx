@@ -160,7 +160,7 @@ export function PorNaTV({ peca, telaInicial, telas: dadas, onFechar, onFeito, ti
 
         {/* O rodapé que passa as frases, numa TV sem frase: a TV não mostra a faixa vazia (js/player.js, pecasDaFaixa). */}
         {semFrase.length > 0 && (
-          <section aria-label="A primeira frase do rodapé">
+          <section aria-label="Frase do rodapé">
             <div className="mb-1.5 text-sm font-semibold text-ink">A primeira frase do rodapé</div>
             <p className="mb-2 text-sm text-ink-2">
               Esta faixa passa as frases do rodapé, e {semFrase.length === 1 ? 'a ' + nomesDe(semFrase, telas) + ' ainda não tem nenhuma' : nomesDe(semFrase, telas) + ' ainda não têm nenhuma'}. Sem frase, a TV não mostra a faixa.
