@@ -21,7 +21,7 @@ const PARA = {
   kicker: 'kicker', selo: 'kicker', rotulo: 'kicker',
   titulo: 'titulo', titulo2: 'titulo',
   apoio: 'apoio', sub: 'apoio', detalhe: 'apoio', frase: 'apoio', nota: 'apoio',
-  cta: 'cta', quando: 'cta',
+  cta: 'cta', quando: 'cta', endereco: 'cta',
 };
 // O nome da empresa vem da conta; o da peça só serve quando a conta não tem.
 const DA_CONTA = ['marca', 'assinatura'];

@@ -55,6 +55,15 @@ test('com foto: a reserva com foto, a mesma foto, com o ponto que importa', () =
   assert.deepEqual(P.validarItem(r).problemas, []);
 });
 
+test('a própria reserva com foto, tirada do lugar (o que o diretor entrega sem IA): os campos dela voltam para ela', () => {
+  const ouro = C.preencherPapel({ papel: 'destaque', textos: { kicker: 'Hoje', titulo: 'Aberto no feriado', cta: 'Rua das Flores, 120' }, empresa: 'Padaria', foto: '/media/t1/f.jpg' });
+  // A peça "da IA" com o mesmo desenho e os mesmos campos (kicker, título em duas linhas, marca, endereço).
+  const r = R.daPeca(Object.assign({}, ouro, { origem: { motor: 'gemini', pedido: 'x' } }), { empresa: 'Padaria' });
+  assert.ok(r, 'sem reserva para a peça com endereço');
+  const tudo = Object.values(C.textosDaPeca(r)).join(' ').replace(/\s+/g, ' ');
+  for (const x of ['Hoje', 'Aberto no feriado', 'Rua das Flores, 120']) assert.ok(tudo.includes(x), x + ' em: ' + tudo);
+});
+
 test('o cabeçalho: a chamada é o texto principal da faixa', () => {
   const r = R.daPeca(pecaDaIA({ marca: 'Padaria', chamada: 'Café completo hoje' }, { papel: 'cabecalho' }), { empresa: 'Padaria Quixabeira' });
   assert.ok(r);

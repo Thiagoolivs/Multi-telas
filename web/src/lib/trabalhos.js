@@ -29,6 +29,8 @@ const NOME = {
   quiz: ['O quiz', 'o'],
   // Editar com a IA (D50): a campanha já existia; o que ficou pronto foi a edição.
   edicao: ['A edição', 'a'],
+  // O redesenho da peça que não coube (refazer-peca), pedido à mão ou pelo encaixe automático.
+  peca: ['O redesenho da peça', 'o'],
 };
 export const nomeDoTipo = (t) => (NOME[t] || ['A criação'])[0];
 export const frasePronto = (t) => nomeDoTipo(t) + ' ficou pront' + ((NOME[t] || [0, 'a'])[1]) + '.';
@@ -45,7 +47,9 @@ export function destino(j) {
 }
 // O quiz é escrito com o editor da TV aberto, e ele mesmo mostra as perguntas: aviso seria ruído.
 // D47: a campanha pronta abre em Criados ("campanhas"), que já mostra o resultado.
-const quemJaAvisa = { campanha: ['criar', 'campanhas'], edicao: ['campanhas'], 'campanha-simples': ['designs'], director: ['designs', 'rapida'], imagem: ['designs'], quiz: ['content'] };
+const quemJaAvisa = { campanha: ['criar', 'campanhas', 'rapida'], edicao: ['campanhas'], 'campanha-simples': ['designs'], director: ['designs', 'rapida'], imagem: ['designs'], quiz: ['content'],
+  // O encaixe automático (components/criar/EncaixeAutomatico.jsx) e o de Meus Designs mostram na peça como o redesenho acabou; o "não saiu" daqui só assustaria.
+  peca: ['rapida', 'campanhas', 'criar', 'designs'] };
 
 function emitirMudanca() { ouvintes.forEach((f) => f()); }
 
