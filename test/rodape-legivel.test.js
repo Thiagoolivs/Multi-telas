@@ -62,7 +62,7 @@ test('manchete: o selo certo, o fim da frase aparece, g/p/j inteiros', () => {
 test('letreiro: espaço entre as mensagens e a cor escolhida respeitada', () => {
   assert.match(CSS, /white-space: pre; line-height: 1\.35;/);
   assert.match(PLAYER, /zoneEl\.style\.setProperty\('--on-brand', texto\);/);
-  assert.match(ler('sw.js'), /const SHELL_CACHE = 'mt-shell-v(4[7-9]|[5-9]\d)';/);
+  assert.match(ler('sw.js'), /const SHELL_CACHE = 'mt-shell-v(4[7-9]|[5-9]\d|\d{3})';/);
 });
 
 test('o pedido da zona (e o exemplo do prompt) nunca viram frase do letreiro', () => {

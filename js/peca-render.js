@@ -288,6 +288,7 @@
    *   clima        () => Promise<string>, ex.: "27°"
    *   mensagens    frases do rodapé (e as chamadas do cabeçalho)
    *   contagem     "AAAA-MM-DDTHH:MM", o alvo de data-vivo="contagem"
+   *   nomeDaConta  o nome da conta: as iniciais do espaço de pessoa sem foto (semFotoDePessoa)
    *   agora        () => Date, para a bancada e os testes
    */
   /*
@@ -1155,6 +1156,85 @@
     const doRamo = (FOTOS_PADRAO[qual] || {})[papel];
     return doRamo || FOTO_GERAL;
   }
+  /*
+   * A MESMA FOTO DO BANCO EM DOIS ESPAÇOS (reteste 4). A peça de dois ou
+   * três espaços do mesmo papel (oferta-dupla, cena-mosaico) pedia a foto
+   * padrão do ramo para cada um e recebia a MESMA nos dois — o croissant
+   * duas vezes, lado a lado. A segunda vez que uma foto do banco aparece na
+   * peça, entra outra do mesmo ramo e papel (todas no banco, com o ramo);
+   * sem outra, a de outro papel do ramo e, por fim, a textura geral.
+   */
+  const OUTRAS_DO_RAMO = {
+    otica: { produto: [{ arquivo: '/pecas-ouro/fotos/otica/tartaruga.jpg', foco: { x: 0.5, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/otica/oculos-luz.jpg', foco: { x: 0.45, y: 0.6 } }] },
+    padaria: { produto: [{ arquivo: '/pecas-ouro/fotos/padaria/croissants-cafe.jpg', foco: { x: 0.45, y: 0.55 } }, { arquivo: '/pecas-ouro/fotos/padaria/bolo-cafe.jpg', foco: { x: 0.5, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/padaria/fornada.jpg', foco: { x: 0.5, y: 0.6 } }],
+      ambiente: [{ arquivo: '/pecas-ouro/fotos/padaria/prateleiras.jpg', foco: { x: 0.5, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/padaria/espresso.jpg', foco: { x: 0.55, y: 0.5 } }] },
+    comida: { produto: [{ arquivo: '/pecas-ouro/fotos/restaurante/massa-fresca.jpg', foco: { x: 0.5, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/restaurante/antepasto.jpg', foco: { x: 0.5, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/lanchonete/burger-classico.jpg', foco: { x: 0.35, y: 0.5 } }],
+      ambiente: [{ arquivo: '/pecas-ouro/fotos/restaurante/salao-rustico.jpg', foco: { x: 0.5, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/restaurante/jantar.jpg', foco: { x: 0.5, y: 0.5 } }] },
+    beleza: { produto: [{ arquivo: '/pecas-ouro/fotos/farmacia/cuidados.jpg', foco: { x: 0.5, y: 0.5 } }] },
+    saude: { produto: [{ arquivo: '/pecas-ouro/fotos/farmacia/cha-ervas.jpg', foco: { x: 0.5, y: 0.45 } }, { arquivo: '/pecas-ouro/fotos/clinica/frutas.jpg', foco: { x: 0.45, y: 0.5 } }],
+      ambiente: [{ arquivo: '/pecas-ouro/fotos/clinica/espera.jpg', foco: { x: 0.5, y: 0.6 } }, { arquivo: '/pecas-ouro/fotos/farmacia/balcao-moderno.jpg', foco: { x: 0.5, y: 0.5 } }] },
+    corporativo: { produto: [{ arquivo: '/pecas-ouro/fotos/industria/furadeira.jpg', foco: { x: 0.4, y: 0.5 } }],
+      ambiente: [{ arquivo: '/pecas-ouro/fotos/escritorio/escritorio-aberto.jpg', foco: { x: 0.6, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/industria/fabrica.jpg', foco: { x: 0.5, y: 0.5 } }] },
+  };
+  const TEXTURAS_GERAIS = [FOTO_GERAL, { arquivo: '/pecas-ouro/fotos/textura/madeira.jpg', foco: { x: 0.5, y: 0.5 } }, { arquivo: '/pecas-ouro/fotos/textura/marmore-escada.jpg', foco: { x: 0.5, y: 0.5 } },
+    { arquivo: '/pecas-ouro/fotos/textura/tipos-moveis.jpg', foco: { x: 0.5, y: 0.5 } }];
+  const DO_BANCO = /^\/pecas-ouro\/fotos\//;
+  function outraFoto(papel, ramo, frente, usadas) {
+    const r = RAMO_DAS_FOTOS[ramo] || ramo;
+    const qual = FOTOS_PADRAO[r] ? r : RAMO_DA_FRENTE[frente];
+    const doRamo = FOTOS_PADRAO[qual] || {};
+    const variacoes = (VARIACOES[qual] && VARIACOES[qual][papel]) || [];
+    const candidatas = [doRamo[papel]].concat(variacoes, (OUTRAS_DO_RAMO[qual] || {})[papel] || [],
+      PAPEIS_COM_FOTO_PADRAO.filter((x) => x !== papel).map((x) => doRamo[x]), TEXTURAS_GERAIS);
+    return candidatas.filter((f) => f && usadas.indexOf(f.arquivo) < 0)[0] || null;
+  }
+
+  /*
+   * A FOTO DE PESSOA QUE O CLIENTE AINDA NÃO PÔS (reteste 4). O banco nunca
+   * põe rosto de estranho no lugar de alguém da equipe (seria dizer que é
+   * ele), e o espaço ficava vazio: oito peças com metade em branco na TV.
+   * Agora ele vira um painel na cor de destaque da marca com as iniciais de
+   * quem estaria ali — o nome do espaço ("nome", "nome2"…), ou o da marca,
+   * ou o da conta — em letra grande, sem ícone. Sem nome nenhum, o painel
+   * sozinho. As iniciais vão num SVG próprio (só texto, fundo transparente),
+   * contido no espaço; o painel é o fundo do <img>: cobre o espaço em
+   * qualquer formato. A foto do cliente, quando vier, entra no lugar.
+   */
+  const SEM_INICIAL = /^(d[aeo]s?|e|dr|dra|sr|sra|prof|profa|ltda|me|sa|eireli|epp)$/i;
+  function iniciais(nome) {
+    const palavras = String(nome || '').split(/\s+/).map((p) => p.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '')).filter((p) => p && !SEM_INICIAL.test(p));
+    if (!palavras.length) return '';
+    const duas = palavras.length > 1 ? palavras[0].charAt(0) + palavras[palavras.length - 1].charAt(0) : palavras[0].slice(0, 2);
+    return duas.toUpperCase();
+  }
+  function escaparXml(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function monograma(letras, cor) {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+      + (letras ? '<text x="50" y="50" dy=".35em" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="40" letter-spacing="1" fill="' + escaparXml(cor) + '">' + escaparXml(letras) + '</text>' : '')
+      + '</svg>';
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+  function nomeDoEspaco(sombra, campo, nomeDaConta) {
+    const n = (/(\d+)$/.exec(campo) || [])[1] || '';
+    const nomes = n ? ['nome' + n] : ['nome', 'nome1', 'autor'];
+    for (let i = 0; i < nomes.length; i++) {
+      const el = sombra.querySelector('[data-campo="' + nomes[i] + '"]');
+      if (el && String(el.textContent || '').trim() && !el.hasAttribute('data-oculto')) return el.textContent;
+    }
+    const marca = sombra.querySelector('[data-campo="marca"]');
+    return (marca && String(marca.textContent || '').trim()) || nomeDaConta || '';
+  }
+  function semFotoDePessoa(el, sombra, campo, nomeDaConta, tokens) {
+    const c = (tokens && tokens.cores) || {};
+    el.removeAttribute('data-sem-foto');
+    el.setAttribute('data-mt-sem-pessoa', '');
+    el.style.objectFit = 'contain';
+    el.style.objectPosition = '50% 50%';
+    el.style.backgroundColor = c.destaque || '#333';
+    el.style.backgroundImage = 'linear-gradient(135deg, rgba(255,255,255,.14), rgba(0,0,0,.16))';
+    el.src = monograma(iniciais(nomeDoEspaco(sombra, campo, nomeDaConta)), c.sobreDestaque || '#fff');
+  }
+
   const CORTE_PADRAO = 0.5;
   const FOLGA_DO_FOCO = 0.15;
   // Cobrir esticando mais que isto (2,5× o tamanho da foto) já se vê borrado na TV.
@@ -2421,6 +2501,7 @@
     });
     if (peca) esconderPrecoIncompleto(sombra, peca);
     const videos = [];
+    const fotosDaPeca = [];
     sombra.querySelectorAll('img[data-campo-img],img[data-campo-qr]').forEach((el) => {
       const qr = el.hasAttribute('data-campo-qr');
       const campo = el.getAttribute(qr ? 'data-campo-qr' : 'data-campo-img');
@@ -2438,6 +2519,8 @@
         }
       }
       let esp = (it.espacos || {})[campo] || {};
+      // O espaço de pessoa sem a foto do cliente: o painel da marca com as iniciais (semFotoDePessoa), nunca um rosto do banco.
+      if (!qr && campo !== 'logo' && !o.rascunho && !valor && esp.papel === 'pessoa') { semFotoDePessoa(el, sombra, campo, o.nomeDaConta, tokens); return; }
       // O espaço de foto vazio leva a foto padrão do papel e do ramo (fotoPadrao): nada de meia peça vazia.
       const padrao = !qr && campo !== 'logo' && !o.rascunho && !valor ? fotoPadrao(esp.papel, o.ramo, o.frente, ((it.origem && it.origem.base) || '') + ':' + campo) : null;
       if (padrao) {
@@ -2445,6 +2528,16 @@
         esp = Object.assign({}, esp, { foco: esp.foco || padrao.foco });
         el.setAttribute('data-foto-padrao', '');
       }
+      // A mesma foto do banco num segundo espaço da peça: outra do mesmo ramo e papel (outraFoto).
+      if (!qr && campo !== 'logo' && !o.rascunho && typeof valor === 'string' && DO_BANCO.test(valor) && fotosDaPeca.indexOf(valor) >= 0) {
+        const outra = outraFoto(esp.papel, o.ramo, o.frente, fotosDaPeca);
+        if (outra) {
+          valor = outra.arquivo;
+          esp = Object.assign({}, esp, { foco: outra.foco });
+          el.setAttribute('data-foto-padrao', '');
+        }
+      }
+      if (!qr && campo !== 'logo' && typeof valor === 'string' && valor) fotosDaPeca.push(valor);
       const foto = !qr && campo !== 'logo' && !o.rascunho && !!valor ? { el, esp } : null;
       // FOTO VIVA (ver videoNoLugar): o poster no modo leve; o vídeo no resto.
       const poster = foto ? P.posterDoVideo(valor, foto.esp, o.hostsMidia) : '';
@@ -2584,6 +2677,8 @@
     fotoPadrao, FOTOS_PADRAO, FOTO_GERAL, VARIACOES, semCorte,
     // Reteste 4: o que sai antes de a letra encolher (o nível de cada elemento) e o "R$" que o cliente digita no preço.
     nivelDe, semMoedaRepetida,
+    // Reteste 4: a foto de pessoa que o cliente não pôs (as iniciais no painel da marca) e a foto do banco que não se repete na peça.
+    iniciais, monograma, outraFoto, OUTRAS_DO_RAMO,
     // O movimento de cinema: as partes puras (o teste), e as keyframes que só o player usa.
     DO_PLAYER, TEMPO, CINEMA, movimentoDe, animacaoDoElemento, contarTexto, contarPartes, origemDaFoto,
     // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).

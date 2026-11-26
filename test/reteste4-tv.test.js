@@ -205,3 +205,83 @@ test('a TV baixa as peças novas (o cache do player subiu)', () => {
   const versao = Number(/mt-shell-v(\d+)/.exec(ler('sw.js'))[1]);
   assert.ok(versao >= 100, 'SHELL_CACHE em v' + versao);
 });
+
+/* ---------------- 4. A foto de pessoa: nunca um rosto do banco, e a peça inteira sem ela ---------------- */
+
+test('o espaço de pessoa sem a foto do cliente vira o painel da marca com as iniciais — nunca a foto do banco', () => {
+  assert.equal(R.iniciais('Dra. Paula Mendes'), 'PM');
+  assert.equal(R.iniciais('Dr. Rafael Alves'), 'RA');
+  assert.equal(R.iniciais('Grupo Horizonte'), 'GH');
+  assert.equal(R.iniciais('Metalúrgica Horizonte Ltda'), 'MH', 'o "Ltda" não é inicial');
+  assert.equal(R.iniciais('Marina da Silva'), 'MS');
+  assert.equal(R.iniciais('Ótica'), 'ÓT');
+  assert.equal(R.iniciais(''), '');
+  // O SVG só tem texto (o painel é o fundo do <img>), e o texto é escapado.
+  const svg = decodeURIComponent(R.monograma('A<B', '#fff').split(',')[1]);
+  assert.match(svg, /<text [^>]*fill="#fff">A&lt;B<\/text>/);
+  assert.doesNotMatch(svg, /<image|<script|href=/);
+  assert.doesNotMatch(decodeURIComponent(R.monograma('', '#fff').split(',')[1]), /<text/, 'sem nome, o painel sozinho');
+  // O banco nunca dá foto ao papel "pessoa": o desenhista põe o painel (semFotoDePessoa) no lugar do vazio.
+  assert.equal(R.fotoPadrao('pessoa', 'padaria', 'comercio', 'x:foto'), null);
+  const PR = ler('js', 'peca-render.js');
+  assert.match(PR, /if \(!qr && campo !== 'logo' && !o\.rascunho && !valor && esp\.papel === 'pessoa'\) \{ semFotoDePessoa\(el, sombra, campo, o\.nomeDaConta, tokens\); return; \}/);
+  // As iniciais são de quem estaria ali (o nome do espaço), da marca ou da conta (a TV diz o nome dela).
+  assert.match(PR, /const nomes = n \? \['nome' \+ n\] : \['nome', 'nome1', 'autor'\];/);
+  assert.match(ler('js', 'render.js'), /nomeDaConta: global\.MT_NOME \|\| '',/);
+});
+
+test('as telas prontas não trazem rosto do banco como se fosse a equipe do cliente', () => {
+  const M = manifesto();
+  const defs = new Map(M.pecas.map((p) => [p.id, p]));
+  let espacos = 0;
+  for (const t of M.telas) {
+    for (const z of Object.values(t.zonas)) {
+      for (const e of z.pecas) {
+        if (typeof e === 'string') continue;
+        const d = defs.get(e.id);
+        for (const [n, papel] of Object.entries((d && d.fotos) || {})) {
+          if (papel !== 'pessoa') continue;
+          espacos++;
+          const v = (e.campos || {})[n];
+          assert.ok(!(typeof v === 'string' && v.startsWith('/pecas-ouro/fotos/')), t.id + ' · ' + e.id + '.' + n + ' = ' + v);
+        }
+      }
+    }
+  }
+  assert.ok(espacos >= 20, 'conferiu pouco: ' + espacos);
+  // As nove telas do lote 4 que mostravam um estranho continuam com a peça de pessoa (a TV desenha o painel).
+  for (const id of ['l4-clinica-em-pe', 'l4-dentista-deitada', 'l4-industria-deitada', 'l4-industria-em-pe', 'l4-lanchonete-deitada', 'l4-otica-em-pe', 'l4-restaurante-em-pe', 'l4-salao-deitada', 'l4-salao-em-pe']) {
+    assert.ok(M.telas.some((t) => t.id === id), id);
+  }
+  // A bancada mostra a tela como o cliente recebe: sem a foto de exemplo da peça no espaço de pessoa.
+  assert.match(ler('js', 'bancada.js'), /if \(x\.daTela\) Object\.keys\(def\.fotos \|\| \{\}\)\.forEach\(\(n\) => \{ if \(def\.fotos\[n\] === 'pessoa' && !\(n in \(x\.campos \|\| \{\}\)\)\) delete campos\[n\]; \}\);/);
+});
+
+test('a mesma foto do banco não se repete nos espaços de uma peça (oferta-dupla, cena-mosaico)', () => {
+  const banco = JSON.parse(ler('pecas-ouro', 'fotos', 'banco.json'));
+  const noBanco = new Map(banco.map((f) => [f.arquivo, f]));
+  // Cada alternativa está no banco, com o papel e o ramo dela, e o arquivo existe.
+  for (const [ramo, papeis] of Object.entries(R.OUTRAS_DO_RAMO)) {
+    for (const [papel, lista] of Object.entries(papeis)) {
+      for (const f of lista) {
+        const b = noBanco.get(f.arquivo);
+        assert.ok(b, f.arquivo + ' não está no banco');
+        assert.equal(b.papel, papel, f.arquivo);
+        assert.ok(b.ramos.includes(ramo), f.arquivo + ' não é do ramo ' + ramo);
+        assert.ok(fs.existsSync(path.join(RAIZ, f.arquivo)), f.arquivo);
+      }
+    }
+  }
+  // A segunda vez, outra foto do mesmo ramo e papel; e outra, e outra, até a textura geral.
+  for (const [ramo, frente] of [['padaria', 'comercio'], ['comida', 'comercio'], ['otica', 'comercio'], ['', 'saude'], ['', 'empresa'], ['academia', 'comercio']]) {
+    const usadas = [];
+    for (let i = 0; i < 4; i++) {
+      const f = R.outraFoto('produto', ramo, frente, usadas);
+      assert.ok(f, ramo + '/' + frente + ': acabou na ' + (i + 1) + 'ª');
+      assert.ok(!usadas.includes(f.arquivo), ramo + '/' + frente + ': repetiu ' + f.arquivo);
+      usadas.push(f.arquivo);
+    }
+  }
+  const PR = ler('js', 'peca-render.js');
+  assert.match(PR, /typeof valor === 'string' && DO_BANCO\.test\(valor\) && fotosDaPeca\.indexOf\(valor\) >= 0\) \{\n\s*const outra = outraFoto\(esp\.papel, o\.ramo, o\.frente, fotosDaPeca\);/);
+});

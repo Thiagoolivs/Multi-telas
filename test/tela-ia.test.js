@@ -94,7 +94,7 @@ test('a TV: relógio e clima do cabeçalho saem com a chave false, e o relógio 
   vm.runInContext(P.slice(i, P.indexOf('\n  }', i) + 4) + '\nmodule.exports = relogioNoCabecalho;', ctx);
   const comCabecalho = { zones: [{ id: 'cabecalho', type: 'header' }, { id: 'rodape', type: 'ticker' }] };
   assert.equal(ctx.module.exports({ zonas: { cabecalho: { relogio: false } } }, comCabecalho), false, 'sem relógio em cima, o de baixo some também');
-  assert.match(ler('sw.js'), /mt-shell-v(5[4-9]|[6-9]\d)/, 'a TV não recebe o player novo');
+  assert.match(ler('sw.js'), /mt-shell-v(5[4-9]|[6-9]\d|\d{3})/, 'a TV não recebe o player novo');
 });
 
 test('o painel: aplica numa cópia (o fundo pintado à mão sai, o relógio sai dos dois lugares), descreve e mostra antes e depois', async () => {

@@ -183,7 +183,7 @@ test('a TV: o cartão "mande sua foto" com o QR entra 1 a cada 6 na principal, e
   assert.match(R, /img\.onerror = function \(\) \{ q\.remove\(\); el\.classList\.add\('mt-pf-sem-qr'\); \};/, 'sem rede, o QR quebrado fica na tela');
   assert.match(ler('css/player.css'), /\.mt-pedidofoto \{ display: grid;/);
   assert.match(ler('server/routes/fotoqr.js'), /const avisar = \(t\) => avisarTelas\(t, 'config', \{\}\)/);
-  assert.match(ler('sw.js'), /mt-shell-v(5[6-9]|[6-9]\d)/);
+  assert.match(ler('sw.js'), /mt-shell-v(5[6-9]|[6-9]\d|\d{3})/);
 });
 
 test('o painel e a privacidade: fila só para dono/admin, tabelas novas na exclusão e na exportação', () => {

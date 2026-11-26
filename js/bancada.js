@@ -174,6 +174,13 @@
   function montarPeca(host, arq, def, papel, marca, modo, extra) {
     const x = extra || {};
     const campos = Object.assign({}, def.campos || {}, comVideo(def), x.campos || {});
+    /*
+     * Reteste 4: na tela pronta, o espaço de pessoa que a tela não preencheu
+     * fica vazio, como o cliente recebe (o "Usar" do Prontos não põe a foto
+     * de exemplo da peça: seria um rosto de banco no lugar da equipe dele) —
+     * e a TV desenha o painel com as iniciais (js/peca-render.js).
+     */
+    if (x.daTela) Object.keys(def.fotos || {}).forEach((n) => { if (def.fotos[n] === 'pessoa' && !(n in (x.campos || {}))) delete campos[n]; });
     return MTPecaRender.montar(host, {
       type: 'peca-html', papel, html: arq.html, css: arq.css,
       campos: comAConta(def, campos, arq),
@@ -184,6 +191,7 @@
       leve: !!x.leve || LEVE,
       marcaNaTela: !!x.marcaNaTela,
       clima: () => Promise.resolve('27°'),
+      nomeDaConta: CONTA || marca.nome || '',
       mensagens: x.mensagens || [],
       contagem: alvoDaContagem(),
     });
@@ -433,7 +441,7 @@
         caixa.textContent = '';
         caixa.appendChild(host);
         montarPeca(host, await lerPeca(e.id), defDe(e.id), papel, marca, grupo.modo,
-          { campos: e.campos, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
+          { campos: e.campos, daTela: true, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
       };
       await mostrar();
       if (grupo.pecas.length > 1) giros.push(setInterval(mostrar, GIRO_MS));
@@ -453,7 +461,7 @@
       host.style.height = caixa.offsetHeight + 'px';
       tv.appendChild(host);
       montarPeca(host, await lerPeca(e.id), defDe(e.id), papel, marca, grupo.modo,
-        { campos: e.campos, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
+        { campos: e.campos, daTela: true, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
       const d = await vazamentos(host, papel);
       // O piso que a peça pôs (js/peca-render.js, pisoQueCabe): menos de 1 é a letra abaixo da régua.
       const palcoDaPeca = host.shadowRoot && host.shadowRoot.querySelector('.mt-palco');
