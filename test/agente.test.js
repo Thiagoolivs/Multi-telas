@@ -323,7 +323,7 @@ test('freio: MT_AGENTE=desligado e a conta desligada voltam ao fluxo de antes, i
 });
 
 test('queda: o cérebro que falha (IA fora, erro) cai para o maestro, e a pessoa não fica parada', async () => comAgente(async () => {
-  const quebrado = { nome: 'ia', async proximo() { const e = new Error('Gemini HTTP 429'); e.tipo = 'cota'; throw e; }, devolver() {} };
+  const quebrado = { nome: 'ia', async proximo() { const e = new Error('provedor HTTP 429'); e.tipo = 'cota'; throw e; }, devolver() {} };
   const out = await responder('faz um quiz sobre café', { cerebro: quebrado });
   assert.equal(out.agente.caiu, 'ia-fora');
   assert.equal(out.ferramenta, 'criar_quiz', 'a queda não fez o que o maestro faria');
