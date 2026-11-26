@@ -39,6 +39,9 @@ const billing = require('./server/billing');
 const ai = require('./server/ai');
 // O "Gerar com IA" do espaço de imagem (POST /api/ia/imagem).
 const iaImagem = require('./server/ia-imagem');
+// A peça-ouro no lugar da que não coube (POST /api/pecas/reserva), e a porta da peça para conferir o que ela devolve.
+const reservaDaPeca = require('./server/reserva-da-peca');
+const P = require('./js/peca-html.js');
 // Cada requisição da API é uma medição de IA: os tokens somam e o uso-ia.cobrar os grava.
 const motores = require('./server/motores');
 const { AsyncResource } = require('node:async_hooks');
@@ -2452,7 +2455,8 @@ const negocioCache = new Map();
           }
         } finally { await reserva.fechar(); }
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
-        return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
+        // `fundo`: a miniatura borrada da foto (server/foto-leve.js), a mesma que o envio do celular leva.
+        return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9', ...(saved.fundo ? { fundo: saved.fundo } : {}) };
       });
     });
   }
@@ -2503,10 +2507,38 @@ const negocioCache = new Map();
       qualidade.contar(db, qualidade.chavesDoRefazer(b.item, b.problemas));
       return emTrabalho(res, sess, 'peca', { brief: 'redesenhar a peça' }, async (progresso) => {
         progresso('redesenhando a peça', String((b.problemas || [])[0] || ''));
-        const r = await compositor.refazerPeca({ item: b.item, problemas: b.problemas, motor: compositor.motorDoHtml() });
+        // Com a frente da conta: a biblioteca passou do teto, ela muda por frente — sem isto o redesenho mandava outro prefixo (sem cache) e sem as regras de Saúde.
+        const perfil = await paletaInicial.perfilDaConta(db, sess.tenant_id).catch(() => '');
+        const r = await compositor.refazerPeca({ item: b.item, problemas: b.problemas, motor: compositor.motorDoHtml(), perfil });
         if (!r.ok) throw new Error('a IA não conseguiu redesenhar a peça agora');
         return { item: Object.assign({}, r.item, { formato: b.item.formato || '16/9' }) };
       });
+    });
+  }
+
+  /*
+   * ----- A peça-ouro no lugar da que não coube (server/reserva-da-peca.js) -----
+   * O último passo do encaixe automático do Criar e da Criação rápida: a
+   * peça não coube nem redesenhada, e entra a peça-ouro aprovada do papel
+   * com os textos dela. Sem IA e sem custo (por isso fora de /api/ai). Sem
+   * reserva que leve todos os textos: 404, e o painel marca a peça.
+   */
+  if (parts[1] === 'pecas' && parts[2] === 'reserva') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('pecas:reserva:' + sess.tenant_id, 120, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'muitos pedidos nesta hora' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const v = P.validarItem(b && b.item);
+      if (v.problemas.length) return sendJson(res, 400, { error: 'a peça não passou: ' + v.problemas[0] });
+      const [{ kit, marca }, tenant] = await Promise.all([marcaDaConta(sess.tenant_id), db.getTenant(sess.tenant_id)]);
+      const nome = kit && kit.nome && kit.nome !== 'Marca principal' ? kit.nome : '';
+      const item = reservaDaPeca.daPeca(Object.assign({}, v.item, { formato: b.item.formato }),
+        { empresa: nome || (tenant && tenant.name) || '', logo: (marca && marca.logo) || '' });
+      if (!item) return sendJson(res, 404, { error: 'não há modelo aprovado que leve todos os textos desta peça', code: 'sem-reserva' });
+      const conferida = P.validarItem(item);
+      if (conferida.problemas.length) return sendJson(res, 404, { error: 'o modelo aprovado não passou: ' + conferida.problemas[0], code: 'sem-reserva' });
+      return sendJson(res, 200, { item: Object.assign({}, conferida.item, { formato: item.formato }) });
     });
   }
 

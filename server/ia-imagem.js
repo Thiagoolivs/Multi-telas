@@ -140,8 +140,10 @@ function fotoDeExemplo(pedido) {
 
 /* ---------------- A geração ---------------- */
 
-// A mídia como o painel lê (a mesma forma do envio: POST /api/media).
-const daMidia = (salvo, nome, formato) => ({ id: salvo.id, name: nome, mime: salvo.mime, size: salvo.size, url: salvo.url, origem: 'ia', formato });
+// A mídia como o painel lê (a mesma forma do envio: POST /api/media). `fundo`: a
+// miniatura borrada que server/foto-leve.js tira da foto, a mesma que o envio do celular leva.
+const daMidia = (salvo, nome, formato) => Object.assign({ id: salvo.id, name: nome, mime: salvo.mime, size: salvo.size, url: salvo.url, origem: 'ia', formato },
+  salvo.fundo ? { fundo: salvo.fundo } : {});
 
 /*
  * Gera, guarda e cobra. Devolve { status, corpo } para a rota mandar.
