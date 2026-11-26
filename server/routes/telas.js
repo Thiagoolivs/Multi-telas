@@ -353,7 +353,9 @@ module.exports = function (ctx) {
           const parecidas = reconectar.candidatas(await db.listDevices(sess.tenant_id), d, { aoVivo: temTempoReal });
           if (parecidas.length) {
             return sendJson(res, 409, {
-              error: 'Esta TV parece ser a "' + parecidas[0].nome + '", que parou de dar sinal. É ela? Se for, ela volta com o nome, a programação e o horário de antes, sem mais uma tela na mensalidade.',
+              // Reteste 4: no dia da instalação, com boxes iguais, quase sempre é outra TV — a frase diz isso primeiro.
+              error: 'Esta TV parece ser a "' + parecidas[0].nome + '", que parou de dar sinal. É ela? Instalando uma TV nova, é outra TV. '
+                + 'Só se ela já funcionava e voltou mostrando um código: aí ela volta com o nome, a programação e o horário de antes, sem mais uma tela na mensalidade.',
               code: 'parece-reconectar', telas: parecidas,
             });
           }

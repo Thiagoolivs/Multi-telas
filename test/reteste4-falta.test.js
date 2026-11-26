@@ -164,3 +164,65 @@ test('4. a faixa numa TV sem essa parte (Tela cheia): o "Pôr na TV" pergunta se
   assert.match(d, /'Na TV \(' \+ frasesDoQuando\(escolha\) \+ '\): ' \+ recebem\.length/);
   assert.match(d, /ficou de fora: não tem /);
 });
+
+test('5. a primeira TV pede o nome na hora (com o próximo "TV N" e as sugestões da frente)', async () => {
+  const N = await importar('web/src/lib/nomeDaTv.js');
+  assert.equal(N.proximoNomeDeTv([]), 'TV 1');
+  assert.equal(N.proximoNomeDeTv([{ name: 'TV 1' }, { name: 'Recepção' }, { name: 'tv 3' }]), 'TV 2');
+  // A mesma conta do servidor, que dá o nome quando o campo vem vazio.
+  const s = ler('server/routes/telas.js');
+  assert.match(s, /while \(usados\.has\('tv ' \+ n\)\) n\+\+;\n\s+return 'TV ' \+ n;/);
+  assert.match(s, /const nome = String\(b\.name \|\| ''\)\.trim\(\)\.slice\(0, 60\) \|\| d\.name \|\| \(await proximoNomeDeTv\(sess\.tenant_id\)\);/);
+  // As sugestões da frente, sem as que a conta já usa.
+  const P = require('../js/perfil.js');
+  const empresa = P.PERFIS ? P.PERFIS.empresa : P.get('empresa');
+  assert.deepEqual(N.sugestoesDeNome(empresa.textos.nomesDeTv, [{ name: 'recepção' }]), ['Refeitório', 'Portaria']);
+  // O "Sua primeira TV" manda o nome (era '') e recebe as TVs da conta nos dois lugares em que liga a TV.
+  const t = ler('web/src/components/primeira-tv/PassoTv.jsx');
+  assert.doesNotMatch(t, /devices\.pair\(code, '', extra\)/, 'voltou a primeira TV sem nome');
+  assert.match(t, /devices\.pair\(code, nome\.trim\(\) \|\| proximoNomeDeTv\(tvs\), extra\)/);
+  assert.match(t, /3 · O nome desta TV/);
+  assert.match(t, /<LigarTv codigoInicial=\{codigoInicial\} tvs=\{tvs\}/);
+  assert.match(ler('web/src/components/primeira-tv/PassoPronto.jsx'), /<LigarTv tvs=\{tvs\}/);
+  assert.match(ler('web/src/pages/PrimeiraTvPage.jsx'), /<PassoPronto [^>]*tv=\{tv\} tvs=\{tvs\}/);
+  // Telas › Ligar uma TV: as mesmas sugestões, e o "TV N" que vem se ficar vazio.
+  const sp = ler('web/src/pages/ScreensPage.jsx');
+  assert.match(sp, /<PairDialog open=\{pairOpen\} codigoInicial=\{parear\} tvs=\{todas\}/);
+  assert.match(sp, /sugestoesDeNome\(perfil\.textos\.nomesDeTv, tvs\)\.slice\(0, 4\)/);
+});
+
+test('6. "Esta TV parece ser a X?": "Não, é outra TV" na frente, o último sinal à vista e o "É a X" com confirmação', async () => {
+  const R = await importar('web/src/lib/reconectarTv.js');
+  const agora = new Date(2026, 11, 3, 10, 0).getTime();
+  const x = { id: 'dev_a', nome: 'Recepção', grupo: 'Produção', ultimoSinal: agora - 12 * 60000 };
+  assert.equal(R.ultimoSinal(x.ultimoSinal, agora), 'há 12 min (hoje, 09:48)');
+  assert.equal(R.ultimoSinal(new Date(2026, 11, 2, 18, 10).getTime(), agora), 'há 15 h (ontem, 18:10)');
+  assert.equal(R.ultimoSinal(new Date(2026, 10, 28, 18, 10).getTime(), agora), 'há 4 d (28/11, 18:10)');
+  assert.equal(R.linhaDaParecida(x, agora), 'Recepção · grupo Produção · último sinal há 12 min (hoje, 09:48)');
+  const c = R.confirmacaoDeReconectar(x, agora);
+  assert.equal(c.titulo, 'Esta é mesmo a Recepção?');
+  assert.equal(c.botao, 'Sim, é a Recepção');
+  assert.equal(c.perigo, true);
+  assert.match(c.texto, /último sinal há 12 min \(hoje, 09:48\)/);
+  assert.match(c.texto, /continua na parede dela .*toque em Cancelar: esta é outra TV\./);
+  // O bloco: "Não, é outra TV" é o principal e vem em foco; "É a X" pede a confirmação.
+  const b = ler('web/src/components/tela/PareceSerATv.jsx');
+  assert.match(b, /<Button type="button" variant="primary" size=\{tamanho\} autoFocus disabled=\{busy\} onClick=\{onNova\}>Não, é outra TV<\/Button>/);
+  assert.ok(b.indexOf('>Não, é outra TV<') < b.indexOf("'É a ' + t.nome + ', que voltou'"), '"Não, é outra TV" vem antes');
+  assert.match(b, /variant="ghost" size=\{tamanho\} icon=\{RefreshCw\} disabled=\{busy\} onClick=\{\(\) => eAMesma\(t\)\}/);
+  assert.match(b, /if \(!\(await confirmar\(confirmacaoDeReconectar\(t, Date\.now\(\)\)\)\)\) return;\n\s+onReconectar\(t\.id\);/);
+  // Os dois lugares que ligam a TV usam o bloco; o "Sim, é a X" de um toque saiu.
+  for (const f of ['web/src/pages/ScreensPage.jsx', 'web/src/components/primeira-tv/PassoTv.jsx']) {
+    const s = ler(f);
+    assert.doesNotMatch(s, /'Sim, é a ' \+ t\.nome/, f + ': voltou o "Sim" de um toque');
+    assert.match(s, /<PareceSerATv talvez=\{talvez\} busy=\{busy\}/, f);
+    assert.match(s, /\.codigo === 'parece-reconectar' \? '' : paraGente\(/, f + ': a pergunta virou erro vermelho de novo');
+  }
+  // O servidor diz primeiro o caso do dia da instalação (e a pergunta continua a mesma).
+  assert.match(ler('server/routes/telas.js'), /É ela\? Instalando uma TV nova, é outra TV\. /);
+  // O roteiro de instalação descreve a tela de agora.
+  const roteiro = ler('docs/implantacao/ROTEIRO-DE-INSTALACAO.md');
+  assert.match(roteiro, /toque em \*\*"Não, é outra TV"\*\*: é o\s+botão violeta, o primeiro/);
+  assert.match(roteiro, /\*\*"É a Recepção, que voltou"\*\*/);
+  assert.match(roteiro, /toque em \*\*Cancelar\*\*/);
+});
