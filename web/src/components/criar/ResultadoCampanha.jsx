@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, Pencil, X, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
@@ -6,6 +6,7 @@ import { DesignThumb } from '../content/DesignThumb.jsx';
 import { RedesSociais } from '../content/RedesSociais.jsx';
 import { EditarPeca } from '../content/EditarPeca.jsx';
 import { EditarComIA } from './EditarComIA.jsx';
+import { useEncaixeAutomatico, SeloDoEncaixe, ResumoDoEncaixe } from './EncaixeAutomatico.jsx';
 import { criar } from '../../api.js';
 import { aviso } from '../../lib/avisos.js';
 import E from '../../lib/escopo.js';
@@ -142,10 +143,11 @@ function Letreiro({ rotulo, mensagens, onSalvar }) {
   );
 }
 
-function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, onEditar, onLetreiro, onPorNaTv }) {
+function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, onEditar, onLetreiro, onPorNaTv, encaixe }) {
   if (!pecas.length && !(mensagens && mensagens.length) && !onLetreiro) return null;
   if (faixa && !pecas.length && !(mensagens && mensagens.length)) return null;
   const legenda = (p) => (
+    <>
     <div className="flex items-center gap-1 text-2xs text-ink-3">
       <Numero n={numeros[p.vaga]} />
       {p.horario && <><Clock size={10} /> {quando(p.horario)}</>}
@@ -164,6 +166,9 @@ function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, on
         )}
       </span>
     </div>
+    {/* A peça cabe na TV? Conferida sozinha, em segundo plano (EncaixeAutomatico.jsx). */}
+    {encaixe && <SeloDoEncaixe r={encaixe[p.vaga]} />}
+    </>
   );
   return (
     <div className="space-y-1.5">
@@ -210,6 +215,23 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
   const porNaTv = onPorNaTv ? (p, faixa) => onPorNaTv({ item: { ...p.item, formato: p.formato || p.item.formato }, papel: faixa || p.papel, formato: p.formato, label: p.label, campanha: campanha.nome }) : null;
   // QA de lançamento, 03/11: com texto que a lei barra, a campanha não está "pronta" (server/conferencia.js).
   const barrada = ((r.conferencia && r.conferencia.bloqueios) || []).length > 0;
+  /*
+   * O ENCAIXE AUTOMÁTICO: toda peça em HTML da campanha é conferida no
+   * tamanho da TV, em segundo plano. A que não cabe volta uma vez à IA; se
+   * nem assim, entra a peça-ouro aprovada; a nova é guardada na campanha
+   * (uma de cada vez: duas gravações juntas perderiam uma). O que não coube
+   * de jeito nenhum fica marcado na peça e no resumo, antes do "Pôr pra rodar".
+   */
+  const pecasParaConferir = useMemo(() => (r.telas || []).flatMap((t) => [t.zonas.cabecalho.pecas, t.zonas.principal, t.zonas.lateral, t.zonas.rodape.pecas])
+    .flatMap((l) => l || []).filter((p) => p && p.item && p.item.type === 'peca-html')
+    .map((p) => ({ chave: p.vaga, item: { ...p.item, formato: p.formato || p.item.formato } })), [r]);
+  const gravando = useRef(Promise.resolve());
+  const guardarConserto = onMudou ? (vaga, item) => {
+    const vez = gravando.current.then(() => criar.editarPeca(campanha.id, vaga, item)).then((k) => { if (k && k.campanha) onMudou(k.campanha); });
+    gravando.current = vez.catch(() => {});
+    return vez;
+  } : null;
+  const encaixe = useEncaixeAutomatico(pecasParaConferir, { onTrocar: guardarConserto });
   // Salva o letreiro de uma TV (D12). No ar, a TV só muda ao pôr pra rodar de novo.
   const letreiroDe = (ti, zona) => (onMudou ? async (mensagens) => {
     try {
@@ -241,15 +263,17 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
 
       <Conferencia conferencia={r.conferencia} />
 
+      <ResumoDoEncaixe encaixe={encaixe} rotuloDaPeca={(vaga) => 'Peça ' + numeros[vaga]} />
+
       {acoes}
 
       {(r.telas || []).map((t, i) => (
         <section key={i} className="space-y-3 rounded-lg border border-line bg-surface p-3">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><MonitorPlay size={15} className="text-accent" /> {nomeDaTela(t, i)}</h3>
-          <Zona titulo="Cabeçalho" pecas={t.zonas.cabecalho.pecas} faixa="cabecalho" mensagens={t.zonas.cabecalho.mensagens} numeros={numeros} onEditar={editar} onPorNaTv={porNaTv} onLetreiro={letreiroDe(i, 'cabecalho')} />
-          <Zona titulo="Principal" pecas={t.zonas.principal} querFoto={querFoto} numeros={numeros} onEditar={editar} onPorNaTv={porNaTv} />
-          <Zona titulo="Lateral" pecas={t.zonas.lateral} querFoto={querFoto} numeros={numeros} onEditar={editar} onPorNaTv={porNaTv} />
-          <Zona titulo="Rodapé" pecas={t.zonas.rodape.pecas} faixa="rodape" mensagens={t.zonas.rodape.mensagens} contagem={t.zonas.rodape.contagem} numeros={numeros} onEditar={editar} onPorNaTv={porNaTv} onLetreiro={letreiroDe(i, 'rodape')} />
+          <Zona titulo="Cabeçalho" pecas={t.zonas.cabecalho.pecas} faixa="cabecalho" mensagens={t.zonas.cabecalho.mensagens} numeros={numeros} encaixe={encaixe.estados} onEditar={editar} onPorNaTv={porNaTv} onLetreiro={letreiroDe(i, 'cabecalho')} />
+          <Zona titulo="Principal" pecas={t.zonas.principal} querFoto={querFoto} numeros={numeros} encaixe={encaixe.estados} onEditar={editar} onPorNaTv={porNaTv} />
+          <Zona titulo="Lateral" pecas={t.zonas.lateral} querFoto={querFoto} numeros={numeros} encaixe={encaixe.estados} onEditar={editar} onPorNaTv={porNaTv} />
+          <Zona titulo="Rodapé" pecas={t.zonas.rodape.pecas} faixa="rodape" mensagens={t.zonas.rodape.mensagens} contagem={t.zonas.rodape.contagem} numeros={numeros} encaixe={encaixe.estados} onEditar={editar} onPorNaTv={porNaTv} onLetreiro={letreiroDe(i, 'rodape')} />
         </section>
       ))}
 

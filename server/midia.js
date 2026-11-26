@@ -16,15 +16,30 @@
  * "o que a IA gerou" sem precisar de outra tabela.
  */
 const storage = require('./storage');
+const fotoLeve = require('./foto-leve');
 
 /*
  * Grava bytes já em memória (imagem da IA, thumbnail, QR renderizado) e
  * registra. Devolve o mesmo formato de `storage.saveBuffer` mais o `id`.
+ *
+ * A foto da IA (`origem: 'ia'`) passa antes por server/foto-leve.js: o PNG
+ * de 2 MB que o gerador devolve vira JPEG de ~250 KB, com o maior lado até
+ * 1920, como um envio do celular. Aí `salvo` traz também `largura`,
+ * `altura` e `fundo` (a miniatura borrada, data:image/jpeg). Aqui, e não em
+ * cada rota: as três que geram foto (a campanha, o "Gerar imagem" e o
+ * espaço de imagem) e a que vier depois passam todas por esta porta.
  */
 async function guardarBuffer(db, tenantId, buf, mime, meta) {
+  let leve = null;
+  if (meta && meta.origem === 'ia') {
+    leve = await fotoLeve.aliviarAparte(buf, mime);
+    buf = leve.buf; mime = leve.mime;
+  }
   // `meta.base`: o nome do arquivo ao lado de outro (o poster da foto viva, server/foto-viva.js).
   const salvo = await storage.saveBuffer(tenantId, buf, mime, meta && meta.base ? { base: meta.base } : undefined);
   await registrar(db, tenantId, salvo, meta);
+  if (leve && leve.largura) Object.assign(salvo, { largura: leve.largura, altura: leve.altura });
+  if (leve && leve.fundo) salvo.fundo = leve.fundo;
   return salvo;
 }
 
