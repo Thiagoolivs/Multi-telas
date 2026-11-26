@@ -87,20 +87,28 @@ Faça tudo isto em cada box, com o box no cabo de rede.
    QR**. Se aparecer **"Procurando a internet…"**, veja "Quando dá errado",
    no fim desta folha.
 2. No celular, no painel (`app.multitelas.net.br`): **Telas › Ligar uma TV**.
-   Digite o código e o **nome da planilha** (ex.: "Refeitório"). Toque em
-   **Ligar**. O QR também serve, mas abre o painel no endereço da TV e pode
-   pedir login de novo.
+   Digite o código e o **nome da planilha** (ex.: "Refeitório"; as sugestões
+   embaixo do campo preenchem com um toque). Toque em **Ligar**. Sem nome, a
+   TV vira "TV 2", "TV 3"…, e aí é preciso renomear depois. Na primeira TV da
+   conta, o "Sua primeira TV" também pede o nome (o campo vem com "TV 1":
+   troque pelo da planilha). O QR também serve, mas abre o painel no
+   endereço da TV e pode pedir login de novo.
 3. Em poucos segundos a TV sai do código e mostra a programação (ou a marca
    da empresa, se ainda não houver programação).
 4. Se aparecer **"O plano grátis tem 1 TV"**, o plano da conta não está pronto.
    Pare e fale com o dono. O código fica na tela: resolvido o plano, digite o
    mesmo código de novo.
-5. Se aparecer **"Esta TV parece ser a «Recepção», que parou de dar sinal. É
-   ela?"**, numa TV que você está instalando agora, toque em **"Não, é outra
-   TV"**. A pergunta aparece porque os 8 boxes são iguais e uma TV já pareada
-   está desligada ou sem rede. "Sim" só serve para a TV que **voltou** mostrando
-   um código (ela assume o nome e a programação da antiga). Responder "Sim" por
-   engano tira a programação de outra parede (reteste 4).
+5. Se aparecer **"Esta TV é do mesmo modelo de uma TV da conta que parou de
+   dar sinal"**, com o nome dela, o grupo e a hora do último sinal (ex.:
+   "Recepção · grupo Produção · último sinal há 12 min (hoje, 09:40)"), numa
+   TV que você está instalando agora, toque em **"Não, é outra TV"**: é o
+   botão violeta, o primeiro. A pergunta aparece porque os 8 boxes são iguais
+   e uma TV já pareada está desligada ou sem rede.
+   **"É a Recepção, que voltou"** só serve para a TV que **já funcionava** e
+   voltou mostrando um código (ela assume o nome e a programação da antiga).
+   Esse botão pede confirmação, com a hora do último sinal: se a Recepção
+   continua na parede dela, toque em **Cancelar**. Confirmar por engano tira a
+   programação de outra parede.
 
 ### 3. Nome, grupo e horário
 

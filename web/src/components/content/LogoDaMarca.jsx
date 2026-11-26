@@ -8,6 +8,7 @@ import { aviso } from '../../lib/avisos.js';
 import { analisar, propor, CLARO, ESCURO, LEITURA_MINIMA, contrasteEmTexto } from '../../lib/logo.js';
 import { cn } from '../../lib/cn.js';
 import { EscolherArquivo } from '../ui/EscolherArquivo.jsx';
+import { AvisoDaLogoEscura } from './AvisoDaLogoEscura.jsx';
 
 /*
  * A LOGO DA MARCA, analisada e corrigida (EXECUTOR D7).
@@ -109,6 +110,11 @@ export function LogoDaMarca({ logo, logoClara, logoEscura, busy, onSubir, onTira
         </div>
       ) : (
         <div className="space-y-3 p-4">
+          {/*
+            Reteste 4: a logo escura sem a versão branca. O "Melhorar a logo" troca a logo inteira (tira o
+            fundo, vetoriza); aqui é um toque para fazer SÓ a versão branca, e a logo continua a mesma.
+          */}
+          {a && <AvisoDaLogoEscura logo={{ url: logo.url, clara: logoClara ? logoClara.url : '' }} analise={a} onFeito={() => onTrocou && onTrocou()} />}
           <div className="flex flex-wrap items-center gap-4">
             <NosDoisFundos url={logo.url} clara={logoClara && logoClara.url} escura={logoEscura && logoEscura.url} />
             {/*

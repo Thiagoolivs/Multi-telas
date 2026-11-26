@@ -149,7 +149,7 @@ export function PrimeiraTvPage({ me, parear, comecarDeNovo, onIr, onSair }) {
   } else if (passo === 'horario') {
     conteudo = <PassoHorario estado={estado} onConcluir={(h) => feito('horario', { horario: h })} onPular={depois('horario')} />;
   } else {
-    conteudo = <PassoPronto opcao={preenchida} horario={estado.horario || HORARIO_PADRAO} frente={frente} nomeDaConta={marca.nome} tv={tv}
+    conteudo = <PassoPronto opcao={preenchida} horario={estado.horario || HORARIO_PADRAO} frente={frente} nomeDaConta={marca.nome} tv={tv} tvs={tvs}
       podeLigar={souRevisor} precisaAprovar={precisaAprovar} souRevisor={souRevisor} resultado={resultado}
       onLigada={ligadaNoFim} onPorNaTv={porNaTvAgora} onIr={onIr} onInicio={onSair} onIrParaPlano={() => onIr('billing')} />;
   }

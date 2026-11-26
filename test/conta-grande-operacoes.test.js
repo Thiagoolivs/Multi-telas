@@ -268,6 +268,57 @@ test('a peça pronta e a publicação para muitas TVs: um pedido, cada TV na zon
   assert.deepEqual(configDe(tvs[0].id).cfg, antes.get(tvs[0].id));
 });
 
+/*
+ * Reteste 4: o rodapé que passa as frases numa TV sem frase, e a faixa numa
+ * TV de Tela cheia, saíam calados com "Na TV: 1 tela". O plano diz por TV;
+ * o envio leva as respostas (trocar o formato, a primeira frase).
+ */
+test('a faixa que a TV não mostraria: o plano diz por TV, e o envio troca o formato e põe a primeira frase só onde falta', async () => {
+  const { R } = await oPainel();
+  const dono = await cadastro();
+  const semFrase = JSON.parse(JSON.stringify(PROGRAMA));
+  semFrase.zonas.rodape = { conteudo: 'mensagens', messages: [] };
+  const telaCheia = { version: 1, settings: { layoutId: 'full' }, zonas: { principal: { items: PROGRAMA.zonas.principal.items.slice(0, 2) } } };
+  const novas = await tvsNovas(3, '10.83.0.1');
+  const [comFrase] = naConta(dono.tenantId, [novas[0]]);
+  const [vazia] = naConta(dono.tenantId, [novas[1]], null, semFrase);
+  const [cheia] = naConta(dono.tenantId, [novas[2]], null, telaCheia);
+  // A faixa do rodapé que passa as frases (rodape-relogio, data-vivo="mensagens").
+  const rodape = { item: PROGRAMA.zonas.rodape.peca, papel: 'rodape', label: 'Rodapé com relógio' };
+  assert.match(rodape.item.html, /data-vivo="mensagens"/);
+  const ids = [comFrase.id, vazia.id, cheia.id];
+
+  comoQuem(dono.cookie);
+  const plano = new Map((await R.comoEntraNasTelas(rodape, ids)).map((x) => [x.id, x]));
+  assert.equal(pedidosDoPainel.length, 1, 'o plano leu TV por TV');
+  assert.deepEqual([plano.get(comFrase.id).semFaixa, plano.get(comFrase.id).semFrase], [false, false]);
+  assert.deepEqual([plano.get(vazia.id).semFaixa, plano.get(vazia.id).semFrase], [false, true]);
+  assert.deepEqual([plano.get(cheia.id).semFaixa, plano.get(cheia.id).semFrase, plano.get(cheia.id).layoutAtual, plano.get(cheia.id).layoutNovo], [true, true, 'full', 'corporate']);
+  // O cabeçalho na Tela cheia também; a peça do meio não pergunta (nem vai ao servidor).
+  const cab = (await R.comoEntraNasTelas({ item: PROGRAMA.zonas.cabecalho.peca, papel: 'cabecalho' }, [cheia.id]))[0];
+  assert.deepEqual([cab.faixa, cab.semFaixa, cab.semFrase], ['cabecalho', true, false]);
+  comoQuem(dono.cookie);
+  assert.deepEqual(await R.comoEntraNasTelas({ item: PROGRAMA.zonas.principal.items[0] }, ids), []);
+  assert.equal(pedidosDoPainel.length, 0);
+
+  // O envio com as respostas: a frase só entra na TV que não tinha nenhuma.
+  const r = await R.porPecaNasTelas(rodape, ids, [], { trocarLayout: true, frases: ['Bom trabalho a todos!'] });
+  assert.equal(r.ids.length, 3);
+  const c1 = configDe(comFrase.id).cfg.zonas.rodape;
+  assert.deepEqual(c1.messages, PROGRAMA.zonas.rodape.messages, 'a frase nova passou por cima das do RH');
+  assert.equal(c1.pecas.length, 2);
+  assert.deepEqual(configDe(vazia.id).cfg.zonas.rodape.messages, ['Bom trabalho a todos!']);
+  const c3 = configDe(cheia.id).cfg;
+  assert.equal(c3.settings.layoutId, 'corporate', 'a Tela cheia não trocou de formato');
+  assert.deepEqual(c3.zonas.rodape.messages, ['Bom trabalho a todos!']);
+  assert.equal(c3.zonas.rodape.pecas.length, 1);
+  assert.equal(c3.zonas.principal.items.length, 2, 'o meio saiu na troca de formato');
+  // Agora a TV mostraria: o plano não pergunta mais.
+  assert.ok((await R.comoEntraNasTelas(rodape, ids)).every((x) => !x.semFaixa && !x.semFrase));
+  assert.equal((await pedir('/api/lote/' + r.lote + '/desfazer', { method: 'POST', cookie: dono.cookie })).json.voltaram.length, 3);
+  assert.equal(configDe(cheia.id).cfg.settings.layoutId, 'full', 'o Desfazer não devolveu o formato');
+});
+
 test('a operação segue a loja de cada membro e a aprovação, e recusa o que não é dela', async () => {
   const { R } = await oPainel();
   const dono = await cadastro();
