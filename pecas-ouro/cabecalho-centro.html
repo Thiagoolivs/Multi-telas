@@ -29,7 +29,9 @@
   .mt-peca { gap: 5cqh; }
   .info, .sub { display: none; }
   /* D44: o nome no meio, entre a data e a hora — com a fonte larga da marca ele empurrava a hora para fora. */
-  .nome { font-size: max(var(--mt-piso, 0cqw), calc(38cqh * var(--mt-escala-titulo, 1))); }
+  /* Reteste 4: o nome da conta longo (até 26 letras) quebra em duas linhas em vez de encostar na hora. */
+  .nome { font-size: max(var(--mt-piso, 0cqw), calc(38cqh * var(--mt-escala-titulo, 1))); line-height: 1; text-align: center;
+    white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: balance; }
   .hora { font-size: max(var(--mt-piso, 0cqw), 38cqh); }
 }
 /*
@@ -62,13 +64,13 @@
 </style>
 <section class="mt-peca cabecalho-centro">
   <div class="lado" data-entrada="aparecer" data-ordem="1">
-    <span class="info"><span class="clima" data-vivo="clima">24°</span><span class="data" data-vivo="data">Terça · 20 out</span></span>
+    <span class="info" data-cede="3"><span class="clima" data-vivo="clima">24°</span><span class="data" data-cede="2" data-vivo="data">Terça · 20 out</span></span>
     <i aria-hidden="true"></i>
   </div>
   <div class="marca" data-entrada="aparecer">
     <img class="logo" data-campo-img="logo" alt="">
     <span class="nome" data-campo="marca">Studio <b>Bella</b></span>
-    <span class="sub" data-campo="sub">Seja bem-vindo</span>
+    <span class="sub" data-cede="1" data-campo="sub">Seja bem-vindo</span>
   </div>
   <div class="lado" data-entrada="aparecer" data-ordem="1">
     <i aria-hidden="true"></i>

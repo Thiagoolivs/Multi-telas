@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v99';
+const SHELL_CACHE = 'mt-shell-v100';
 const MEDIA_CACHE = 'mt-media-v1';
 
 /*

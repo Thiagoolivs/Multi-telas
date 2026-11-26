@@ -39,7 +39,12 @@ test('o nome tem a vez; no cabeçalho estreito saem a cidade e o dia da semana',
   assert.match(js, /<span class="mt-hc-date"><span class="mt-hc-dia">' \+/);
   // Nome que ainda não cabe encolhe antes das reticências — e de novo quando o clima chega.
   assert.match(js, /updateHeaderWeather\(weather, cfg\.settings\.cidadeClima \|\| 'São Paulo'\)\.then\(\(\) => caberNome\(title\)\);\n {4}caberNome\(title\);/);
-  assert.match(js, /const esc = Math\.max\(0\.7, \(el\.clientWidth \/ el\.scrollWidth\) \* 0\.98\);/);
+  // Reteste 4: antes de encolher, a data sai, o clima sai e o nome quebra em duas linhas; e a letra nunca fica abaixo do piso.
+  assert.match(js, /const SAI_DO_CABECALHO = \['mt-hd-sem-data', 'mt-hd-sem-clima', 'mt-hd-duas-linhas'\];/);
+  assert.match(js, /const minimo = piso \? Math\.min\(1, piso \/ base\) : 0\.7;/);
+  assert.match(css, /\.mt-header\.mt-hd-sem-data \.mt-hc-date \{ display: none; \}/);
+  assert.match(css, /\.mt-header\.mt-hd-sem-clima \.mt-header-weather \{ display: none; \}/);
+  assert.match(css, /\.mt-header\.mt-hd-duas-linhas \.mt-header-title \{ white-space: normal;/);
 });
 
 test('o clima chega de verdade: temperatura e cidade num span só', async () => {

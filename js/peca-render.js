@@ -202,6 +202,8 @@
     + '.mt-peca[data-sem-relogio] [data-vivo="relogio"]{display:none!important}'
     // O elemento que a pessoa escondeu no editor (D19).
     + '.mt-peca [data-oculto]{display:none!important}'
+    // O que saiu para a letra caber inteira (reteste 4: ver quemSai).
+    + '.mt-peca [data-mt-cedido]{display:none!important}'
     // A logo escura sem versão branca, num fundo escuro, vai numa placa clara (reteste 4: sumia no cabeçalho; ver logoNaPlaca).
     + ':where(.mt-peca) img[data-logo-placa]{background:#fff;border-radius:.3em;padding:.12em .32em;box-sizing:border-box}';
 
@@ -368,9 +370,26 @@
       palco.style.cssText = 'left:' + ((w - ref[0] * k) / 2).toFixed(2) + 'px;top:0;right:auto;bottom:auto;width:'
         + ref[0] + 'px;height:' + ref[1] + 'px;transform:scale(' + k.toFixed(5) + ');transform-origin:0 0';
     }
-    // O que a passada anterior encolheu volta ao desenho antes de medir o piso (ver semCorte).
+    // O que a passada anterior encolheu (e tirou) volta ao desenho antes de medir o piso (ver semCorte e quemSai).
     desfazerSemCorte(palco);
-    semCorte(palco, pisoQueCabe(palco, pisoDaZona(host, k, ref)));
+    devolverCedidos(palco);
+    const piso = pisoDaZona(host, k, ref);
+    let p = pisoQueCabe(palco, piso);
+    let corta = semCorte(palco, p);
+    /*
+     * O texto que, com a letra inteira, ainda ficaria cortado (a chamada que
+     * pede três linhas numa caixa de duas, o nome que não cabe nem quebrado):
+     * sai o próximo do que pode sair (quemSai), e mede de novo. Sem
+     * nada mais para tirar, fica como o semCorte deixou (o detector aponta).
+     */
+    for (let i = 0; i < 8 && piso && corta && corta.length; i++) {
+      const sai = quemSai(palco, corta);
+      if (!sai.length) break;
+      desfazerSemCorte(palco);
+      ceder(palco, sai);
+      p = pisoQueCabe(palco, piso);
+      corta = semCorte(palco, p);
+    }
   }
 
   /*
@@ -481,7 +500,7 @@
     const parada = doc.createElement('style');
     parada.textContent = '.mt-palco,.mt-palco *{animation:none!important;transition:none!important}';
     raiz.appendChild(parada);
-    try { encolherOQueCorta(palco, peca, piso); } finally { raiz.removeChild(parada); }
+    try { return encolherOQueCorta(palco, peca, piso); } finally { raiz.removeChild(parada); }
   }
   /*
    * A LINHA QUE NÃO QUEBRA (CI do PR 336). No manifesto a quebra é do campo
@@ -512,7 +531,16 @@
       mudarEstilo(grupo, 'font-size', Math.max(minimo, atual * 0.95).toFixed(2) + 'px');
     }
   }
+  // Alguma linha do texto passa do alto ou do pé da peça.
+  function passaDaPeca(el, peca) {
+    const P = peca.getBoundingClientRect();
+    const r = el.ownerDocument.createRange();
+    r.selectNodeContents(el);
+    return Array.prototype.some.call(r.getClientRects(), (l) => l.width > 0 && (l.top < P.top - 1 || l.bottom > P.bottom + 1));
+  }
+  // Devolve o texto que ainda ficou cortado (a linha não coube, nem no piso): o enquadrar tira o que pode sair (quemSai).
   function encolherOQueCorta(palco, peca, piso) {
+    const sobrou = [];
     Array.prototype.forEach.call(palco.querySelectorAll(CAMPOS_DE_TEXTO), (el) => {
       if (camadaDoPlayer(el) || el.tagName === 'IMG' || el.closest('[aria-hidden="true"]') || !String(el.textContent || '').trim() || escondidoNaCaixa(el, peca)) return;
       caberNaLinha(el, peca, piso);
@@ -548,7 +576,8 @@
       if (onde.corte === 'linha' && getComputedStyle(el).whiteSpace === 'nowrap') {
         mudarEstilo(el, 'white-space', 'normal');
         mudarEstilo(el, 'text-overflow', 'clip');
-        const quebrado = ondeCorta(el, caixas);
+        // Reteste 4: quebrado, o texto não pode passar da peça (o status em duas linhas saía pelo pé do cabeçalho).
+        const quebrado = passaDaPeca(el, peca) ? { corte: 'linha' } : ondeCorta(el, caixas);
         if (quebrado.corte === 'linha') {
           el.style.removeProperty('white-space');
           el.style.removeProperty('text-overflow');
@@ -560,6 +589,7 @@
           el.setAttribute('data-mt-sem-corte', JSON.stringify(antes));
         } else onde = quebrado;
       }
+      if (onde.corte === 'linha') sobrou.push(el);
       // 3. Só o acento ou a perna: respiro na caixa que corta, sem mexer em nada em volta.
       if (onde.corte === 'letra' && onde.caixa) {
         onde.caixa.forEach((cx) => {
@@ -574,6 +604,7 @@
         });
       }
     });
+    return sobrou;
   }
 
   function porOPiso(palco, p) {
@@ -594,6 +625,7 @@
    */
   function pisoQueCabe(palco, piso) {
     palco.removeAttribute('data-mt-piso-cedeu');
+    palco.removeAttribute('data-mt-piso-motivo');
     const raiz = palco.parentNode;
     const doc = palco.ownerDocument;
     if (!piso || !raiz || !doc || !doc.createElement || typeof palco.getBoundingClientRect !== 'function' || typeof getComputedStyle !== 'function') {
@@ -608,7 +640,25 @@
       porOPiso(palco, 0);
       const antes = encaixe(palco);
       porOPiso(palco, piso);
-      if (!piorou(antes, encaixe(palco))) return piso;
+      let depois = encaixe(palco);
+      if (!piorou(antes, depois)) return piso;
+      // Antes de a letra encolher, sai o que a peça disse que pode sair (ver quemSai), um pouco por vez.
+      const tirados = [];
+      for (let i = 0; i < 12; i++) {
+        const sai = quemSai(palco, culpadosDoPiso(antes, depois));
+        if (!sai.length) break;
+        ceder(palco, sai);
+        Array.prototype.push.apply(tirados, sai);
+        depois = encaixe(palco);
+        if (!piorou(antes, depois)) return piso;
+      }
+      // Não adiantou: o que esta passada tirou volta (nada sai à toa), e a letra cede como antes.
+      if (tirados.length) {
+        devolverTirados(palco, tirados);
+        depois = encaixe(palco);
+      }
+      // O porquê, para a bancada e a régua dizerem o que não coube (só quando cede: a conta é feita uma vez).
+      palco.setAttribute('data-mt-piso-motivo', motivoDoPiso(antes, depois));
       let cabe = 0, naoCabe = piso;
       for (let i = 0; i < 5; i++) {
         const meio = (cabe + naoCabe) / 2;
@@ -621,6 +671,92 @@
     } finally {
       raiz.removeChild(parada);
     }
+  }
+
+  /*
+   * O QUE SAI ANTES DE A LETRA ENCOLHER (reteste 4, achado 17, 26/11). Na
+   * TV de verdade, com o nome da conta (15 a 26 letras, e não as 8 do
+   * exemplo) e o clima, o cabeçalho não cabia com a letra inteira e o piso
+   * cedia para 3,5% — e a régua, com os nomes curtos do exemplo, passava.
+   * A regra é a de sempre (docs/qa-total/REFERENCIAS.md): a letra nunca
+   * fica abaixo do piso. O que não cabe SAI, do menos importante para o
+   * mais, e a letra fica inteira.
+   *
+   * A peça diz o que pode sair e em que ordem: `data-cede="1"` sai primeiro,
+   * depois o "2", até o "5" (no cabeçalho: a chamada, a data, o clima; o
+   * nome da marca e a hora nunca saem). Na faixa (cabeçalho e rodapé, até
+   * 220 px de altura), a data e o clima que a peça não marcou saem por
+   * último, sozinhos (níveis 8 e 9): é o que vale para a peça que nasceu
+   * antes desta regra e que a IA escreveu sem ela. Na peça da principal, a
+   * assinatura com o nome da marca (data-repete="marca", que já some quando
+   * a tela tem cabeçalho) sai depois de tudo o que a peça marcou (nível 6):
+   * o nome da conta de 26 letras não cabe ao lado do número, e o nome da
+   * marca fica inteiro no cabeçalho ou no selo do rodapé. O enfeite que só existe
+   * por causa do que sai (o filete entre o clima e a hora) leva o mesmo
+   * nível na peça: nada sobe sozinho para o pai, que pode ser uma coluna da
+   * grade. Só quando nada mais pode sair a letra cede, como antes
+   * (data-mt-piso-cedeu: a régua reprova).
+   *
+   * Custo: nada a mais na peça que cabe (uma medida, como antes); na que
+   * não cabe, uma medida a cada vez que algo sai (no máximo 12), e só ao
+   * entrar ou quando a zona muda — nada por quadro.
+   */
+  const NIVEIS_DA_FAIXA = { data: 8, clima: 9 };
+  // O nome da marca repetido dentro de uma peça da principal (data-repete="marca", a assinatura) sai antes de a letra encolher.
+  const NIVEL_DA_ASSINATURA = 6;
+  function nivelDe(el, faixa) {
+    const n = Number(el.getAttribute('data-cede'));
+    if (n >= 1 && n <= 5) return n;
+    if (!faixa && el.getAttribute('data-repete') === 'marca') return NIVEL_DA_ASSINATURA;
+    return faixa ? NIVEIS_DA_FAIXA[el.getAttribute('data-vivo')] || 0 : 0;
+  }
+  function quemCede(palco) {
+    const faixa = palco.offsetHeight > 0 && palco.offsetHeight <= 220;
+    return Array.prototype.filter.call(palco.querySelectorAll('[data-cede],[data-vivo="data"],[data-vivo="clima"],[data-repete="marca"]'), (el) => !camadaDoPlayer(el))
+      .map((el) => ({ el, n: nivelDe(el, faixa) })).filter((x) => x.n
+        // A data e o clima que já estão dentro de um bloco que cede saem com ele.
+        && !(x.el.parentElement && x.el.parentElement.closest('[data-cede]') && !x.el.hasAttribute('data-cede')));
+  }
+  /*
+   * Quem sai agora: entre o que pode sair e ainda está à vista, primeiro o
+   * que está no defeito (o nome que encosta no número: sai o nome, e não o
+   * apoio, que não tem nada com isso), no menor nível; se nada do defeito
+   * pode sair, o menor nível da peça (a faixa em que o nome não cabe: a
+   * data dá lugar a ele). Vazio: nada mais pode sair.
+   */
+  function quemSai(palco, culpados) {
+    const vivos = quemCede(palco).filter((x) => !x.el.hasAttribute('data-mt-cedido') && !x.el.closest('[data-oculto],[data-mt-cedido]') && x.el.getClientRects().length);
+    const doDefeito = vivos.filter((x) => culpados.some((c) => c && (x.el === c || x.el.contains(c))));
+    const base = doDefeito.length ? doDefeito : vivos;
+    const menor = base.reduce((m, x) => (!m || x.n < m ? x.n : m), 0);
+    return base.filter((x) => x.n === menor);
+  }
+  function ceder(palco, lista) {
+    lista.forEach((x) => x.el.setAttribute('data-mt-cedido', String(x.n)));
+    palco.setAttribute('data-mt-saiu', String(palco.querySelectorAll('[data-mt-cedido]').length));
+  }
+  function devolverTirados(palco, lista) {
+    lista.forEach((x) => x.el.removeAttribute('data-mt-cedido'));
+    const n = palco.querySelectorAll('[data-mt-cedido]').length;
+    if (n) palco.setAttribute('data-mt-saiu', String(n)); else palco.removeAttribute('data-mt-saiu');
+  }
+  // Os elementos que o piso empurrou para fora ou para cima de outro.
+  function culpadosDoPiso(antes, depois) {
+    const out = depois.fora.filter((i) => antes.fora.indexOf(i) < 0).map((i) => depois.els[i]);
+    depois.juntos.filter((p) => antes.juntos.indexOf(p) < 0).forEach((p) => p.split('-').forEach((i) => out.push(depois.els[Number(i)])));
+    return out;
+  }
+  function devolverCedidos(palco) {
+    if (!palco || !palco.querySelectorAll) return;
+    palco.querySelectorAll('[data-mt-cedido]').forEach((el) => el.removeAttribute('data-mt-cedido'));
+    if (palco.removeAttribute) palco.removeAttribute('data-mt-saiu');
+  }
+  // "fora: titulo; juntos: kicker × titulo" — os campos que o piso empurrou (o nome do campo ou do vivo).
+  function motivoDoPiso(antes, depois) {
+    const nome = (el) => (el && (el.getAttribute('data-campo') || el.getAttribute('data-vivo') || el.getAttribute('data-campo-qr'))) || '?';
+    const fora = depois.fora.filter((i) => antes.fora.indexOf(i) < 0).map((i) => nome(depois.els[i]));
+    const juntos = depois.juntos.filter((p) => antes.juntos.indexOf(p) < 0).map((p) => p.split('-').map((i) => nome(depois.els[i])).join(' × '));
+    return (fora.length ? 'fora: ' + fora.join(', ') : '') + (fora.length && juntos.length ? '; ' : '') + (juntos.length ? 'juntos: ' + juntos.join(', ') : '');
   }
 
   // Onde está cada campo (as linhas do texto, não a caixa) e o que sai da margem ou encosta em outro.
@@ -670,7 +806,7 @@
         if (c.rs.some((r) => d.rs.some((x) => cobre(r, x)))) juntos.push(i + '-' + j);
       }
     });
-    return { fora, juntos };
+    return { fora, juntos, els: campos.map((c) => c.el) };
   }
   // Só conta o que o piso criou: o que o desenho já tinha (de propósito ou não) não é culpa dele.
   function piorou(antes, depois) {
@@ -888,6 +1024,21 @@
     if (pai && pai !== peca && !pai.querySelector('h1,h2,[data-campo="titulo"]')) pai.setAttribute('data-oculto', '');
   }
 
+  /*
+   * O "R$" DUAS VEZES (reteste 4). A peça de preço já escreve o "R$" dela ao
+   * lado do campo; o cliente (e a tela de exemplo l1-comercio-vitrine)
+   * digita "R$ 249" no preço, e a TV mostrava "R$ R$ 249" — mais largo, o
+   * preço passava da borda e a letra cedia. O "R$" do começo do campo sai
+   * quando o bloco do preço já tem o dele.
+   */
+  const MOEDA_NO_COMECO = /^\s*R\$\s*/i;
+  function semMoedaRepetida(el, valor) {
+    const v = String(valor);
+    if (!CAMPO_DE_PRECO.test(el.getAttribute('data-campo') || '') || !MOEDA_NO_COMECO.test(v)) return v;
+    const pai = el.parentElement;
+    const doBloco = pai ? Array.prototype.some.call(pai.childNodes, (c) => c !== el && /R\$/.test(c.textContent || '')) : false;
+    return doBloco ? v.replace(MOEDA_NO_COMECO, '') : v;
+  }
   /*
    * PREÇO PELA METADE NÃO VAI AO AR (reteste 2, 09/11). A vitrine mostrava
    * "10x de" sem o valor, e a peça de serviço da clínica, sem o preço (a
@@ -2260,7 +2411,7 @@
     // Campos: TEXTO, sempre. O que o cliente digita nunca vira tag.
     sombra.querySelectorAll('[data-campo]').forEach((el) => {
       const valor = it.campos[el.getAttribute('data-campo')];
-      if (valor != null) el.textContent = valor;
+      if (valor != null) el.textContent = semMoedaRepetida(el, valor);
     });
     // Os nomes já vieram conferidos pela porta (só campos que a peça declara).
     (it.ocultos || []).forEach((n) => {
@@ -2380,9 +2531,17 @@
     const clima = vivos.filter((el) => el.getAttribute('data-vivo') === 'clima');
     if (clima.length && o.clima) {
       clima.forEach((el) => { el.style.visibility = 'hidden'; });
+      /*
+       * Reteste 4: a temperatura chega depois da medida do piso (a TV pede ao
+       * serviço). Chegou ou não, a peça se mede de novo: o que saiu para
+       * caber pode voltar, e o que passou a não caber sai (quemSai).
+       */
+      const remedirComOClima = () => { if (host.isConnected !== false) enquadrar(host, palcoEl); };
       Promise.resolve().then(o.clima).then((t) => {
+        const antes = clima.map((el) => el.textContent).join('|');
         clima.forEach((el) => { el.textContent = t || ''; el.style.visibility = t ? '' : 'hidden'; });
-      }, () => { clima.forEach((el) => { el.textContent = ''; }); });
+        if (clima.map((el) => el.textContent).join('|') !== antes) remedirComOClima();
+      }, () => { clima.forEach((el) => { el.textContent = ''; }); remedirComOClima(); });
     }
 
     /*
@@ -2423,6 +2582,8 @@
     ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA,
     // A foto padrão do espaço vazio (o teste confere que cada uma está no banco) e o passo que não deixa texto cortado.
     fotoPadrao, FOTOS_PADRAO, FOTO_GERAL, VARIACOES, semCorte,
+    // Reteste 4: o que sai antes de a letra encolher (o nível de cada elemento) e o "R$" que o cliente digita no preço.
+    nivelDe, semMoedaRepetida,
     // O movimento de cinema: as partes puras (o teste), e as keyframes que só o player usa.
     DO_PLAYER, TEMPO, CINEMA, movimentoDe, animacaoDoElemento, contarTexto, contarPartes, origemDaFoto,
     // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).

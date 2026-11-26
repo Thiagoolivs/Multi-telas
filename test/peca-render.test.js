@@ -81,7 +81,9 @@ test('relógio e data dos campos vivos: formato da TV, e nada quando o relógio 
 test('o renderizador escreve campo como TEXTO, nunca como HTML', () => {
   // O que o cliente digita não pode virar tag na TV.
   const fonte = semComentarios(ler('js', 'peca-render.js'));
-  assert.match(fonte, /el\.textContent = valor/);
+  // (Reteste 4: o "R$" repetido no começo do preço sai, e o resto continua texto.)
+  assert.match(fonte, /el\.textContent = semMoedaRepetida\(el, valor\)/);
+  assert.match(fonte, /return doBloco \? v\.replace\(MOEDA_NO_COMECO, ''\) : v;/);
   assert.doesNotMatch(fonte, /innerHTML\s*=\s*valor|insertAdjacentHTML/);
   // E a porta roda de novo antes de desenhar: a TV não confia em quem mandou.
   assert.match(fonte, /P\.validarItem\(item/);

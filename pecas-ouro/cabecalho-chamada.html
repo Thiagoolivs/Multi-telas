@@ -33,10 +33,11 @@
 /* Faixa em pé: a largura é pouca — a chamada e a marca encolhem, o "quando" sai. */
 @container (aspect-ratio < 9) {
   .mt-peca { gap: 5cqh; }
-  .marca { max-width: 42%; }
+  /* Reteste 4: com o nome da conta (até 26 letras) a marca de 42% pedia três linhas; com 50% e o espaçado justo, duas. */
+  .marca { max-width: 50%; }
   /* Reteste 3: a logo grande encostava na tarja da chamada; aqui ela fica um pouco menor (ainda o dobro do desenho de antes, com o vazio cortado). */
   .logo { height: 60cqh; }
-  .nome { font-size: max(var(--mt-piso, 0cqw), 12cqh); letter-spacing: 1.7cqh; }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 12cqh); letter-spacing: .6cqh; text-wrap: balance; }
   /* Reteste 2: as duas linhas da chamada não cabiam na tarja de 18cqh de margem (cortava o acento e a perna). A tarja cresce e a entrelinha aperta. */
   .chamada { margin: 9cqh 0; }
   /* D44: em pé a faixa é estreita — a chamada quebra em duas linhas em vez de passar por cima do relógio. */
@@ -50,6 +51,6 @@
     <img class="logo" data-campo-img="logo" alt="">
     <span class="nome" data-campo="marca">Lanchonete<br>da Praça</span>
   </div>
-  <div class="chamada" data-entrada="crescer" data-ordem="1"><span data-campo="chamada">Burger em dobro</span><small data-campo="quando">só hoje</small></div>
+  <div class="chamada" data-cede="2" data-entrada="crescer" data-ordem="1"><span data-campo="chamada">Burger em dobro</span><small data-cede="1" data-campo="quando">só hoje</small></div>
   <span class="hora" data-vivo="relogio" data-entrada="aparecer" data-ordem="2">12:05</span>
 </section>

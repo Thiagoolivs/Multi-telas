@@ -562,6 +562,15 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 @container (aspect-ratio < 10) {
   .mt-hw-cidade, .mt-hc-dia { display: none; }
 }
+/*
+ * Reteste 4: o nome da conta que ainda não cabe (js/player.js, caberNome)
+ * tira a data, depois o clima, e quebra em duas linhas — antes de a letra
+ * encolher, e ela nunca fica abaixo do piso.
+ */
+.mt-header.mt-hd-sem-data .mt-hc-date { display: none; }
+.mt-header.mt-hd-sem-clima .mt-header-weather { display: none; }
+.mt-header.mt-hd-duas-linhas .mt-header-title { white-space: normal; text-overflow: clip; line-height: 1.22;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-height: 2.44em; }
 
 /* ---------- Faixa de notícias (estilo clássico, tech) ----------
    Duas linhas: selo "ao vivo" + relógio em cima, manchete embaixo.
