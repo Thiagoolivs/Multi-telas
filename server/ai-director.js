@@ -1262,11 +1262,8 @@ function rascunhoDaPeca(peca, plano, ctx, brief) {
   return Object.assign(item, { formato: peca.formato });
 }
 
-async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, onProgresso, pararNoPlano } = {}) {
-  ctx = ctx || {};
-  // Etapas contadas para o painel: a campanha demora, e quem espera precisa ver
-  // que algo acontece. Sem isso "1 clique" parece "travou".
-  const passo = (etapa, detalhe) => { try { onProgresso && onProgresso(etapa, detalhe); } catch (e) {} };
+// O que só o plano NOVO usa: a direção das referências, o catálogo do acervo e o briefing.
+async function antesDoPlano(brief, ctx, passo, onLerReferencias, onCatalogar) {
   /*
    * Referências do cliente: em vez de descrever o estilo por escrito, a empresa
    * sobe as artes que gosta e a IA olha. O resultado vira uma frase de direção
@@ -1307,6 +1304,35 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
   if (ctx.briefRico && ctx.briefRico.formatos.length && !(ctx.formatos && ctx.formatos.length)) {
     ctx.formatos = ctx.briefRico.formatos;
   }
+}
+
+/*
+ * O briefing da campanha aprovada, sem chamada de modelo: o que veio no
+ * plano que a pessoa aprovou (vem de fora: passa pelos limites de sempre),
+ * senão o da conversa, senão nenhum.
+ */
+function briefingDoPlano(ctx) {
+  const b = ctx.planoAprovado && ctx.planoAprovado.briefing;
+  if (b && typeof b === 'object') return normalizarBriefRico(b);
+  if (ctx.briefingPronto && (ctx.briefingPronto.objetivo || ctx.briefingPronto.briefing)) return normalizarBriefRico(ctx.briefingPronto);
+  return null;
+}
+
+async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, onProgresso, pararNoPlano } = {}) {
+  ctx = ctx || {};
+  // Etapas contadas para o painel: a campanha demora, e quem espera precisa ver
+  // que algo acontece. Sem isso "1 clique" parece "travou".
+  const passo = (etapa, detalhe) => { try { onProgresso && onProgresso(etapa, detalhe); } catch (e) {} };
+  /*
+   * O PLANO APROVADO NÃO REFAZ O CAMINHO DO PLANO (26/11). As referências, o
+   * catálogo do acervo e o briefing deduzido só servem para PLANEJAR — e a
+   * segunda chamada não replaneja. Antes ela os refazia todos: uma chamada
+   * de texto e duas de visão pagas de novo, mais espera, e um briefing que
+   * podia sair diferente do que a pessoa viu. O briefing vem no plano que
+   * ela aprovou (`plano.briefing`, posto abaixo, no corte do plano).
+   */
+  if (ctx.planoAprovado) ctx.briefRico = briefingDoPlano(ctx);
+  else await antesDoPlano(brief, ctx, passo, onLerReferencias, onCatalogar);
 
   /*
    * O PLANO CUSTA CENTAVOS; AS IMAGENS CUSTAM CRÉDITO. Dá para parar no meio.
@@ -1357,10 +1383,13 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
      * Com o motor HTML vai também o RASCUNHO de cada peça (§4.10, passo 3): a
      * peça-ouro com o texto real, desenhada no modo rascunho — a foto vira
      * silhueta. Instantâneo e sem custo; a foto só é gerada depois do ok.
+     *
+     * O briefing vai DENTRO do plano: o painel devolve o plano inteiro na
+     * aprovação, e a segunda chamada o reusa em vez de deduzir de novo.
      */
     return {
       etapa: 'plano',
-      plano,
+      plano: Object.assign({}, plano, { briefing: ctx.briefRico || null }),
       rascunhos: ctx.motorHtml ? plano.pecas.map((p) => rascunhoDaPeca(p, plano, ctx, brief)) : undefined,
       orcamento: {
         pecas: plano.pecas.length,
