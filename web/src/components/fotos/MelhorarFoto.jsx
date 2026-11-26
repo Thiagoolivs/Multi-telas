@@ -20,7 +20,8 @@ import { melhorarFoto, ampliacao, AMPLIACAO_BORRADA } from '../../lib/fotoRuim.j
  */
 export function MelhorarFoto({ arquivo, analise, espaco, onUsar, onOutra }) {
   const [luz, setLuz] = useState(!!analise.niveis);
-  const [recorte, setRecorte] = useState(!!analise.recorte);
+  // Foto já pequena para a TV: recortar tiraria a resolução que falta, então o recorte começa desligado.
+  const [recorte, setRecorte] = useState(!!analise.recorte && !analise.problemas.some((p) => p.tipo === 'pequena'));
   const [depois, setDepois] = useState(null);   // { arquivo, url, largura, altura }
   const [fazendo, setFazendo] = useState(false);
   const [erro, setErro] = useState('');
