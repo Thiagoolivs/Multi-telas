@@ -41,7 +41,9 @@ test('o nome tem a vez; no cabeçalho estreito saem a cidade e o dia da semana',
   assert.match(js, /updateHeaderWeather\(weather, cfg\.settings\.cidadeClima \|\| 'São Paulo'\)\.then\(\(\) => caberNome\(title\)\);\n {4}caberNome\(title\);/);
   // Reteste 4: antes de encolher, a data sai, o clima sai e o nome quebra em duas linhas; e a letra nunca fica abaixo do piso.
   assert.match(js, /const SAI_DO_CABECALHO = \['mt-hd-sem-data', 'mt-hd-sem-clima', 'mt-hd-duas-linhas'\];/);
-  assert.match(js, /const minimo = piso \? Math\.min\(1, piso \/ base\) : 0\.7;/);
+  assert.match(js, /const minimo = base \* \(piso \? Math\.min\(1, piso \/ base\) : 0\.7\);/);
+  // O que cabe é medido pelas linhas do texto, não pela caixa (o filete ::before inflava o scrollHeight).
+  assert.match(js, /const cabe = \(\) => nomeCabe\(el, zona\);/);
   assert.match(css, /\.mt-header\.mt-hd-sem-data \.mt-hc-date \{ display: none; \}/);
   assert.match(css, /\.mt-header\.mt-hd-sem-clima \.mt-header-weather \{ display: none; \}/);
   assert.match(css, /\.mt-header\.mt-hd-duas-linhas \.mt-header-title \{ white-space: normal;/);

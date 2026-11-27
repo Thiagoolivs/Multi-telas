@@ -105,7 +105,8 @@ test('o cabeçalho próprio da TV: antes de o nome encolher, saem a data e o cli
   const ini = js.indexOf('  function caberNome(el) {');
   const fonte = js.slice(ini, js.indexOf('\n  }\n', ini));
   assert.match(fonte, /zona\.classList\.add\(SAI_DO_CABECALHO\[i\]\);\n\s*if \(cabe\(\)\) return;/);
-  assert.match(fonte, /const minimo = piso \? Math\.min\(1, piso \/ base\) : 0\.7;/);
+  assert.match(fonte, /const minimo = base \* \(piso \? Math\.min\(1, piso \/ base\) : 0\.7\);/);
+  assert.match(fonte, /fs = Math\.max\(minimo, fs \* 0\.94\);/);
   assert.doesNotMatch(fonte, /Math\.max\(0\.7,/, 'a letra do nome ia a 70% mesmo com o piso da TV');
 });
 
