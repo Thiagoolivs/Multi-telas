@@ -39,11 +39,26 @@ const billing = require('./server/billing');
 const ai = require('./server/ai');
 // O "Gerar com IA" do espaço de imagem (POST /api/ia/imagem).
 const iaImagem = require('./server/ia-imagem');
+// A peça-ouro no lugar da que não coube (POST /api/pecas/reserva), e a porta da peça para conferir o que ela devolve.
+const reservaDaPeca = require('./server/reserva-da-peca');
+const P = require('./js/peca-html.js');
 // Cada requisição da API é uma medição de IA: os tokens somam e o uso-ia.cobrar os grava.
 const motores = require('./server/motores');
 const { AsyncResource } = require('node:async_hooks');
 const director = require('./server/ai-director');
 const compositor = require('./server/compositor');
+/*
+ * As decisões da galeria (Conteúdo pronto) também valem para a IA: a
+ * biblioteca-ouro que vai de exemplo e a peça de reserva seguem o mesmo
+ * estado do manifesto servido (server/compositor.js, definirDecisoes). No
+ * boot, depois de cada decisão e a cada 5 minutos; o compositor só refaz a
+ * biblioteca quando alguma mudou. Banco fora do ar: fica o que já estava.
+ */
+function ouroDaIA() {
+  return Promise.resolve().then(() => db.decisoesDoConteudo())
+    .then((decisoes) => { compositor.definirDecisoes(decisoes); })
+    .catch((e) => { log.aviso('conteudo.ia-sem-decisoes', { erro: String((e && e.message) || e) }); });
+}
 const ajustePeca = require('./server/ajuste-peca');
 const quizIA = require('./server/quiz-ia');
 const calendario = require('./server/calendario');
@@ -667,6 +682,8 @@ function montarCtx() {
     relatorio: require('./server/routes/relatorio')(ctx),
     redes: redesRotas(ctx),
     conversas: require('./server/routes/conversas')(ctx),
+    // O agente do Criar: validar e pôr no ar o plano, e a chave de cada conta na Plataforma (server/agente/).
+    agente: require('./server/agente/rotas')(ctx),
     campanhas: require('./server/routes/campanhas')(ctx),
     // O calendário da empresa (D23).
     calendario: require('./server/routes/calendario')(ctx),
@@ -826,6 +843,8 @@ async function handleApi(req, res, pathname, query) {
     ajustar: 'ajuste',
     // Editar com a IA (D50): uma volta da conversa de edição — texto, medido como o ajuste.
     editar: 'ajuste',
+    // O agente (25/11): validar e executar o plano — os textos e os desenhos; as fotos cobram à parte, em fotoDaConta.
+    agente: 'agente',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -1492,6 +1511,8 @@ const negocioCache = new Map();
               }
             }
           }
+          // A IA aprende já com o que foi aprovado (e esquece o recusado).
+          await ouroDaIA();
           return sendJson(res, 200, { ok: true, estado, decididos: lote.itens, pecas });
         });
       }
@@ -1516,6 +1537,7 @@ const negocioCache = new Map();
               pecas.push(pid);
             }
           }
+          await ouroDaIA();
           return sendJson(res, 200, { ok: true, tipo, id, estado, pecas });
         });
       }
@@ -2437,7 +2459,8 @@ const negocioCache = new Map();
           }
         } finally { await reserva.fechar(); }
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
-        return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
+        // `fundo`: a miniatura borrada da foto (server/foto-leve.js), a mesma que o envio do celular leva.
+        return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9', ...(saved.fundo ? { fundo: saved.fundo } : {}) };
       });
     });
   }
@@ -2488,10 +2511,38 @@ const negocioCache = new Map();
       qualidade.contar(db, qualidade.chavesDoRefazer(b.item, b.problemas));
       return emTrabalho(res, sess, 'peca', { brief: 'redesenhar a peça' }, async (progresso) => {
         progresso('redesenhando a peça', String((b.problemas || [])[0] || ''));
-        const r = await compositor.refazerPeca({ item: b.item, problemas: b.problemas, motor: compositor.motorDoHtml() });
+        // Com a frente da conta: a biblioteca passou do teto, ela muda por frente — sem isto o redesenho mandava outro prefixo (sem cache) e sem as regras de Saúde.
+        const perfil = await paletaInicial.perfilDaConta(db, sess.tenant_id).catch(() => '');
+        const r = await compositor.refazerPeca({ item: b.item, problemas: b.problemas, motor: compositor.motorDoHtml(), perfil });
         if (!r.ok) throw new Error('a IA não conseguiu redesenhar a peça agora');
         return { item: Object.assign({}, r.item, { formato: b.item.formato || '16/9' }) };
       });
+    });
+  }
+
+  /*
+   * ----- A peça-ouro no lugar da que não coube (server/reserva-da-peca.js) -----
+   * O último passo do encaixe automático do Criar e da Criação rápida: a
+   * peça não coube nem redesenhada, e entra a peça-ouro aprovada do papel
+   * com os textos dela. Sem IA e sem custo (por isso fora de /api/ai). Sem
+   * reserva que leve todos os textos: 404, e o painel marca a peça.
+   */
+  if (parts[1] === 'pecas' && parts[2] === 'reserva') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('pecas:reserva:' + sess.tenant_id, 120, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'muitos pedidos nesta hora' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const v = P.validarItem(b && b.item);
+      if (v.problemas.length) return sendJson(res, 400, { error: 'a peça não passou: ' + v.problemas[0] });
+      const [{ kit, marca }, tenant] = await Promise.all([marcaDaConta(sess.tenant_id), db.getTenant(sess.tenant_id)]);
+      const nome = kit && kit.nome && kit.nome !== 'Marca principal' ? kit.nome : '';
+      const item = reservaDaPeca.daPeca(Object.assign({}, v.item, { formato: b.item.formato }),
+        { empresa: nome || (tenant && tenant.name) || '', logo: (marca && marca.logo) || '' });
+      if (!item) return sendJson(res, 404, { error: 'não há modelo aprovado que leve todos os textos desta peça', code: 'sem-reserva' });
+      const conferida = P.validarItem(item);
+      if (conferida.problemas.length) return sendJson(res, 404, { error: 'o modelo aprovado não passou: ' + conferida.problemas[0], code: 'sem-reserva' });
+      return sendJson(res, 200, { item: Object.assign({}, conferida.item, { formato: item.formato }) });
     });
   }
 
@@ -2854,6 +2905,7 @@ const negocioCache = new Map();
   if (await ctx.routes.aprovacoes(req, res, parts, query, sess)) return;
   if (await ctx.routes.relatorio(req, res, parts, query, sess)) return;
   if (await ctx.routes.redes(req, res, parts, query, sess)) return;
+  if (await ctx.routes.agente(req, res, parts, query, sess)) return;
   if (await ctx.routes.conversas(req, res, parts, query, sess)) return;
   if (await ctx.routes.campanhas(req, res, parts, query, sess)) return;
   if (await ctx.routes.calendario(req, res, parts, query, sess)) return;
@@ -3680,6 +3732,8 @@ erros.instalarRedeDeSeguranca();
 jobs.usarBanco(db);
 
 db.init()
+  // A biblioteca da IA já com as decisões da galeria antes do primeiro pedido.
+  .then(() => ouroDaIA())
   .then(() => server.listen(PORT, () => {
     const s3 = storage.s3Info();
     log.info('servidor.no-ar', {
@@ -3829,6 +3883,8 @@ db.init()
       } catch (e) { erros.registrar(e, { onde: 'conectores de indicadores' }); }
     };
     setInterval(buscarIndicadores, 60 * 1000).unref();
+    // A decisão da galeria gravada por outro caminho (ou com o banco fora do ar na hora) chega à IA aqui.
+    setInterval(ouroDaIA, 5 * 60 * 1000).unref();
     // As planilhas de preço (fase 11): de 5 em 5 minutos, e a TV só é avisada quando muda.
     require('./server/routes/planilha').ligarRelogio({ db, avisarTelas, erros });
     // As integrações (docs/INTEGRACOES.md): a pasta e os comunicados vão às TVs, e a faxina da mídia que saiu.

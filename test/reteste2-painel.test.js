@@ -20,8 +20,9 @@ test('Aprovações: o antes e o depois são o próprio player (TvAoVivo), não o
   assert.doesNotMatch(a, /PreviaDaTela/, 'o desenho vazio voltou');
   assert.match(a, /import \{ TvAoVivo \} from '\.\.\/components\/tela\/TvAoVivo\.jsx';/);
   assert.match(a, /<ATv cfg=\{t\.antes\} rotulo="Antes \(agora na TV\)" \/>/);
-  assert.match(a, /<ATv cfg=\{t\.depois\} rotulo="Depois \(se aprovar\)" \/>/);
-  assert.match(a, /<TvAoVivo cfg=\{cfg\} alturaMaxima=\{260\} rotulo=\{rotulo\} \/>/);
+  // Reteste 4: o depois mostra a peça que o pedido traz (comparar com o antes).
+  assert.match(a, /<ATv cfg=\{t\.depois\} comparar=\{t\.antes\} rotulo="Depois \(se aprovar\)" \/>/);
+  assert.match(a, /<TvAoVivo cfg=\{cfg\} comparar=\{comparar\} alturaMaxima=\{260\} rotulo=\{rotulo\} \/>/);
   // O antes e o depois chegam como o painel vê (a marca e o nome da conta), pela mesma limpeza do GET /config.
   const r = ler('server/routes/aprovacoes.js');
   assert.match(r, /const vista = await ctx\.publicar\.vistaDoPainel\(sess\.tenant_id\);/);

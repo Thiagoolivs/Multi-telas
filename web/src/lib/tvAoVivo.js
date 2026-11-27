@@ -41,14 +41,54 @@ export function paginaDaTv({ leve = false, versao = '' } = {}) {
     + '</body></html>';
 }
 
+import '../../../js/rodizio.js';
+
 // O item que a TV deixa ir ao ar (js/player.js, ehExemplo): o exemplo do "Adicionar" não vai.
 const vaiAoAr = (it) => !!it && typeof it === 'object' && !(it.meta && it.meta.exemplo);
 
 /*
+ * A data, o dia da semana e a hora NA LOJA (o fuso do horário de
+ * funcionamento), como a TV conta (js/player.js, agoraNaLoja): é com eles
+ * que ela decide se a peça agendada está no ar.
+ */
+const relogios = {};
+export function agoraNaLoja(fuso, agora = new Date()) {
+  const f = typeof fuso === 'string' && fuso ? fuso : 'America/Sao_Paulo';
+  try {
+    if (!relogios[f]) {
+      relogios[f] = new Intl.DateTimeFormat('en-US', { timeZone: f, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    }
+    const p = {};
+    relogios[f].formatToParts(agora).forEach((x) => { p[x.type] = x.value; });
+    return { data: p.year + '-' + p.month + '-' + p.day, dia: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday), hm: p.hour + ':' + p.minute };
+  } catch (e) {
+    return f === 'America/Sao_Paulo' ? null : agoraNaLoja('America/Sao_Paulo', agora);
+  }
+}
+
+/*
+ * NO AR AGORA (reteste 4, 25/11). O "Antes (agora na TV)" das Aprovações
+ * desenhava a primeira peça da lista mesmo agendada para depois — o Natal,
+ * que só entra em 05/12. A TV deixa de fora a peça fora da janela (a data,
+ * os dias e as horas, js/rodizio.js naJanela) e o aviso urgente que já
+ * venceu (meta.expiraEm); a prévia também.
+ */
+export function noArAgora(it, loja, agoraMs = Date.now()) {
+  if (!vaiAoAr(it)) return false;
+  if (it.meta && Number(it.meta.expiraEm) > 0 && agoraMs > Number(it.meta.expiraEm)) return false;
+  const R = globalThis.MTRodizio;
+  return !loja || !R || R.naJanela(it, loja);
+}
+
+/*
  * A programação que o quadro recebe: a da TV, com UM item por parte — o que
  * a TV contou estar no ar (`estado`), ou o que a pessoa está editando
- * (`foco`, no "Como vai ficar"), ou o primeiro que vai ao ar. Assim o quadro
- * mostra a mesma coisa que a parede neste instante, parado nele.
+ * (`foco`, no "Como vai ficar"), ou o primeiro que está no ar AGORA (na
+ * janela agendada, `agora` na hora da loja). Assim o quadro mostra a mesma
+ * coisa que a parede neste instante, parado nele. Parte sem nada no ar
+ * agora fica com a lista, e o player faz o que a TV faz (o relógio).
+ * `comparar`: a programação de antes (o "Depois" das Aprovações) — a parte
+ * mostra a peça nova ou mudada do pedido.
  *
  * Fica de fora o que é do aparelho e não do desenho: o horário de
  * funcionamento (quem diz se a TV está dormindo é a própria TV), a música, o
@@ -57,10 +97,12 @@ const vaiAoAr = (it) => !!it && typeof it === 'object' && !(it.meta && it.meta.e
  * `extras.logo` e `extras.frente`: a logo da conta e a frente, que o
  * servidor só põe na programação que vai para a TV.
  */
-export function configDaPrevia(cfg, { estado = null, foco = null, logo = null, frente = '' } = {}) {
+export function configDaPrevia(cfg, { estado = null, foco = null, logo = null, frente = '', agora = null, comparar = null } = {}) {
   if (!cfg || typeof cfg !== 'object') return null;
   const c = JSON.parse(JSON.stringify(cfg));
   const s = c.settings = { ...(c.settings || {}) };
+  const quando = agora ? new Date(agora) : new Date();
+  const loja = agoraNaLoja(s.expediente && s.expediente.fuso, quando);
   delete s.expediente; delete s.audio; delete s.girar; delete s.remoteConfigUrl;
   s.layoutAuto = false;
   if (logo && logo.url) s.logo = logo;
@@ -74,9 +116,11 @@ export function configDaPrevia(cfg, { estado = null, foco = null, logo = null, f
     const itens = z.items;
     const daTv = contou[id] || {};
     let item = null;
+    // `comparar` (o "Depois" das Aprovações): a peça que o pedido traz, mesmo agendada — é ela que o dono aprova.
+    const ja = comparar ? new Set((((comparar.zonas || {})[id] || {}).items || []).map((x) => JSON.stringify(x))) : null;
     if (foco && foco.zona === id && itens[foco.indice]) item = itens[foco.indice];
     else if (daTv.item) item = daTv.item;
-    else item = itens.find(vaiAoAr) || null;
+    else item = (ja && itens.find((x) => vaiAoAr(x) && !ja.has(JSON.stringify(x)))) || itens.find((x) => noArAgora(x, loja, quando.getTime())) || null;
     if (daTv.relogio && !(foco && foco.zona === id)) relogio.push(id);
     if (!item) continue;
     // O horário da peça não vale aqui: a TV já disse que ela está no ar agora.

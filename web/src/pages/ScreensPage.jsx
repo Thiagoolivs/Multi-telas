@@ -24,6 +24,8 @@ import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { CamposDoHorario, horarioParaEditar } from '../components/tela/HorarioDaTela.jsx';
 import { EnderecoDaTv } from '../components/tela/EnderecoDaTv.jsx';
+import { PareceSerATv } from '../components/tela/PareceSerATv.jsx';
+import { proximoNomeDeTv, sugestoesDeNome } from '../lib/nomeDaTv.js';
 import '../../../js/aparelho.js';
 import { usePerfil, perfilAtual } from '../lib/perfil.js';
 import { TVS_PARA_BUSCA, casaComBusca } from '../lib/buscarTelas.js';
@@ -154,7 +156,7 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
         )}
       </Panel>
 
-      <PairDialog open={pairOpen} codigoInicial={parear} onClose={() => setPairOpen(false)} onDone={reload}
+      <PairDialog open={pairOpen} codigoInicial={parear} tvs={todas} onClose={() => setPairOpen(false)} onDone={reload}
         onConteudo={(dev) => { setPairOpen(false); onEditContent(dev); }}
         onCriar={onCriar && ((dev) => { setPairOpen(false); onCriar(dev); })} onIrParaPlano={onIrParaPlano} />
       <RenomearGrupoDialog grupo={renomeandoGrupo} onClose={() => setRenomeandoGrupo(null)}
@@ -390,7 +392,7 @@ function ReconnectDialog({ target, onClose, onDone }) {
  * E o erro de cobrança (teste acabou, limite do plano, fatura em atraso)
  * vem com o botão que resolve — só o texto mandava a pessoa procurar.
  */
-function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar, onIrParaPlano }) {
+function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar, onIrParaPlano, tvs = [] }) {
   const perfil = usePerfil();
   const [code, setCode] = useState(codigoDaTv(codigoInicial));
   const [name, setName] = useState('');
@@ -480,7 +482,8 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
       onDone();
     } catch (err) {
       // Com o que fazer (QA de 03/11): "código não encontrado" vira "Não achamos esse código. Confira na TV…".
-      setError(paraGente(err, 'parear'));
+      // Reteste 4: "parece ser a X?" é a pergunta, no bloco dela (PareceSerATv), e não um erro vermelho com o "Sim" na frente.
+      setError(err.codigo === 'parece-reconectar' ? '' : paraGente(err, 'parear'));
       setErroDePlano(err.status === 402);
       setTalvez(err.telas && err.telas.length ? { telas: err.telas, pergunta: err.codigo === 'parece-reconectar' } : null);
       if (campoCodigo.current && err.status !== 402) campoCodigo.current.focus();
@@ -555,28 +558,34 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
             autoComplete="off" autoCapitalize="characters" spellCheck={false} className="tracking-[0.3em]"
             aria-invalid={error && !erroDePlano ? 'true' : undefined} />
         </Field>
-        <Field label="Nome da tela" hint={'Ex.: ' + perfil.textos.nomesDeTv + '.'}>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recepção" autoFocus={!!codigoInicial} />
+        {/* Reteste 4: com 8 TVs, cada uma com o nome da planilha; vazio vira o próximo "TV N" (lib/nomeDaTv.js). */}
+        <Field label="Nome da tela" hint={'Onde ela fica. Vazio, ela vira “' + proximoNomeDeTv(tvs) + '”.'}>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={proximoNomeDeTv(tvs)} maxLength={60} autoFocus={!!codigoInicial} />
         </Field>
+        {sugestoesDeNome(perfil.textos.nomesDeTv, tvs).length > 0 && (
+          <div className="-mt-2 flex flex-wrap gap-1.5" aria-label="Sugestões de nome">
+            {sugestoesDeNome(perfil.textos.nomesDeTv, tvs).slice(0, 4).map((s) => (
+              <button key={s} type="button" onClick={() => setName(s)} aria-pressed={name === s}
+                className={'inline-flex min-h-8 items-center rounded-full border px-2.5 text-xs max-sm:min-h-11 max-sm:text-sm ' + (name === s ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-accent/50')}>{s}</button>
+            ))}
+          </div>
+        )}
         {/* A região existe antes do erro, para o leitor de tela anunciar quando ele chega. */}
         <div role="alert" aria-live="assertive">
           {error && (
             <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
               {error}
-              {talvez && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {talvez.telas.slice(0, 3).map((t) => (
-                    <Button key={t.id} type="button" size="sm" variant="primary" icon={RefreshCw} disabled={busy} onClick={() => submit({ reconectar: t.id })}>
-                      {'Sim, é a ' + t.nome}
-                    </Button>
-                  ))}
-                  {talvez.pergunta && <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => submit({ nova: true })}>Não, é outra TV</Button>}
-                </div>
+              {talvez && !talvez.pergunta && (
+                <PareceSerATv talvez={talvez} busy={busy} onReconectar={(id) => submit({ reconectar: id })} onNova={() => submit({ nova: true })} />
               )}
               {erroDePlano && onIrParaPlano && (
                 <div className="mt-2"><Button type="button" size="sm" variant="primary" onClick={() => { onClose(); onIrParaPlano(); }}>Ver planos</Button></div>
               )}
             </div>
+          )}
+          {/* A pergunta "é a TV X?" (409): fora da caixa vermelha, com o "Não, é outra TV" na frente. */}
+          {talvez && talvez.pergunta && (
+            <PareceSerATv talvez={talvez} busy={busy} onReconectar={(id) => submit({ reconectar: id })} onNova={() => submit({ nova: true })} />
           )}
         </div>
       </form>

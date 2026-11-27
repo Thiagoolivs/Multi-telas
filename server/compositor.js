@@ -6,9 +6,10 @@
  *            dizendo o que estava errado)
  *          → item peca-html pronto para a TV
  *
- * A biblioteca-ouro vai INTEIRA como exemplo, no `fixo` da chamada: é o
- * mesmo texto em todo pedido, e por isso fica no cache do provedor (server/
- * motores.js). O que muda por pedido — empresa, frase, foto — vai no fim.
+ * A biblioteca-ouro vai como exemplo, no `fixo` da chamada: é o mesmo texto
+ * em todo pedido, e por isso fica no cache do provedor (server/motores.js).
+ * Inteira até o teto do papel (MAX_EXEMPLOS); passou dele, uma amostra fixa
+ * com variedade. O que muda por pedido — empresa, frase, foto — vai no fim.
  *
  * Renderizar e criticar o print (o resto do motor no §4.2) ficam para o
  * serviço de render; o experimento (§4.4) mede primeiro se a IA compõe bem
@@ -23,9 +24,12 @@ const P = require('../js/peca-html.js');
 const T = require('../js/tokens.js');
 const regrasDoPapel = require('../js/regras-composicao.js');
 const RC = require('../js/regras-de-conteudo.js');
+const Perfil = require('../js/perfil.js');
 const motores = require('./motores');
+const conteudoPronto = require('./conteudoPronto');
 
-const PASTA = path.join(__dirname, '..', 'pecas-ouro');
+const RAIZ = path.join(__dirname, '..');
+const PASTA = path.join(RAIZ, 'pecas-ouro');
 
 /*
  * Os trilhos, em português de quem escreve a peça. São as regras da porta
@@ -121,22 +125,121 @@ function semPiso(css) {
   return s;
 }
 
+/*
+ * AS DECISÕES DA GALERIA (Plataforma › Conteúdo pronto, tabela
+ * conteudo_pronto; server/conteudoPronto.js). O dono aprova e recusa as
+ * peças-ouro lá, e a decisão vence o estado do arquivo — no manifesto que o
+ * painel recebe e, desde 26/11, também aqui: na biblioteca que ensina a IA
+ * e na peça de reserva. Antes só o arquivo contava: a peça aprovada na
+ * galeria não virava exemplo, e a recusada continuava ensinando, até alguém
+ * mudar o arquivo e subir de novo.
+ *
+ * Quem tem o banco é o server.js: ele entrega as decisões no boot, depois
+ * de cada decisão (uma ou em lote) e de tempos em tempos. Só as de peça
+ * contam; mudou alguma, a biblioteca guardada é refeita no próximo pedido —
+ * e só então. Sem banco (o CI, a bancada, o experimento), vale o arquivo.
+ */
+const BIBLIOTECA = {}; // 'papel|frente' → os exemplos; só em produção
+let DECISOES = [];
+let CHAVE_DECISOES = '[]';
+function definirDecisoes(lista) {
+  const pecas = (Array.isArray(lista) ? lista : [])
+    .filter((d) => d && d.tipo === 'peca' && typeof d.id === 'string' && d.id)
+    .map((d) => ({ tipo: 'peca', id: d.id, estado: String(d.estado || ''), decidido_por: d.decidido_por || '', decidido_em: Number(d.decidido_em) || 0 }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const chave = JSON.stringify(pecas.map((d) => [d.id, d.estado]));
+  if (chave === CHAVE_DECISOES) return false;
+  DECISOES = pecas;
+  CHAVE_DECISOES = chave;
+  for (const k of Object.keys(BIBLIOTECA)) delete BIBLIOTECA[k];
+  return true;
+}
+
+// O manifesto como a galeria o mostra: o arquivo com as decisões do banco por cima.
+function manifestoEfetivo() {
+  return conteudoPronto.aplicarDecisoes(conteudoPronto.lerManifesto(RAIZ), DECISOES);
+}
+const aprovada = (p) => !p.estado || p.estado === 'aprovada';
+
+/*
+ * A peça-ouro pode ir para a TV como reserva? Só a aprovada, no arquivo ou
+ * na galeria: a recusada pelo dono não vai ao ar nem quando a IA falha. A
+ * que o manifesto não lista não foi recusada por ninguém.
+ */
+function podeSerReserva(id) {
+  let m;
+  try { m = manifestoEfetivo(); } catch (e) { return true; }
+  const p = (m.pecas || []).find((x) => x.id === id);
+  return !p || aprovada(p);
+}
+
+/*
+ * O TETO DA BIBLIOTECA (26/11). Os exemplos vão em todo pedido, e o
+ * destaque já mandava ~155 mil caracteres com 32 peças — 85 a 90% do custo
+ * de texto de uma peça. Com a lista recomendada aprovada na galeria, iria a
+ * ~430 mil no destaque e ~310 mil na lateral: o triplo do custo e da
+ * espera, sem ensinar o triplo. Até o teto vai tudo, como antes; passou
+ * dele, vai uma amostra com variedade:
+ *   - uma peça de cada família por rodada (oferta, institucional, social,
+ *     cardápio…), até o teto — família nenhuma some porque outra tem mais;
+ *   - dentro da família, primeiro as da frente da conta (a clínica vê os
+ *     exemplos de Saúde) e, entre elas, a que atende a frente menos vista;
+ *   - no empate, a ordem do id. A amostra é a mesma em todo pedido da mesma
+ *     frente, e o cache do provedor continua valendo (no máximo três
+ *     prefixos por papel, um por frente).
+ * O teto, por papel: 32 no destaque (o tamanho de hoje, já medido no QA),
+ * 24 na lateral (~110 mil caracteres) e 16 nas faixas (hoje com 6 e 5).
+ */
+const MAX_EXEMPLOS = { destaque: 32, lateral: 24, cabecalho: 16, rodape: 16 };
+
+function escolherExemplos(lista, max, frente) {
+  if (lista.length <= max) return lista;
+  const daFrente = (p) => (!frente || (p.frentes || []).includes(frente) ? 0 : 1);
+  const vistas = {};
+  const menosVista = (p) => Math.min(...((p.frentes && p.frentes.length) ? p.frentes : ['']).map((f) => vistas[f] || 0));
+  const familias = new Map();
+  for (const p of lista) {
+    const f = String(p.familia || '');
+    if (!familias.has(f)) familias.set(f, []);
+    familias.get(f).push(p);
+  }
+  const ordem = [...familias.keys()].sort();
+  const escolhidas = [];
+  while (escolhidas.length < max && ordem.some((f) => familias.get(f).length)) {
+    for (const f of ordem) {
+      const fila = familias.get(f);
+      if (!fila.length || escolhidas.length >= max) continue;
+      let melhor = 0;
+      for (let i = 1; i < fila.length; i++) {
+        const a = fila[i], b = fila[melhor];
+        if (daFrente(a) !== daFrente(b) ? daFrente(a) < daFrente(b) : menosVista(a) < menosVista(b)) melhor = i;
+      }
+      const p = fila.splice(melhor, 1)[0];
+      escolhidas.push(p);
+      for (const fr of p.frentes || []) vistas[fr] = (vistas[fr] || 0) + 1;
+    }
+  }
+  return escolhidas.sort((a, b) => a.id.localeCompare(b.id));
+}
+
 // A biblioteca no papel pedido, em ordem fixa — o fixo precisa ser igual entre chamadas para o cache valer.
-const BIBLIOTECA = {};
-function biblioteca(papel) {
-  if (BIBLIOTECA[papel]) return BIBLIOTECA[papel];
-  const m = JSON.parse(fs.readFileSync(path.join(PASTA, 'manifesto.json'), 'utf8'));
-  // Só o que o dono aprovou (no arquivo): uma peça do lote novo, ainda em proposta, não ensina a IA.
-  const lista = m.pecas
+function biblioteca(papel, frente) {
+  const fr = Perfil.tem(frente) ? frente : '';
+  const chave = papel + '|' + fr;
+  if (BIBLIOTECA[chave]) return BIBLIOTECA[chave];
+  // Só o que o dono aprovou (no arquivo ou na galeria): uma peça do lote novo, ainda em proposta, não ensina a IA.
+  const candidatas = manifestoEfetivo().pecas
     .filter((p) => p.papeis.includes(papel) && (!p.estado || p.estado === 'aprovada'))
-    .sort((a, b) => a.id.localeCompare(b.id))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const lista = escolherExemplos(candidatas, MAX_EXEMPLOS[papel] || MAX_EXEMPLOS.destaque, fr)
     .map((p) => '### ' + p.nome + ' (' + p.familia + ')\n' + cssJusto(semPiso(enxuto(fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8')))));
   // Em teste a biblioteca muda no disco entre um caso e outro: só guarda fora dele.
-  if (process.env.NODE_ENV === 'production') BIBLIOTECA[papel] = lista;
+  if (process.env.NODE_ENV === 'production') BIBLIOTECA[chave] = lista;
   return lista;
 }
 
-function fixo(papel) {
+// `frente`: o perfil da conta (js/perfil.js). Só muda a biblioteca quando ela passa do teto.
+function fixo(papel, frente) {
   return [
     'Você escreve peças de digital signage em HTML+CSS, para TVs de comércio. Estas são as REGRAS e a BIBLIOTECA-OURO — o padrão de qualidade que o dono aprovou. Imite o vocabulário dela; não copie o texto.',
     '',
@@ -147,7 +250,7 @@ function fixo(papel) {
     '',
     '## BIBLIOTECA-OURO (papel: ' + papel + ')',
     '',
-    biblioteca(papel).join('\n\n'),
+    biblioteca(papel, frente).join('\n\n'),
   ].join('\n');
 }
 
@@ -289,7 +392,9 @@ function partirTitulo(s) {
 }
 
 function preencherOuro(o) {
-  const escolha = o.foto ? OURO.comFoto : OURO.semFoto;
+  // A recusada na galeria não vai ao ar (podeSerReserva). Sem foto, a da foto não serve: o lugar dela ficaria vazio.
+  const escolha = (o.foto ? [OURO.comFoto, OURO.semFoto] : [OURO.semFoto]).find((x) => podeSerReserva(x.id));
+  if (!escolha) return reservaDaReserva(o, 'destaque');
   const t = o.textos || {};
   const [titulo1, titulo2] = partirTitulo(t.titulo);
   const textos = { kicker: t.kicker || '', titulo1, titulo2, apoio: t.apoio || '', cta: t.cta || '' };
@@ -298,7 +403,8 @@ function preencherOuro(o) {
   const h = P.higienizar({ html: arquivo.html, css: arquivo.css + '\n' + escolha.ajuste(textos) });
   const campos = escolha.campos(textos, o.empresa || '');
   for (const k of Object.keys(campos)) campos[k] = String(campos[k] || '').slice(0, 160);
-  if (o.foto) campos.foto = o.foto;
+  // Só na peça que tem o campo: campo que não existe faz a TV recusar a peça.
+  if (o.foto && escolha === OURO.comFoto) campos.foto = o.foto;
   return {
     type: 'peca-html', versao: 1, papel: 'destaque', html: h.html, css: h.css, campos,
     marca: o.marca || null, modo: o.modo || 'escuro', duracao: 12,
@@ -384,10 +490,27 @@ function preencherPapel(o) {
   const papel = OURO_PAPEL[o.papel] ? o.papel : 'destaque';
   // Destaque, e a lateral com foto (a foto já foi paga): a reserva de sempre, que sabe a foto.
   if (papel === 'destaque' || (papel === 'lateral' && o.foto)) return Object.assign(preencherOuro(o), { papel });
-  const opcoes = OURO_PAPEL[papel];
-  const vivo = OURO_VIVO[papel];
+  // A recusada na galeria fica fora; as que sobram giram como antes.
+  const opcoes = OURO_PAPEL[papel].filter((x) => podeSerReserva(x.id));
+  const vivo = OURO_VIVO[papel] && podeSerReserva(OURO_VIVO[papel].id) ? OURO_VIVO[papel] : null;
   // Só a primeira peça da faixa: a segunda, se houver, gira com outro estilo.
   const escolha = vivo && vivo.quando(o) && !o.indice ? vivo : opcoes[Math.abs(o.indice || 0) % opcoes.length];
+  // Todas recusadas: a lateral cai na reserva do destaque; a faixa, na peça mínima.
+  if (!escolha) return papel === 'lateral' ? Object.assign(preencherOuro(o), { papel }) : pecaMinima(o, papel);
+  return pecaDoPapel(escolha, o, papel);
+}
+
+/*
+ * As duas peças do destaque recusadas na galeria: entra a coluna com
+ * chamada (que também é de destaque) e, sem ela, a peça mínima.
+ */
+function reservaDaReserva(o, papel) {
+  const coluna = OURO_PAPEL.lateral[0];
+  return podeSerReserva(coluna.id) ? pecaDoPapel(coluna, o, papel) : pecaMinima(o, papel);
+}
+
+// Uma peça-ouro de OURO_PAPEL preenchida com os textos cortados para caber.
+function pecaDoPapel(escolha, o, papel) {
   const arquivo = P.doArquivo(fs.readFileSync(path.join(PASTA, escolha.id + '.html'), 'utf8'));
   const h = P.higienizar(arquivo);
   const t = {};
@@ -397,8 +520,57 @@ function preencherPapel(o) {
   if (o.logo && h.campos.some((c) => c.nome === 'logo' && c.tipo === 'img')) campos.logo = o.logo;
   return {
     type: 'peca-html', versao: 1, papel, html: h.html, css: h.css, campos,
-    marca: o.marca || null, modo: o.modo || 'escuro', duracao: papel === 'lateral' ? 12 : 20,
+    marca: o.marca || null, modo: o.modo || 'escuro', duracao: papel === 'cabecalho' || papel === 'rodape' ? 20 : 12,
     origem: { motor: 'ouro', base: escolha.id, pedido: String(o.pedido || '').slice(0, 200) },
+  };
+}
+
+/*
+ * A PEÇA MÍNIMA (26/11): a última reserva, para quando o dono recusou na
+ * galeria todas as peças-ouro de reserva daquele papel. Escrita aqui, só
+ * tipografia e os tokens, e passa pela mesma porta: a reserva nunca põe no
+ * ar o que o dono recusou, e a zona também não fica sem peça. Hoje não
+ * entra (as reservas estão aprovadas); é o chão.
+ */
+const MINIMA_CSS = [
+  '.mt-peca { display: flex; flex-direction: column; justify-content: center; padding: 9cqmin; color: var(--mt-texto); font-family: var(--mt-fonte-texto);',
+  '  background: linear-gradient(160deg, var(--mt-fundo-2), var(--mt-fundo)); }',
+  // Em cqmin, a mesma peça na tela cheia e na coluna; a letra menor é a mínima do destaque (48px) na TV deitada.
+  '.kicker { font: 700 6cqmin/1.1 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; color: var(--mt-destaque); }',
+  'h1 { margin-top: 4cqmin; font: 700 calc(14cqmin * var(--mt-escala-titulo, 1))/1.04 var(--mt-fonte-titulo); text-wrap: balance; }',
+  '.apoio { margin-top: 4cqmin; font: 500 6.4cqmin/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }',
+  '.cta { margin-top: 6cqmin; align-self: flex-start; font: 700 6cqmin/1 var(--mt-fonte-texto); letter-spacing: .12em; text-transform: uppercase;',
+  '  padding-bottom: 1.4cqmin; border-bottom: .7cqmin solid var(--mt-destaque); }',
+  '.kicker:empty, .apoio:empty, .cta:empty { display: none; }',
+  // A faixa (cabeçalho e rodapé): uma linha só, a letra pela altura.
+  '@container (aspect-ratio >= 4) {',
+  '  .mt-peca { flex-direction: row; align-items: center; justify-content: flex-start; gap: 3cqw; padding: 0 3cqw; background: var(--mt-fundo); }',
+  '  .kicker { flex: none; font-size: 26cqh; letter-spacing: .2em; white-space: nowrap; }',
+  '  h1 { flex: 1; min-width: 0; margin-top: 0; font-size: calc(40cqh * var(--mt-escala-titulo, 1)); white-space: nowrap; overflow: hidden; }',
+  '  .trilho { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; font: 500 34cqh/1 var(--mt-fonte-texto); }',
+  '  .hora { flex: none; font: 700 36cqh/1 var(--mt-fonte-texto); }',
+  '}',
+].join('\n');
+const MINIMA_HTML = {
+  destaque: '<p class="kicker" data-campo="kicker" data-entrada="aparecer">Novidade</p><h1 data-campo="titulo" data-entrada="subir" data-ordem="1">Título</h1>'
+    + '<p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="2">Apoio</p><span class="cta" data-campo="cta" data-entrada="aparecer" data-ordem="3">Chamada</span>',
+  cabecalho: '<p class="kicker" data-campo="kicker">Empresa</p><h1 data-campo="titulo">Chamada</h1><span class="hora" data-vivo="relogio">14:32</span>',
+  rodape: '<p class="kicker" data-campo="kicker">Aviso</p><div class="trilho"><span data-vivo="mensagens">Mensagens</span></div>',
+};
+function pecaMinima(o, papel) {
+  const t = o.textos || {};
+  const curto = papel !== 'destaque';
+  const texto = (k) => (curto ? cortarNaPalavra(t[k], CABE_NO_PAPEL[k]) : String(t[k] || '').trim().slice(0, 160));
+  const faixa = papel === 'cabecalho' || papel === 'rodape';
+  const h = P.higienizar({ html: '<section class="mt-peca peca-minima">' + (MINIMA_HTML[papel] || MINIMA_HTML.destaque) + '</section>', css: MINIMA_CSS });
+  const campos = {};
+  const valores = { kicker: papel === 'cabecalho' ? cortarNome(o.empresa, NOME_NA_FAIXA) : texto('kicker') || (papel === 'rodape' ? texto('titulo') : ''),
+    titulo: texto('titulo'), apoio: texto('apoio'), cta: texto('cta') };
+  for (const c of h.campos) if (c.tipo === 'texto') campos[c.nome] = valores[c.nome] || '';
+  return {
+    type: 'peca-html', versao: 1, papel, html: h.html, css: h.css, campos,
+    marca: o.marca || null, modo: o.modo || 'escuro', duracao: faixa ? 20 : 12,
+    origem: { motor: 'ouro', base: 'peca-minima', pedido: String(o.pedido || '').slice(0, 200) },
   };
 }
 
@@ -427,7 +599,7 @@ async function comporPeca(o) {
   let ultimo = null;
   const t0 = Date.now();
   for (let i = 1; i <= max; i++) {
-    const r = await motores.chamar({ motor: o.motor, fixo: fixo(papel), sistema: 'Escreva a peça pedida seguindo as regras e a régua.', usuario, maxTokens: 8192, temperatura: 0.6 });
+    const r = await motores.chamar({ motor: o.motor, fixo: fixo(papel, o.perfil), sistema: 'Escreva a peça pedida seguindo as regras e a régua.', usuario, maxTokens: 8192, temperatura: 0.6 });
     usos.push(r.uso);
     const arquivo = limparResposta(r.texto);
     const h = P.higienizar(P.doArquivo(arquivo));
@@ -533,6 +705,8 @@ async function refazerPeca(o) {
   const problemas = (o.problemas || []).map((x) => String(x).slice(0, 200)).filter(Boolean).slice(0, 10);
   return comporPeca({
     pedido: it.origem.pedido, papel: it.papel, marca: it.marca, modo: it.modo, motor: o.motor,
+    // A frente da conta: a mesma biblioteca (e o mesmo prefixo em cache) da peça que está sendo refeita, e as regras de conteúdo dela.
+    perfil: o.perfil || '',
     foto: it.campos.foto || null, camposDe: it.campos, textosCampos,
     anterior: '<style>' + it.css + '</style>\n' + it.html,
     critica: 'A peça abaixo foi desenhada e MEDIDA na tela, e tem estes problemas:\n- ' + (problemas.join('\n- ') || 'texto que não cabe')
@@ -633,4 +807,5 @@ async function comporTelaInteira(o) {
   return { zonas, falhas };
 }
 
-module.exports = { textosDaPeca, enxuto, semPiso, cssJusto, comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, cortarNome, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };
+module.exports = { textosDaPeca, enxuto, semPiso, cssJusto, comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, pecaMinima, cortarNaPalavra, cortarNome, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO,
+  definirDecisoes, podeSerReserva, escolherExemplos, MAX_EXEMPLOS };

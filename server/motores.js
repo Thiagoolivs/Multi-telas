@@ -156,7 +156,17 @@ async function anthropic(o) {
   if (o.sistema) system.push({ type: 'text', text: o.sistema });
   const content = (o.imagens || []).map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mime, data: im.data } }));
   content.push({ type: 'text', text: o.usuario || '' });
-  const body = { model: o.modelo, max_tokens: o.maxTokens, system, messages: [{ role: 'user', content }] };
+  const messages = [{ role: 'user', content }];
+  // As voltas de antes (o agente, server/agente/): o que a IA chamou e o que as ferramentas devolveram.
+  for (const t of o.turnos || []) {
+    if (t.papel === 'ia') {
+      messages.push({ role: 'assistant', content: t.bruto && t.bruto.provedor === 'anthropic' ? t.bruto.dados
+        : [].concat(t.texto ? [{ type: 'text', text: t.texto }] : [], (t.chamadas || []).map((c) => ({ type: 'tool_use', id: c.id, name: c.nome, input: c.args || {} }))) });
+    } else {
+      messages.push({ role: 'user', content: (t.resultados || []).map((r) => ({ type: 'tool_result', tool_use_id: r.id, content: textoDoResultado(r.conteudo) })) });
+    }
+  }
+  const body = { model: o.modelo, max_tokens: o.maxTokens, system, messages };
   if (o.temperatura != null) body.temperature = o.temperatura;
   if (Array.isArray(o.ferramentas) && o.ferramentas.length) {
     body.tools = o.ferramentas.map((f) => ({ name: f.nome, description: f.descricao, input_schema: f.parametros }));
@@ -168,7 +178,8 @@ async function anthropic(o) {
   const u = data.usage || {};
   return {
     texto: (data.content || []).map((b) => b.text || '').join('').trim(),
-    chamadas: (data.content || []).filter((b) => b.type === 'tool_use' && b.name).map((b) => ({ nome: b.name, args: b.input || {} })),
+    chamadas: (data.content || []).filter((b) => b.type === 'tool_use' && b.name).map((b) => ({ id: b.id, nome: b.name, args: b.input || {} })),
+    bruto: { provedor: 'anthropic', dados: data.content || [] },
     modelo: data.model || o.modelo,
     entrada: u.input_tokens || 0,
     saida: u.output_tokens || 0,
@@ -201,6 +212,29 @@ const pensarRecusado = (msg) => /thinking|unknown name|invalid.*(field|argument)
  * properties, required, items). Cada provedor recebe no dialeto dele e
  * devolve `chamadas: [{ nome, args }]`.
  */
+/*
+ * VOLTAS (o agente, server/agente/): `turnos` são as voltas depois da
+ * primeira fala — { papel: 'ia', chamadas: [{ id, nome, args }], bruto } e
+ * { papel: 'resultados', resultados: [{ id, nome, conteudo }] }. O `bruto` é
+ * a resposta do provedor como veio: volta igual (o Gemini confere a
+ * assinatura das chamadas). De outro provedor (a reserva respondeu), vai
+ * remontada das chamadas.
+ */
+const textoDoResultado = (c) => (typeof c === 'string' ? c : JSON.stringify(c == null ? {} : c));
+function voltasGemini(turnos) {
+  return (turnos || []).map((t) => (t.papel === 'ia'
+    ? { role: 'model', parts: t.bruto && t.bruto.provedor === 'gemini' ? t.bruto.dados : (t.chamadas || []).map((c) => ({ functionCall: { name: c.nome, args: c.args || {} } })) }
+    : { role: 'user', parts: (t.resultados || []).map((r) => ({ functionResponse: { name: r.nome, response: r.conteudo && typeof r.conteudo === 'object' && !Array.isArray(r.conteudo) ? r.conteudo : { resultado: r.conteudo } } })) }));
+}
+function voltasGroq(turnos) {
+  const saida = [];
+  for (const t of turnos || []) {
+    if (t.papel === 'ia') saida.push({ role: 'assistant', content: t.texto || null, tool_calls: (t.chamadas || []).map((c) => ({ id: c.id, type: 'function', function: { name: c.nome, arguments: JSON.stringify(c.args || {}) } })) });
+    else for (const r of t.resultados || []) saida.push({ role: 'tool', tool_call_id: r.id, content: textoDoResultado(r.conteudo) });
+  }
+  return saida;
+}
+
 function esquemaGemini(s) {
   if (!s || typeof s !== 'object') return s;
   const out = {};
@@ -224,7 +258,7 @@ async function geminiUmModelo(modelo, o) {
   const configs = [{ ...base, thinkingConfig: { thinkingBudget: 0 } }, base];
   let motivo = '';
   for (const generationConfig of configs) {
-    const corpo = { system_instruction: { parts: [{ text: sistema }] }, contents: [{ role: 'user', parts }], generationConfig };
+    const corpo = { system_instruction: { parts: [{ text: sistema }] }, contents: [{ role: 'user', parts }].concat(voltasGemini(o.turnos)), generationConfig };
     if (comFerramentas) {
       // Ferramentas (o assistente do Criar): o modelo TEM de chamar uma (mode ANY), com os argumentos no formato declarado.
       corpo.tools = [{ functionDeclarations: o.ferramentas.map((f) => ({ name: f.nome, description: f.descricao, parameters: esquemaGemini(f.parametros) })) }];
@@ -236,12 +270,12 @@ async function geminiUmModelo(modelo, o) {
       const pedacos = (cand && cand.content && cand.content.parts) || [];
       const texto = pedacos.map((p) => p.text || '').join('').trim();
       const chamadas = pedacos.filter((p) => p.functionCall && p.functionCall.name)
-        .map((p) => ({ nome: p.functionCall.name, args: p.functionCall.args || {} }));
+        .map((p, i) => ({ id: p.functionCall.id || 'g' + i, nome: p.functionCall.name, args: p.functionCall.args || {} }));
       if (texto || chamadas.length) {
         const u = data.usageMetadata || {};
         const cache = u.cachedContentTokenCount || 0;
         return {
-          texto, chamadas, modelo,
+          texto, chamadas, modelo, bruto: { provedor: 'gemini', dados: pedacos },
           entrada: Math.max(0, (u.promptTokenCount || 0) - cache),
           saida: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0),
           cacheLida: cache, cacheEscrita: 0,
@@ -294,7 +328,7 @@ async function groq(o) {
   const { res, data } = await postar('groq', 'https://api.groq.com/openai/v1/chat/completions',
     { Authorization: 'Bearer ' + chave.groq(), 'content-type': 'application/json' }, {
       model: o.modelo, max_tokens: o.maxTokens, temperature: o.temperatura != null ? o.temperatura : 0.7,
-      messages: [{ role: 'system', content: [o.fixo, o.sistema].filter(Boolean).join('\n\n') }, { role: 'user', content: o.imagens && o.imagens.length ? content : (o.usuario || '') }],
+      messages: [{ role: 'system', content: [o.fixo, o.sistema].filter(Boolean).join('\n\n') }, { role: 'user', content: o.imagens && o.imagens.length ? content : (o.usuario || '') }].concat(voltasGroq(o.turnos)),
       ...(Array.isArray(o.ferramentas) && o.ferramentas.length ? {
         tools: o.ferramentas.map((f) => ({ type: 'function', function: { name: f.nome, description: f.descricao, parameters: f.parametros } })),
         tool_choice: 'required',
@@ -307,7 +341,7 @@ async function groq(o) {
     texto: ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim(),
     chamadas: ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.tool_calls) || [])
       .filter((c) => c && c.function && c.function.name)
-      .map((c) => { let args = {}; try { args = JSON.parse(c.function.arguments || '{}'); } catch (e) { args = {}; } return { nome: c.function.name, args }; }),
+      .map((c) => { let args = {}; try { args = JSON.parse(c.function.arguments || '{}'); } catch (e) { args = {}; } return { id: c.id, nome: c.function.name, args }; }),
     modelo: data.model || o.modelo,
     entrada: Math.max(0, (u.prompt_tokens || 0) - cache),
     saida: u.completion_tokens || 0,
@@ -415,7 +449,7 @@ async function chamarUm(motor, o) {
   };
   uso.custoCentavos = custoCentavos(uso);
   anotar(uso);
-  return { texto: r.texto, chamadas: r.chamadas || [], uso };
+  return { texto: r.texto, chamadas: r.chamadas || [], uso, bruto: r.bruto || null };
 }
 
 module.exports = { MOTORES, GEMINI_CANDIDATOS, geminiTentaOutro, tipoDoErro, erroIA, fraseDoErro, iaIndisponivel, motorPadrao, chamar, custoCentavos, precos, medir, medicaoAtual, consumirMedicao, consumirDe };

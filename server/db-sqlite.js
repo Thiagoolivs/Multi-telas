@@ -2602,3 +2602,6 @@ async function salvarClimaDaMarca(id, tenantId, clima) {
 async function salvarPrimeiraTv(id, estado) {
   db.prepare('UPDATE tenants SET primeira_tv = ? WHERE id = ?').run(JSON.stringify(estado || null), id);
 }
+
+// O agente (server/agente/banco.js): o registro de cada volta e a chave de cada conta.
+Object.assign(module.exports, require('./agente/banco').sqlite(db, module.exports));

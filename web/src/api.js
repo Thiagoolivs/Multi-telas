@@ -609,6 +609,15 @@ export const library = {
 };
 
 /*
+ * A peça-ouro aprovada do papel, com os textos da peça que não coube
+ * (server/reserva-da-peca.js). Sem IA e sem custo; 404 quando nenhuma leva
+ * todos os textos dela.
+ */
+export const pecas = {
+  reserva: (item) => api('POST', '/api/pecas/reserva', { item }),
+};
+
+/*
  * Mural de fotos: o público envia pelo QR e aparece na TV.
  *
  * `ocultarFoto`/`limpar` escondem em vez de apagar — moderação tem que ser
@@ -918,4 +927,29 @@ export const telaAgora = {
 export const primeiraTv = {
   ler: () => api('GET', '/api/primeira-tv'),
   salvar: (estado) => api('PUT', '/api/primeira-tv', { estado }),
+};
+
+/*
+ * O agente do Criar (server/agente/): validar o plano é o "pode" — o
+ * servidor gera, confere e põe no ar como trabalho, e o painel acompanha
+ * (o andamento de cada item vem no `detalhe`: "0:feito|1:fazendo|2:espera").
+ * O id fica guardado: quem fechar a aba volta e acompanha.
+ */
+export const agente = {
+  estado: () => api('GET', '/api/agente'),
+  async validar(conversaId, chave, onEtapa, sinal) {
+    const job = await api('POST', '/api/ai/agente', { conversaId, chave });
+    guardarPendente('agente', job, { brief: 'Plano do agente' });
+    avisarQueComecou();
+    return acompanhar(job.id, 'agente', onEtapa, sinal);
+  },
+  acompanhar: (id, onEtapa, sinal) => acompanhar(id, 'agente', onEtapa, sinal),
+  pendente: () => pendenteDe('agente'),
+  // O encaixe no painel: as peças que a execução espera conferir, e o que deu em cada uma.
+  encaixe: (codigo) => api('GET', '/api/agente/encaixe/' + encodeURIComponent(codigo)),
+  responderEncaixe: (codigo, resultados) => api('POST', '/api/agente/encaixe/' + encodeURIComponent(codigo), { resultados }),
+  // Só operador (Plataforma): as contagens, e a chave e as voltas de uma conta.
+  resumo: (dias) => api('GET', '/api/agente/plataforma' + (dias ? '?dias=' + dias : '')),
+  daConta: (id) => api('GET', '/api/agente/plataforma/contas/' + encodeURIComponent(id)),
+  desligarConta: (id, desligado) => api('PUT', '/api/agente/plataforma/contas/' + encodeURIComponent(id), { desligado }),
 };

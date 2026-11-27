@@ -18,6 +18,7 @@ import { aviso } from '../lib/avisos.js';
 import { PERFIS, IDS as PERFIL_IDS } from '../lib/perfil.js';
 import { Negocio } from '../components/platform/Negocio.jsx';
 import { Qualidade } from '../components/platform/Qualidade.jsx';
+import { AgenteResumo, AgenteDaConta } from '../components/platform/Agente.jsx';
 import { ConteudoPronto } from '../components/platform/ConteudoPronto.jsx';
 import { confirmar } from '../lib/confirmar.js';
 import { nomeDoPlano, NOME_DO_PAPEL } from '../lib/nomes.js';
@@ -114,6 +115,9 @@ export function PlatformPage() {
 
       {/* D43: onde a IA entrega fraco — o que volta, o que o cliente corrige e o que ele pede. */}
       <Qualidade dias={dias} />
+
+      {/* O agente do Criar: o que ele fez, recusou e publicou (server/agente/registro.js). */}
+      <AgenteResumo dias={dias} />
 
       {/* Fase 9: aprovar as telas prontas e as peças que as contas veem. */}
       <ConteudoPronto />
@@ -379,6 +383,9 @@ function FichaDaConta({ id, dias, onFechar }) {
             </div>
 
             <AcoesDaConta conta={data} onMudou={reload} />
+
+            {/* O freio do agente nesta conta e as últimas voltas dele. */}
+            <AgenteDaConta id={data.id} />
 
             {!!Object.keys(data.excessos || {}).length && (
               <div className="rounded-md border border-warn/40 bg-warn/5 px-3 py-2 text-xs text-ink-2">

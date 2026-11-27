@@ -10,6 +10,7 @@ import { Combinado } from '../components/criar/Combinado.jsx';
 import { BotaoAnexar, ReferenciasDoChat, imagensDoColar } from '../components/criar/ReferenciasDoChat.jsx';
 import { AprovarEsboco } from '../components/criar/AprovarEsboco.jsx';
 import { AcaoDaIA } from '../components/criar/AcaoDaIA.jsx';
+import { PlanoDoAgente } from '../components/criar/PlanoDoAgente.jsx';
 import { prepararFoto } from '../lib/subir.js';
 import { ai, criar, devices, seasons, brand } from '../api.js';
 import { ideiaDaData } from '../lib/ideiaDaData.js';
@@ -201,6 +202,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       guardar(r.conversa.id);
       if (!conversa) setVersaoDaLista((v) => v + 1);
       // A pessoa mandou gerar (item 37): o esboço abre para ela aprovar — gerar só depois (D42).
+      // (Com o agente, o plano dele é o esboço: a volta dele nunca vem com `gerar`.)
       if (r.gerar) setParaAprovar({ escopo: E.normalizar(r.conversa.escopo || {}), conversa: r.conversa });
     } catch (e) {
       setErro(e.message || 'A conversa falhou. Tente mandar de novo.');
@@ -350,6 +352,10 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   // O cartão do assistente com botão é o mais novo de cada tipo: o quiz corrigido substitui o de antes.
   const acaoAtiva = {};
   mensagens.forEach((m, i) => { if (m.acao && m.acao.tipo) acaoAtiva[m.acao.tipo] = i; });
+  // O agente: só o plano mais novo tem o "Validar" (o de antes foi trocado por ele).
+  let planoAtivo = -1;
+  mensagens.forEach((m, i) => { if (m.agente && m.agente.chave && m.agente.itens) planoAtivo = i; });
+  const recebeuConversa = (c) => { setConversa(c); setMensagens(c.mensagens || []); };
 
   const lista = (
     <ListaDeConversas atual={conversa && conversa.id} versao={versaoDaLista}
@@ -501,6 +507,9 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
                     </div>
                     {m.papel === 'ia' && m.acao && (
                       <AcaoDaIA acao={m.acao} id={(conversa && conversa.id ? conversa.id : 'c') + ':' + i} telas={telas} onIr={onIr} ativa={acaoAtiva[m.acao.tipo] === i && !criada} />
+                    )}
+                    {m.papel === 'ia' && m.agente && (
+                      <PlanoDoAgente mensagem={m} conversaId={conversa && conversa.id} ativo={planoAtivo === i && !criada} onConversa={recebeuConversa} onIr={onIr} />
                     )}
                     </React.Fragment>
                   ))}

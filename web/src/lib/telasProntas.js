@@ -12,6 +12,7 @@ import '../../../js/lote-tv.js';
 import { carregarModelos, itemDoModelo, naEpoca, linkDaConta } from './modelosOuro.js';
 import { carregarManifesto } from './pacoteOuro.js';
 import { getLayout as layoutDoPainel } from './screenConfig.js';
+import { conferirPrecisa } from './contentTypes.js';
 
 // A grade do layout é a da TV (js/templates.js); a lista do painel não traz a grade.
 const getLayout = (id) => (globalThis.MT_getLayout && globalThis.MT_getLayout(id)) || layoutDoPainel(id);
@@ -79,7 +80,7 @@ export function carregarTelasProntas() {
       // O mesmo pacote dos modelos (reteste 2, lib/pacoteOuro.js): o manifesto não vem duas vezes.
       carregarManifesto(),
       carregarModelos(),
-    ]).then(([m, modelos]) => ({ telas: aprovadas(m), modelos: new Map(modelos.map((x) => [x.id, x])), exemplos: nomesDeExemplo(m.marcas) }))
+    ]).then(([m, modelos]) => ({ telas: aprovadas(m), modelos: new Map(modelos.map((x) => [x.id, x])), exemplos: nomesDeExemplo(m.marcas, m.dadosDeExemplo) }))
       .catch((e) => { cache = null; throw e; });
   }
   return cache;
@@ -109,8 +110,14 @@ const APELIDOS = { rotasul: ['Rota Sul', 'RotaSul'] };
 const semAcento = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const compacto = (s) => semAcento(s).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-// Os nomes das marcas de exemplo (do manifesto), com os apelidos e a forma de @/site ("rotasul").
-export function nomesDeExemplo(marcas) {
+/*
+ * Os nomes das marcas de exemplo (do manifesto), com os apelidos e a forma de @/site ("rotasul").
+ * `dados` (o `dadosDeExemplo` do manifesto, reteste 4): o dado inventado que parece real — os
+ * convênios e o número do CRO das peças da clínica. O valor igual a um deles sai em branco, como o
+ * contato da empresa de exemplo: na clínica que não edita, a TV não promete convênio que ela não
+ * aceita nem mostra registro falso (o HTML da peça ainda os traz, como exemplo do desenho).
+ */
+export function nomesDeExemplo(marcas, dados) {
   const nomes = [];
   (marcas || []).forEach((m) => { if (m.nome) nomes.push(m.nome); (APELIDOS[m.id] || []).forEach((a) => nomes.push(a)); });
   /*
@@ -121,7 +128,8 @@ export function nomesDeExemplo(marcas) {
    */
   const compactos = [];
   (marcas || []).forEach((m) => { compactos.push(compacto(m.nome)); (APELIDOS[m.id] || []).forEach((a) => compactos.push(compacto(a))); });
-  return { nomes: nomes.sort((a, b) => b.length - a.length), compactos: [...new Set(compactos.filter(Boolean))] };
+  return { nomes: nomes.sort((a, b) => b.length - a.length), compactos: [...new Set(compactos.filter(Boolean))],
+    dados: (Array.isArray(dados) ? dados : []).map((d) => String(d || '').trim()).filter(Boolean) };
 }
 
 const EH_CONTATO = /@[\w.]{2,}|https?:\/\/|\bwww\.|\b[\w-]+\.(com|net|org)(\.br)?\b|\(?\b\d{2}\)?\s?\d{4,5}-\d{4}\b/i;
@@ -135,6 +143,7 @@ export function limparDoExemplo(valor, def, conta, exemplos) {
   if (!v || !exemplos) return v;
   const c = conta || {};
   if (def && def.tipo === 'qr') return qrDeWifi(def, v) ? '' : EH_CONTATO.test(v) ? linkDaConta(c) : v;
+  if (exemplos.dados && exemplos.dados.includes(v.trim())) return '';
   if (EH_CONTATO.test(v)) return /https?:\/\/|\bwww\.|\.(com|net|org)\b/i.test(v) && !/@/.test(v) ? (c.site || '') : '';
   if (EH_ENDERECO.test(v)) return c.endereco || '';
   let saida = v;
@@ -180,13 +189,26 @@ export function camposSemExemplo(modelo, entrada, marca, exemplos) {
   return { campos, pendentes };
 }
 
+/*
+ * A peça que só vai ao ar com um destes campos (o `precisaDeUm` do
+ * manifesto; contentTypes.js, conferirPrecisa): sem nenhum, ela entra como
+ * exemplo, e os campos vão para `_pendentes` (o editor pede para escrever).
+ */
+export function comPrecisa(item, modelo) {
+  const p = modelo && Array.isArray(modelo.precisaDeUm) ? modelo.precisaDeUm.filter((n) => typeof n === 'string' && n) : [];
+  if (!p.length) return item;
+  const com = conferirPrecisa({ ...item, meta: { ...(item.meta || {}), precisa: p } });
+  if (!com.meta.exemplo) return com;
+  return { ...com, _pendentes: [...new Set([...(item._pendentes || []), ...p])] };
+}
+
 // A peça de uma zona da tela, pronta para desenhar e para ir à TV.
 export function itemDaTela(modelo, entrada, modo, papel, marca, exemplos) {
   const base = itemDoModelo(modelo, marca);
   const { campos, pendentes } = camposSemExemplo(modelo, entrada.campos, marca, exemplos);
   if (base.campos.marca) campos.marca = base.campos.marca;
   else delete campos.marca;
-  return { ...base, papel, modo: modo || 'marca', campos, ...(pendentes.length ? { _pendentes: pendentes } : {}) };
+  return comPrecisa({ ...base, papel, modo: modo || 'marca', campos, ...(pendentes.length ? { _pendentes: pendentes } : {}) }, modelo);
 }
 
 /*
@@ -201,7 +223,7 @@ export function pecaDoProntos(modelo, marca, frente, exemplos) {
   // As fotos que o itemDoModelo escolheu ({ src, foco }) passam como vieram: a limpeza só olha texto e QR.
   const { campos, pendentes } = camposSemExemplo(modelo, resto, marca, exemplos);
   if (nome) campos.marca = nome;
-  return { ...base, campos, ...(pendentes.length ? { _pendentes: pendentes } : {}) };
+  return comPrecisa({ ...base, campos, ...(pendentes.length ? { _pendentes: pendentes } : {}) }, modelo);
 }
 
 /*
