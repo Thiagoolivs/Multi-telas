@@ -105,6 +105,18 @@ h1 span + span { color: var(--mt-destaque); }
   .hora { margin-top: .05em; line-height: .9; }
   .nota { line-height: 1.08; }
 }
+/*
+ * Reteste 4: a zona larga e baixa — a de baixo da TV em pé com duas zonas
+ * (1036×556), que a régua das telas prontas passou a medir. Com a letra do
+ * balcão o "FUNCIONAMENTO" espaçado passava por cima da coluna dos dias; o
+ * espaçado e o traço saem, e a coluna do título alarga.
+ */
+@container (aspect-ratio >= 1.6) and (max-height: 600px) {
+  .cabeca { width: 44cqw; }
+  .dias { left: 53cqw; right: 5cqw; }
+  .kicker { letter-spacing: .02em; }
+  .kicker i { display: none; }
+}
 /* A principal do Corporativo com a margem de 4% ou mais: "DOMINGO E FERIADO", espaçado, passava da borda. */
 @container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 700px) {
   .dias { left: 47cqw; }
@@ -113,7 +125,7 @@ h1 span + span { color: var(--mt-destaque); }
 </style>
 <section class="mt-peca servico-horario">
   <div class="cabeca">
-    <p class="kicker" data-entrada="aparecer" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Funcionamento</span></p>
+    <p class="kicker" data-cede="2" data-entrada="aparecer" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Funcionamento</span></p>
     <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Pão quente</span><span data-campo="titulo2">o dia todo</span></h1>
   </div>
   <ul class="dias">
@@ -121,5 +133,5 @@ h1 span + span { color: var(--mt-destaque); }
     <li data-entrada="subir" data-ordem="4"><span class="dia" data-campo="dia2">Sábado</span><span class="hora" data-campo="hora2">6h – 19h</span></li>
     <li data-entrada="subir" data-ordem="5"><span class="dia" data-campo="dia3">Domingo e feriado</span><span class="hora" data-campo="hora3">7h – 13h</span></li>
   </ul>
-  <p class="nota" data-campo="nota" data-entrada="aparecer" data-ordem="6">Fornadas às 6h, 11h e 16h</p>
+  <p class="nota" data-cede="1" data-campo="nota" data-entrada="aparecer" data-ordem="6">Fornadas às 6h, 11h e 16h</p>
 </section>

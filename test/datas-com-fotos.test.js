@@ -72,7 +72,7 @@ test('a TV: na semana da data, o mural com as fotos aprovadas entra no rodízio 
   assert.match(T, /const daData = pedidos\.find\(\(p\) => p\.tipo === 'data' && fotoQr\.semanaDaData\(p\.dataAlvo\)\);/);
   assert.match(T, /\.filter\(\(f\) => f\.pedidoId === daData\.id && f\.aprovadaEm && f\.url\.startsWith\(daConta\)\)/, 'foto não aprovada ou de fora na TV');
   assert.match(T, /nome: String\(f\.nome \|\| ''\)\.split\(' '\)\[0\]/, 'o nome inteiro foi para a parede');
-  assert.match(ler('sw.js'), /mt-shell-v(5[8-9]|[6-9]\d)/);
+  assert.match(ler('sw.js'), /mt-shell-v(5[8-9]|[6-9]\d|\d{3})/);
 });
 
 /* ---------------- servidor de verdade ---------------- */

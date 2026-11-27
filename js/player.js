@@ -3528,13 +3528,51 @@
    * virar reticências: "Ótica Visão Clara Centro" inteiro e um pouco menor é
    * melhor do que "Ótica Visão…". Mede de novo quando as fontes chegam.
    */
+  /*
+   * O NOME DA CONTA NO CABEÇALHO DA TV (reteste 4, achado 17). O nome que não
+   * cabia encolhia até 70%: com "Metalúrgica Horizonte Ltda" e o clima, na
+   * TV em pé, a letra ia a 3,5% — abaixo do piso (4,5%, o que se lê a 4 m).
+   * Agora, antes de encolher, nesta ordem: a data sai, o clima sai, e o nome
+   * quebra em duas linhas. Só então, se ainda faltar, a letra encolhe — e
+   * nunca abaixo do piso (sem piso, até 70% como antes); o resto vira
+   * reticências.
+   */
+  const SAI_DO_CABECALHO = ['mt-hd-sem-data', 'mt-hd-sem-clima', 'mt-hd-duas-linhas'];
+  /*
+   * Cabe: as linhas do nome (o que o texto ocupa, não a caixa: o filete da
+   * marca, um ::before absoluto mais alto que a linha, inflava o
+   * scrollHeight e tirava a data à toa) ficam dentro da largura, numa linha
+   * — ou em duas, quando o nome já pode quebrar.
+   */
+  function nomeCabe(el, zona) {
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    const caixa = el.getBoundingClientRect();
+    const linhas = Array.prototype.filter.call(r.getClientRects(), (l) => l.width > 0);
+    const topos = [];
+    linhas.forEach((l) => { if (!topos.some((t) => Math.abs(t - l.top) < 2)) topos.push(l.top); });
+    const max = zona && zona.classList.contains('mt-hd-duas-linhas') ? 2 : 1;
+    return topos.length <= max && linhas.every((l) => l.right <= caixa.right + 1 && l.left >= caixa.left - 1);
+  }
   function caberNome(el) {
+    const zona = el.closest ? el.closest('.mt-header') : null;
+    const cabe = () => nomeCabe(el, zona);
     const medir = function () {
       el.style.fontSize = '';
+      if (zona) SAI_DO_CABECALHO.forEach((c) => zona.classList.remove(c));
       const base = parseFloat(getComputedStyle(el).fontSize);
-      if (!base || !el.clientWidth || el.scrollWidth <= el.clientWidth) return;
-      const esc = Math.max(0.7, (el.clientWidth / el.scrollWidth) * 0.98);
-      el.style.fontSize = (base * esc).toFixed(1) + 'px';
+      if (!base || !el.clientWidth || !String(el.textContent || '').trim() || cabe()) return;
+      for (let i = 0; zona && i < SAI_DO_CABECALHO.length; i++) {
+        zona.classList.add(SAI_DO_CABECALHO[i]);
+        if (cabe()) return;
+      }
+      const piso = pisoEmPx(el);
+      const minimo = base * (piso ? Math.min(1, piso / base) : 0.7);
+      // A letra desce aos poucos (no máximo 6 medidas, só aqui), nunca abaixo do piso; o que ainda sobrar vira reticências.
+      for (let i = 0, fs = base; i < 6 && fs > minimo + 0.5 && !cabe(); i++) {
+        fs = Math.max(minimo, fs * 0.94);
+        el.style.fontSize = fs.toFixed(1) + 'px';
+      }
     };
     afterPaint(medir);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir).catch(function () {});

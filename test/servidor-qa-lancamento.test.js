@@ -109,7 +109,8 @@ test('o cartão KPI na TV: o número cabe, e o refugo acima da meta não comemor
 test('o clima que não respondeu não vira "27°" na parede', () => {
   const P = ler('js/peca-render.js');
   assert.match(P, /clima\.forEach\(\(el\) => \{ el\.style\.visibility = 'hidden'; \}\);/, 'o exemplo aparece antes de a temperatura chegar');
-  assert.match(P, /\(\) => \{ clima\.forEach\(\(el\) => \{ el\.textContent = ''; \}\); \}\);/, 'a falha do clima deixa o "27°" do exemplo');
+  // Reteste 4: e a peça se mede de novo (o que saiu para caber pode voltar).
+  assert.match(P, /\(\) => \{ clima\.forEach\(\(el\) => \{ el\.textContent = ''; \}\); remedirComOClima\(\); \}\);/, 'a falha do clima deixa o "27°" do exemplo');
 });
 
 /* ---------------- o servidor de verdade ---------------- */

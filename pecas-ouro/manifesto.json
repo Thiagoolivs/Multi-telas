@@ -11387,7 +11387,6 @@
                 "titulo": "Os bastidores da cozinha, todo dia",
                 "arroba": "@sua.casa",
                 "foto": "/pecas-ouro/fotos/restaurante/antepasto.jpg",
-                "foto2": "/pecas-ouro/fotos/restaurante/fazendo-massa.jpg",
                 "foto3": "/pecas-ouro/fotos/restaurante/queijos.jpg",
                 "foto4": "/pecas-ouro/fotos/restaurante/salao-rustico.jpg"
               }
@@ -11402,8 +11401,7 @@
               "campos": {
                 "citacao": "A massa tem o gosto da casa da minha avó.",
                 "nome": "Helena Prado",
-                "detalhe": "Cliente às sextas",
-                "foto": "/pecas-ouro/fotos/restaurante/cozinha.jpg"
+                "detalhe": "Cliente às sextas"
               }
             },
             {
@@ -11507,7 +11505,6 @@
                 "vaga1": "Chapeiro(a) · noite",
                 "vaga2": "Atendente · fins de semana",
                 "instrucao": "Aponte a câmera e mande o seu currículo",
-                "foto": "/pecas-ouro/fotos/lanchonete/chapeiro.jpg",
                 "link": "https://exemplo.com.br/vagas"
               }
             }
@@ -11795,7 +11792,6 @@
                 "titulo2": "pelo celular",
                 "instrucao": "Aponte a câmera e escolha o horário",
                 "contato": "ou fale com a gente no balcão",
-                "foto": "/pecas-ouro/fotos/otica/retrato-oculos.jpg",
                 "link": "https://exemplo.com.br/agenda"
               }
             }
@@ -11855,8 +11851,7 @@
                 "kicker": "Quem atende você",
                 "nome": "Marina Duarte",
                 "funcao": "Colorista · 12 anos de salão",
-                "frase": "Cor boa é a que parece sua. Eu começo sempre pela conversa.",
-                "foto": "/pecas-ouro/fotos/salao/cabelo-vento.jpg"
+                "frase": "Cor boa é a que parece sua. Eu começo sempre pela conversa."
               }
             },
             {
@@ -11884,7 +11879,6 @@
                 "titulo2": "em dois toques",
                 "instrucao": "Aponte a câmera e escolha o dia",
                 "contato": "ou fale com a recepção",
-                "foto": "/pecas-ouro/fotos/salao/coque.jpg",
                 "link": "https://exemplo.com.br/agenda"
               }
             }
@@ -11952,10 +11946,7 @@
                 "nome2": "Bruno Teles",
                 "funcao2": "Corte masculino",
                 "nome3": "Júlio Sá",
-                "funcao3": "Barba",
-                "foto": "/pecas-ouro/fotos/salao/batom.jpg",
-                "foto2": "/pecas-ouro/fotos/salao/barbeiro.jpg",
-                "foto3": "/pecas-ouro/fotos/salao/tranca.jpg"
+                "funcao3": "Barba"
               }
             },
             {
@@ -11963,8 +11954,7 @@
               "campos": {
                 "citacao": "Saio daqui me sentindo outra pessoa. E o café é sempre bom.",
                 "nome": "Renata Alves",
-                "detalhe": "Cliente há seis anos",
-                "foto": "/pecas-ouro/fotos/salao/maquiagem.jpg"
+                "detalhe": "Cliente há seis anos"
               }
             }
           ]
@@ -11978,8 +11968,7 @@
                 "kicker": "Nossa história",
                 "numero": "10",
                 "rotulo": "anos de salão",
-                "assinatura": "Obrigada, clientes",
-                "foto": "/pecas-ouro/fotos/salao/ombre.jpg"
+                "assinatura": "Obrigada, clientes"
               }
             },
             {
@@ -12361,7 +12350,6 @@
                 "titulo2": "pelo celular",
                 "instrucao": "Aponte a câmera e escolha o horário",
                 "contato": "ou fale com a recepção",
-                "foto": "/pecas-ouro/fotos/clinica/sorriso-sol.jpg",
                 "link": "https://exemplo.com.br/agenda"
               }
             }
@@ -12420,8 +12408,7 @@
                 "kicker": "Nossa história",
                 "numero": "15",
                 "rotulo": "anos cuidando de sorrisos",
-                "assinatura": "Obrigado pela confiança",
-                "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
+                "assinatura": "Obrigado pela confiança"
               }
             },
             {
@@ -12434,10 +12421,7 @@
                 "nome2": "Dr. Rafael Alves",
                 "funcao2": "Implantes",
                 "nome3": "Dr. Lucas Prado",
-                "funcao3": "Clínica geral",
-                "foto": "/pecas-ouro/fotos/dentista/sorriso-sardas.jpg",
-                "foto2": "/pecas-ouro/fotos/dentista/sorriso-rapaz.jpg",
-                "foto3": "/pecas-ouro/fotos/dentista/sorriso-tranquilo.jpg"
+                "funcao3": "Clínica geral"
               }
             }
           ]
@@ -12453,7 +12437,6 @@
                 "titulo2": "pelo celular",
                 "instrucao": "Aponte a câmera e escolha o horário",
                 "contato": "ou fale com a recepção",
-                "foto": "/pecas-ouro/fotos/dentista/sorriso-flores.jpg",
                 "link": "https://exemplo.com.br/agenda"
               }
             }
@@ -12799,8 +12782,7 @@
                 "item1": "Máscara de solda abaixada",
                 "item2": "Luvas de raspa",
                 "item3": "Avental e mangote",
-                "item4": "Botina com biqueira",
-                "foto": "/pecas-ouro/fotos/industria/soldador.jpg"
+                "item4": "Botina com biqueira"
               }
             }
           ]
@@ -12888,8 +12870,7 @@
               "campos": {
                 "citacao": "Aqui eu aprendi o ofício e hoje ensino quem chega.",
                 "nome": "Carlos Mendes",
-                "detalhe": "22 anos de casa, na usinagem",
-                "foto": "/pecas-ouro/fotos/industria/marceneiro.jpg"
+                "detalhe": "22 anos de casa, na usinagem"
               }
             }
           ]
@@ -12905,7 +12886,6 @@
                 "vaga1": "Operador(a) de máquina · turno B",
                 "vaga2": "Auxiliar de logística · turno A",
                 "instrucao": "Aponte a câmera e veja os requisitos",
-                "foto": "/pecas-ouro/fotos/industria/tear.jpg",
                 "link": "https://exemplo.com.br/vagas"
               }
             },

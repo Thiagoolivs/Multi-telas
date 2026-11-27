@@ -58,14 +58,25 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
   .cta { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); margin-top: 5cqw; border-bottom-width: .25cqw; }
 }
 /* Quase quadrada: o selo no canto de cima, o texto embaixo à esquerda. Com a letra da TV o texto subia até o selo: o título vai numa linha só (quebra entre as duas partes se não couber), o apoio usa a largura toda e os respiros encurtaram. */
+/*
+ * Reteste 4 (26/11): na TV em pé e na quadrada, com a letra do piso, o selo
+ * cobria o nome da conta ("GRUPO HORIZON…") e o kicker ("TODA TERÇA-F…"):
+ * o nome espaçado corria por baixo dele, e o texto preso no pé subia até
+ * ele. Agora o nome fica na coluna da esquerda (quebra em duas linhas, sem
+ * o espaçado largo), o selo é um pouco menor e o texto começa sempre
+ * abaixo dele; se não couber, o apoio sai (data-cede), não a letra.
+ */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .marca-nome { left: 7cqw; top: 6cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .24em; }
-  .selo { right: 7cqw; top: 6cqh; width: 38cqw; height: 38cqw; margin-top: 0; }
+  .marca-nome { left: 7cqw; right: 50cqw; top: 6cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .08em; line-height: 1.1; }
+  .selo { right: 7cqw; top: 6cqh; width: 34cqw; height: 34cqw; margin-top: 0; }
   .selo::before { inset: 1.7cqw; border-width: .2cqw; }
-  .pct { font-size: max(var(--mt-piso, 0cqw), 15cqw); }
+  .pct { font-size: max(var(--mt-piso, 0cqw), 13.4cqw); }
   .off { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); margin-top: 1.6cqw; }
   .nota { display: none; }
-  .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 6cqh; transform: none; }
+  .bloco { left: 7cqw; right: 7cqw; width: auto; top: calc(6cqh + 34cqw + 2.4cqh); bottom: 6cqh; transform: none;
+    display: flex; flex-direction: column; align-items: flex-start; }
+  /* O que sobra vai para cima do kicker (o texto assenta no pé); o que falta passa do pé, e aí o apoio sai — nunca sobe por baixo do selo. */
+  .bloco > .kicker { margin-top: auto; }
   .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .16em; }
   .kicker i { width: 5cqw; height: .2cqw; }
   h1 { font-size: max(var(--mt-piso, 0cqw), 9cqw); margin: 2.8cqw 0 2.4cqw; }
@@ -80,7 +91,7 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
   <div class="bloco">
     <p class="kicker" data-entrada="esquerda" data-ordem="2"><i aria-hidden="true"></i><span data-campo="kicker">Toda terça-feira</span></p>
     <h1 data-entrada="subir" data-ordem="3"><span data-campo="titulo">Coloração</span><em data-campo="titulo2">com desconto</em></h1>
-    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="4">Do retoque de raiz à mudança completa, com a avaliação dos fios incluída.</p>
+    <p class="apoio" data-cede="1" data-campo="apoio" data-entrada="aparecer" data-ordem="4">Do retoque de raiz à mudança completa, com a avaliação dos fios incluída.</p>
     <p class="cta" data-entrada="aparecer" data-ordem="5"><span data-campo="cta">Agende o seu horário</span> <span aria-hidden="true">→</span></p>
   </div>
   <div class="selo" data-entrada="girar" data-ordem="1">

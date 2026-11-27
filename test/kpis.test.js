@@ -174,7 +174,7 @@ test('a TV e o painel: o cartão ao vivo (número, variação, meta), a busca de
   // Desde o QA de 26/10 os Indicadores moram em Recursos extras (o relatório de exibição foi para Telas).
   assert.match(ler('web/src/lib/menu.js'), /paginas: \['birthdays', 'mural', 'indicadores'\]/);
   assert.match(ler('web/src/pages/IndicadoresPage.jsx'), /const item = \{ type: 'kpi', indicador: indicador\.chave, rotulo: indicador\.nome, duracao: 12 \};/);
-  assert.match(ler('sw.js'), /mt-shell-v(59|[6-9]\d)/);
+  assert.match(ler('sw.js'), /mt-shell-v(59|[6-9]\d|\d{3})/);
 });
 
 test('o "%" e o "R$" escritos na célula viram a unidade (reteste 4: a planilha do Excel em porcentagem)', () => {

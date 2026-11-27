@@ -81,5 +81,5 @@ test('o cartão: foto grande, nome, cargo e quando (hoje, amanhã, o dia da sema
   assert.match(R, /const isToday = order\[mmdd2\(\+p\.mes, \+p\.dia\)\] === hojeNaSemana;/, 'a lista da semana marca o hoje errado');
   assert.match(ler('css/player.css'), /\.mt-bday\.mt-bday-pessoa \{ flex-direction: row;/);
   assert.match(ler('server/routes/telas.js'), /if \(d >= -7 && d <= 9\) return true;/, 'a TV não tem quem fez aniversário na segunda');
-  assert.match(ler('sw.js'), /mt-shell-v(5[7-9]|[6-9]\d)/);
+  assert.match(ler('sw.js'), /mt-shell-v(5[7-9]|[6-9]\d|\d{3})/);
 });

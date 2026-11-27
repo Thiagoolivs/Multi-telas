@@ -42,6 +42,25 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
   .assinatura { right: 8cqw; letter-spacing: .04em; }
 }
 /*
+ * Reteste 4 (26/11): na TV em pé (a principal de 1036×947) e na quadrada, o
+ * "98 dias" ficava pequeno no canto de cima e o meio da peça, vazio — a
+ * frase presa no pé, o número preso no alto. Agora a peça corre de cima
+ * para baixo: a marca no alto, o número grande (o dobro da área de antes) e
+ * a frase logo abaixo dele, os dois no meio da altura; o endereço no pé.
+ * Nada é preso a uma posição, e nada passa por cima de nada: se não couber,
+ * o endereço sai, depois o apoio (data-cede), e não a letra.
+ */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { display: flex; flex-direction: column; gap: 3cqh; padding: 6cqh 8cqw 5cqh; }
+  .marca-nome, .numero, .texto, .assinatura { position: static; width: auto; transform: none; }
+  .marca-nome { letter-spacing: .16em; line-height: 1.1; }
+  .numero { margin: auto 0 0; text-align: left; }
+  .numero > span { font-size: max(var(--mt-piso, 0cqw), calc(46cqw * var(--mt-escala-titulo, 1))); }
+  .numero small { margin: 2.4cqw 0 0 .6cqw; letter-spacing: .3em; }
+  .texto { margin: 1cqh 0 auto; padding-top: 3cqw; }
+  .assinatura { letter-spacing: .04em; }
+}
+/*
  * A principal do Corporativo com a margem contra o corte (de 1321×739 a
  * 1236×674): com a letra do balcão o nome da loja espaçado encostava no
  * kicker, o endereço quebrava por cima do apoio e o apoio passava do pé. O
@@ -67,7 +86,16 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
   .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .08em; line-height: 1.1; }
   .numero small { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), 4.4cqw); letter-spacing: .14em; }
   .texto { padding-top: 3.6cqw; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .06em; }
+  /*
+   * Reteste 4: o kicker que cabia "sem folga" na coluna ("NOSSA HISTÓRIA",
+   * "SEM ACIDENTE" na lateral com borda de 5%) ora ficava numa linha, ora
+   * quebrava, conforme o Chromium — e a linha a mais fazia a letra ceder.
+   * Sem o espaçado ele ganha folga, quebra entre as palavras com as linhas
+   * equilibradas, e a palavra que sozinha não cabe quebra no meio em vez de
+   * passar da borda.
+   */
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: 0; }
+  .kicker span { min-width: 0; overflow-wrap: anywhere; text-wrap: balance; }
   h1 { margin: 2cqw 0 0; font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
   /* Com a letra da TV, o endereço espaçado passava da margem na lateral: fica justo e pode quebrar.
      3,4cqw: o cqw aqui é da peça sem o respiro dela (o padding acima), e sem piso (a miniatura) ele não pode ficar abaixo de 14px. */
@@ -98,7 +126,7 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
   <div class="texto">
     <p class="kicker" data-entrada="esquerda" data-ordem="2"><i aria-hidden="true"></i><span data-campo="kicker">Tradição</span></p>
     <h1 data-campo="titulo" data-entrada="subir" data-ordem="3">Cuidando da visão do bairro</h1>
-    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="4">Exame de vista, lentes sob medida e ajuste na hora — com a mesma equipe de sempre.</p>
+    <p class="apoio" data-cede="2" data-campo="apoio" data-entrada="aparecer" data-ordem="4">Exame de vista, lentes sob medida e ajuste na hora — com a mesma equipe de sempre.</p>
   </div>
-  <div class="assinatura" data-campo="endereco" data-entrada="aparecer" data-ordem="5">Rua Augusta, 1200 · São Paulo</div>
+  <div class="assinatura" data-cede="1" data-campo="endereco" data-entrada="aparecer" data-ordem="5">Rua Augusta, 1200 · São Paulo</div>
 </section>

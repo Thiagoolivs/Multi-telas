@@ -75,6 +75,20 @@ h1 span { display: block; white-space: nowrap; }
   .valores small { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); margin-top: .8cqw; line-height: 1.22; }
 }
 /*
+ * Reteste 4 (26/11): na TV em pé (a principal de 1036×947) e na quadrada,
+ * com o piso dela (55 a 57 px por dentro do palco de 1080), o título preso
+ * no alto e a lista presa no pé se encontravam ("para cada consulta" por
+ * cima de "Acolhimento") e a letra cedia. Agora a peça corre de cima para
+ * baixo — a marca, o título, a lista no pé — e nada sobe por cima de nada;
+ * se não couber, o texto de cada valor sai (data-cede), não a letra.
+ */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { display: flex; flex-direction: column; gap: 2.4cqh; padding: 5cqh 7cqw; }
+  .marca-nome, .cabeca, .valores { position: static; }
+  .marca-nome { line-height: 1.1; }
+  .valores { margin-top: auto; }
+}
+/*
  * A principal do Corporativo com a margem contra o corte de 4% ou mais
  * (1264×696 e menor): com a letra do balcão e a fonte de título larga, os
  * três nomes lado a lado não cabiam na largura ("Acompanhamento" passava
@@ -97,8 +111,8 @@ h1 span { display: block; white-space: nowrap; }
     <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Três promessas</span> <span data-campo="titulo2">para cada consulta</span></h1>
   </div>
   <ul class="valores">
-    <li data-entrada="subir" data-ordem="3"><span class="ic mais" aria-hidden="true"></span><b data-campo="valor1">Acolhimento</b><small data-campo="valor1-texto">Quem chega é recebido pelo nome, não pela senha.</small></li>
-    <li data-entrada="subir" data-ordem="4"><span class="ic relogio" aria-hidden="true"></span><b data-campo="valor2">Pontualidade</b><small data-campo="valor2-texto">Atraso de mais de 15 minutos, a gente avisa antes.</small></li>
-    <li data-entrada="subir" data-ordem="5"><span class="ic visto" aria-hidden="true"></span><b data-campo="valor3">Acompanhamento</b><small data-campo="valor3-texto">O resultado do exame chega explicado, por mensagem.</small></li>
+    <li data-entrada="subir" data-ordem="3"><span class="ic mais" aria-hidden="true"></span><b data-campo="valor1">Acolhimento</b><small data-cede="1" data-campo="valor1-texto">Quem chega é recebido pelo nome, não pela senha.</small></li>
+    <li data-entrada="subir" data-ordem="4"><span class="ic relogio" aria-hidden="true"></span><b data-campo="valor2">Pontualidade</b><small data-cede="1" data-campo="valor2-texto">Atraso de mais de 15 minutos, a gente avisa antes.</small></li>
+    <li data-entrada="subir" data-ordem="5"><span class="ic visto" aria-hidden="true"></span><b data-campo="valor3">Acompanhamento</b><small data-cede="1" data-campo="valor3-texto">O resultado do exame chega explicado, por mensagem.</small></li>
   </ul>
 </section>

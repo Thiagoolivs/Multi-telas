@@ -108,6 +108,36 @@
   const entradaDe = (e) => (typeof e === 'string' ? { id: e, campos: {} } : { id: e.id, campos: e.campos || {} });
 
   /*
+   * A TELA COM O NOME DA CONTA (reteste 4, achado 17): `?conta=Grupo
+   * Horizonte` monta a tela como o "Usar" do Prontos monta para o cliente
+   * (web/src/lib/telasProntas.js, itemDaTela): o campo `marca` de toda peça
+   * que o tem leva o nome da conta, e o nome da marca de exemplo que sobrar
+   * num texto ("Fábrica Rota Sul · Unidade 1") também. Com os nomes curtos do
+   * exemplo a régua passava; na TV de verdade, com 15 letras e o clima, o
+   * piso cedia no cabeçalho em 12 telas. Vale também para uma peça só
+   * (`?ver=peca&conta=…`): é como a régua confere as faixas com o nome longo.
+   */
+  const CONTA = (new URLSearchParams(location.search).get('conta') || '').trim().slice(0, 60);
+  const exemplosDe = {};
+  function comAConta(def, campos, arq) {
+    if (!CONTA) return campos;
+    const out = Object.assign({}, campos);
+    const nomes = (manifesto.marcas || []).map((m) => m.nome).filter(Boolean).sort((a, b) => b.length - a.length);
+    // O texto de exemplo do próprio HTML também (o selo do rodapé com "Ótica Central").
+    (exemplosDe[def.id] = exemplosDe[def.id] || MTPecaHtml.higienizar(arq).campos).forEach((c) => {
+      if (c.tipo === 'texto' && !(c.nome in out) && nomes.some((n) => c.exemplo.indexOf(n) >= 0)) out[c.nome] = c.exemplo;
+    });
+    Object.keys(out).forEach((k) => {
+      if (k === 'marca' || typeof out[k] !== 'string') return;
+      let v = out[k];
+      nomes.forEach((n) => { v = v.split(n).join(CONTA); });
+      out[k] = v;
+    });
+    if (/data-campo="marca"/.test(arq.html)) out.marca = CONTA;
+    return out;
+  }
+
+  /*
    * O papel de cada espaço de imagem (`fotos` no manifesto: { foto: 'produto' }),
    * como o painel copia para o item: a foto de exemplo encaixa aqui como na TV.
    * A foto de exemplo que está no banco de fotos (pecas-ouro/fotos/banco.json)
@@ -143,9 +173,17 @@
 
   function montarPeca(host, arq, def, papel, marca, modo, extra) {
     const x = extra || {};
+    const campos = Object.assign({}, def.campos || {}, comVideo(def), x.campos || {});
+    /*
+     * Reteste 4: na tela pronta, o espaço de pessoa que a tela não preencheu
+     * fica vazio, como o cliente recebe (o "Usar" do Prontos não põe a foto
+     * de exemplo da peça: seria um rosto de banco no lugar da equipe dele) —
+     * e a TV desenha o painel com as iniciais (js/peca-render.js).
+     */
+    if (x.daTela) Object.keys(def.fotos || {}).forEach((n) => { if (def.fotos[n] === 'pessoa' && !(n in (x.campos || {}))) delete campos[n]; });
     return MTPecaRender.montar(host, {
       type: 'peca-html', papel, html: arq.html, css: arq.css,
-      campos: Object.assign({}, def.campos || {}, comVideo(def), x.campos || {}),
+      campos: comAConta(def, campos, arq),
       espacos: Object.assign(espacosDe(def), x.espacos || {}),
       modo: modo === 'rascunho' ? 'escuro' : modo, marca: marcaDoItem(marca),
     }, {
@@ -153,6 +191,7 @@
       leve: !!x.leve || LEVE,
       marcaNaTela: !!x.marcaNaTela,
       clima: () => Promise.resolve('27°'),
+      nomeDaConta: CONTA || marca.nome || '',
       mensagens: x.mensagens || [],
       contagem: alvoDaContagem(),
     });
@@ -402,7 +441,7 @@
         caixa.textContent = '';
         caixa.appendChild(host);
         montarPeca(host, await lerPeca(e.id), defDe(e.id), papel, marca, grupo.modo,
-          { campos: e.campos, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
+          { campos: e.campos, daTela: true, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
       };
       await mostrar();
       if (grupo.pecas.length > 1) giros.push(setInterval(mostrar, GIRO_MS));
@@ -422,19 +461,25 @@
       host.style.height = caixa.offsetHeight + 'px';
       tv.appendChild(host);
       montarPeca(host, await lerPeca(e.id), defDe(e.id), papel, marca, grupo.modo,
-        { campos: e.campos, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
+        { campos: e.campos, daTela: true, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
       const d = await vazamentos(host, papel);
+      // O piso que a peça pôs (js/peca-render.js, pisoQueCabe): menos de 1 é a letra abaixo da régua.
+      const palcoDaPeca = host.shadowRoot && host.shadowRoot.querySelector('.mt-palco');
+      const cedeu = palcoDaPeca && palcoDaPeca.hasAttribute('data-mt-piso-cedeu') ? parseFloat(palcoDaPeca.getAttribute('data-mt-piso-cedeu')) : 1;
       host.remove();
       return {
         coube: defeitosEmTexto(d) ? nome + ' · ' + e.id + defeitosEmTexto(d) : '',
         regras: regrasEmTexto(d).map((t) => nome + ' · ' + e.id + ' · ' + t),
+        piso: cedeu < 1 ? nome + ' · ' + e.id + ' · o piso cedeu para ' + Math.round(cedeu * 100) + '%'
+          + (palcoDaPeca.getAttribute('data-mt-piso-motivo') ? ' (' + palcoDaPeca.getAttribute('data-mt-piso-motivo') + ')' : '') : '',
       };
     })));
     if (rodada !== rodadaDaTela) return;
     $('problemas').insertAdjacentHTML('beforeend', lista('Não coube:', achados.map((a) => a.coube).filter(Boolean), 'problemas')
+      + lista('A letra abaixo da régua:', achados.map((a) => a.piso).filter(Boolean), 'problemas')
       + lista('Fora da régua de composição:', achados.flatMap((a) => a.regras), 'problemas'));
-    // Para o robô que varre as telas prontas (o que não coube, peça a peça).
-    window.MTTelaConferida = { tela: tela.id, naoCoube: achados.map((a) => a.coube).filter(Boolean) };
+    // Para o robô que varre as telas prontas (o que não coube e a letra que cedeu, peça a peça).
+    window.MTTelaConferida = { tela: tela.id, conta: CONTA, naoCoube: achados.map((a) => a.coube).filter(Boolean), pisoCedeu: achados.map((a) => a.piso).filter(Boolean) };
     document.body.dataset.conferida = 'sim';
   }
 

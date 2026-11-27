@@ -581,6 +581,16 @@
        * peça precisa dele; numa tela com cabeçalho, ele apareceria duas vezes
        * — e o renderizador esconde (PLANO §4.7: cada zona tem um papel).
        */
+      /*
+       * `data-cede="1"` a `"5"`: o que pode SAIR quando a letra inteira não
+       * cabe (reteste 4; js/peca-render.js, cederAte). O "1" sai primeiro.
+       * A letra nunca fica abaixo do piso: antes dela, sai o menos importante.
+       */
+      if (nome === 'data-cede') {
+        if (/^[1-5]$/.test(v)) saida.push([nome, v]);
+        else problemas.push(`data-cede="${v.slice(0, 10)}": use um número de 1 a 5 (o 1 sai primeiro)`);
+        continue;
+      }
       if (nome === 'data-repete') {
         if (v === 'marca') saida.push([nome, v]);
         else problemas.push(`data-repete="${v.slice(0, 20)}" não existe (use marca)`);

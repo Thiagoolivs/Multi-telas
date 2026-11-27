@@ -100,6 +100,22 @@ h1 span:first-child { color: var(--mt-destaque); }
  * larga, às dos lados. Os respiros apertam mais e o título aperta as letras;
  * o QR não encolhe.
  */
+/*
+ * Reteste 4: a zona larga e baixa — a de baixo da TV em pé com duas zonas
+ * (1036×556), que a régua das telas prontas passou a medir. Com a letra do
+ * balcão o kicker espaçado passava da coluna do texto e empurrava o QR para
+ * fora; o espaçado aperta e o QR fica um pouco menor.
+ */
+@container (aspect-ratio >= 1.6) and (max-height: 600px) {
+  .bloco { left: 6cqw; right: 6cqw; gap: 4cqw; }
+  .kicker { gap: 2cqmin; letter-spacing: .1em; }
+  .kicker i { width: 4cqmin; }
+  .nota { margin-top: 3cqmin; gap: 3cqmin; }
+  .numero { font-size: max(var(--mt-piso, 0cqw), 18cqmin); }
+  .total { letter-spacing: 0; }
+  h1 { margin-top: 4cqmin; padding-top: 4cqmin; }
+  .qr { width: 48cqmin; height: 48cqmin; }
+}
 @container (max-width: 700px) and (max-height: 700px) {
   .nota { margin-top: 2.2cqmin; }
   h1 span { letter-spacing: -.03em; }
@@ -110,7 +126,7 @@ h1 span:first-child { color: var(--mt-destaque); }
 <section class="mt-peca social-avaliacao" data-com-qr="link">
   <div class="bloco">
     <div class="texto">
-      <p class="kicker" data-entrada="aparecer" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">No Google</span><i aria-hidden="true"></i></p>
+      <p class="kicker" data-cede="1" data-entrada="aparecer" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">No Google</span><i aria-hidden="true"></i></p>
       <div class="nota" data-entrada="crescer" data-ordem="2">
         <span class="numero" data-campo="nota">4,9</span>
         <span class="lado"><span class="estrelas" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span class="total" data-campo="total">1.240 avaliações</span></span>

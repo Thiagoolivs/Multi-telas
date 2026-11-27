@@ -11,22 +11,25 @@
 .mt-peca { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6cqh; padding: 0 3cqw;
   color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: linear-gradient(180deg, var(--mt-fundo-2), var(--mt-fundo)); border-bottom: 1.2cqh solid var(--mt-linha); }
-.status { display: flex; align-items: center; gap: 9cqh; min-width: 0; }
+/* Reteste 4: cada bloco na coluna dele — o status pode sair (data-cede) e a marca não muda de coluna. */
+.status { grid-column: 1; display: flex; align-items: center; gap: 9cqh; min-width: 0; }
 .ponto { flex: none; width: 13cqh; height: 13cqh; border-radius: 50%; background: var(--mt-destaque);
   box-shadow: 0 0 0 4.5cqh var(--mt-fundo-2), 0 0 0 5.7cqh var(--mt-destaque); }
 .estado { display: flex; flex-direction: column; gap: 7cqh; min-width: 0; }
 .aberto { font: 700 max(var(--mt-piso, 0cqw), 17cqh)/1.1 var(--mt-fonte-texto); letter-spacing: 5.1cqh; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ate { font: 500 max(var(--mt-piso, 0cqw), 19cqh)/1.1 var(--mt-fonte-texto); color: var(--mt-texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.marca { display: flex; flex-direction: column; align-items: center; gap: 8cqh; min-width: 0; max-width: 52cqw; }
+.marca { grid-column: 2; display: flex; flex-direction: column; align-items: center; gap: 8cqh; min-width: 0; max-width: 52cqw; }
 /* Reteste 3: a logo maior, legível a 4 m (a TV já corta o vazio em volta dela: js/peca-render.js, logoAparada). */
 .logo { height: 76cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { max-width: 100%; font: 400 max(var(--mt-piso, 0cqw), 40cqh)/.9 var(--mt-fonte-titulo); letter-spacing: 4.8cqh; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Reteste 4: o nome da conta longo (até 26 letras) quebra em duas linhas em vez de passar por cima do status; o "desde" sai para dar lugar (data-cede). */
+.nome { max-width: 100%; font: 400 max(var(--mt-piso, 0cqw), 40cqh)/.9 var(--mt-fonte-titulo); letter-spacing: 4.8cqh; text-transform: uppercase; text-align: center;
+  overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: balance; }
 .nome b { font-weight: inherit; color: var(--mt-destaque); }
 .desde { display: flex; align-items: center; gap: 4cqh; max-width: 100%; font: 600 max(var(--mt-piso, 0cqw), 11cqh)/1 var(--mt-fonte-texto); letter-spacing: 5.5cqh; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; overflow: hidden; }
 .desde i { display: block; width: 18cqh; height: 1cqh; background: var(--mt-linha); }
-.agora { justify-self: end; display: flex; align-items: center; gap: 5cqh; min-width: 0; }
+.agora { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 5cqh; min-width: 0; }
 .clima { font: 500 max(var(--mt-piso, 0cqw), 26cqh)/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 .sep { display: block; width: 1.2cqh; height: 44cqh; background: var(--mt-linha); }
 .tempo { display: flex; flex-direction: column; align-items: flex-end; gap: 4cqh; }
@@ -73,26 +76,30 @@
   .marca { gap: max(0cqh, calc(8cqh - (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh))); }
   /* Reteste 3: com a logo, o "desde" sai — os dois empilhados não cabiam na faixa na letra do balcão (o piso cedia a 88%). */
   .logo:not([data-sem-foto]) ~ .desde { display: none; }
+  /* Reteste 4: o nome longo quebrado em duas linhas guardava a largura de uma (a coluna é auto) e espremia o status ("ABERTO AGO…"). */
+  .marca { max-width: 40cqw; }
   .tempo { gap: max(0cqh, calc(4cqh - (max(var(--mt-piso, 0cqw), 15cqh) - 15cqh))); }
   /* Reteste 2: 30cqh de entrelinha para a letra de 37cqh cortava o acento e grudava as duas linhas; 40cqh é a linha inteira. */
   .aberto, .ate { line-height: min(1.08em, 40cqh); }
+  /* Reteste 4: o status longo ("ATENDENDO AGORA") ao lado do nome da conta quebra em duas linhas; o horário sai para dar lugar (data-cede). */
+  .aberto { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .desde, .data { line-height: min(1.05em, 40cqh); }
   .hora { font-size: max(var(--mt-piso, 0cqw), calc(46cqh - (max(var(--mt-piso, 0cqw), 30cqh) - 30cqh))); }
 }
 </style>
 <section class="mt-peca cabecalho-status">
-  <div class="status" data-entrada="aparecer" data-ordem="1">
+  <div class="status" data-cede="5" data-entrada="aparecer" data-ordem="1">
     <span class="ponto" aria-hidden="true" data-continua="brilhar"></span>
-    <span class="estado"><span class="aberto" data-campo="status">Aberto agora</span><span class="ate" data-campo="horario">Hoje até as 20h</span></span>
+    <span class="estado"><span class="aberto" data-campo="status">Aberto agora</span><span class="ate" data-cede="4" data-campo="horario">Hoje até as 20h</span></span>
   </div>
   <div class="marca" data-entrada="aparecer">
     <img class="logo" data-campo-img="logo" alt="">
     <span class="nome" data-campo="marca">Padaria <b>do Bairro</b></span>
-    <span class="desde"><i aria-hidden="true"></i><span data-campo="desde">Bem-vindo</span><i aria-hidden="true"></i></span>
+    <span class="desde" data-cede="1"><i aria-hidden="true"></i><span data-campo="desde">Bem-vindo</span><i aria-hidden="true"></i></span>
   </div>
   <div class="agora" data-entrada="aparecer" data-ordem="2">
-    <span class="clima" data-vivo="clima">22°</span>
-    <span class="sep" aria-hidden="true"></span>
-    <span class="tempo"><span class="hora" data-vivo="relogio">07:15</span><span class="data" data-vivo="data">Terça · 20 out</span></span>
+    <span class="clima" data-cede="3" data-vivo="clima">22°</span>
+    <span class="sep" data-cede="3" aria-hidden="true"></span>
+    <span class="tempo"><span class="hora" data-vivo="relogio">07:15</span><span class="data" data-cede="2" data-vivo="data">Terça · 20 out</span></span>
   </div>
 </section>

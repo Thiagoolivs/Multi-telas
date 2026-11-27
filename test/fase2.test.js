@@ -69,9 +69,10 @@ test('a peça da IA ganha o piso na TV: o player aplica em qualquer peça, a IA 
   assert.ok(ler('js/peca-html.js').includes("'--mt-piso'"), 'a porta aceita o piso que as peças-ouro usam');
   // O piso nunca quebra a peça: sem caber inteiro, entra o maior que cabe, e a peça fica marcada.
   assert.match(PR, /function pisoQueCabe\(palco, piso\)/);
-  assert.match(PR, /if \(!piorou\(antes, encaixe\(palco\)\)\) return piso;/);
+  assert.match(PR, /let depois = encaixe\(palco\);\n\s*if \(!piorou\(antes, depois\)\) return piso;/);
   assert.match(PR, /palco\.setAttribute\('data-mt-piso-cedeu'/);
-  assert.match(PR, /pisoQueCabe\(palco, pisoDaZona\(host, k, ref\)\)/);
+  // Reteste 4: antes de ceder, sai o que a peça marcou (quemSai); o piso que vale é o da zona.
+  assert.match(PR, /const piso = pisoDaZona\(host, k, ref\);\n\s*let p = pisoQueCabe\(palco, piso\);/);
   // Medido com a fonte de reserva (mais larga), o piso cedia sem precisar: confere de novo quando a fonte chega.
   assert.match(PR, /fontes\.ready\.then\(aoChegarFonte\)/);
   assert.match(PR, /fontes\.addEventListener\('loadingdone', aoChegarFonte\)/, 'o ready pode resolver antes de a fonte do título começar a baixar');

@@ -9,12 +9,14 @@
 .mt-peca { display: flex; align-items: center; gap: 6cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: var(--mt-fundo); border-bottom: 1.2cqh solid var(--mt-linha); }
 /* Fundo liso, e não degradê: o esfumado das pontas do trilho é da cor do fundo, e num degradê ele vira uma faixa escura. */
-.marca { display: flex; align-items: center; gap: 4cqh; flex: none; }
+/* Reteste 4: o nome da conta (15 a 26 letras, e não as 8 do exemplo) não cabia numa linha com a letra inteira e empurrava a hora para fora; agora a marca tem um teto e quebra em duas linhas. */
+.marca { display: flex; align-items: center; gap: 4cqh; flex: 0 1 auto; min-width: 0; max-width: 46%; }
 /* Reteste 3: a logo maior, legível a 4 m (a TV já corta o vazio em volta dela: js/peca-render.js, logoAparada). */
 .logo { height: 72cqh; width: auto; max-width: 28cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: 700 max(var(--mt-piso, 0cqw), 21cqh)/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; white-space: nowrap; }
+.nome { font: 700 max(var(--mt-piso, 0cqw), 21cqh)/1.04 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase;
+  min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: balance; }
 .trilho { position: relative; flex: 1; min-width: 0; align-self: stretch; overflow: hidden; display: flex; align-items: center; }
 .trilho [data-vivo] { font: 600 max(var(--mt-piso, 0cqw), 25cqh)/1 var(--mt-fonte-texto); letter-spacing: .06em; text-transform: uppercase; color: var(--mt-destaque); }
 .trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 6cqw; z-index: 1; }
@@ -23,7 +25,8 @@
 .hora { flex: none; font: 400 calc(46cqh * var(--mt-escala-titulo, 1))/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
 /* Faixa mais curta (TV em pé): a marca encolhe para a chamada ter onde passar. */
 @container (aspect-ratio < 9) {
-  .nome { font-size: max(var(--mt-piso, 0cqw), 18cqh); letter-spacing: .24em; }
+  .marca { max-width: 56%; }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 18cqh); letter-spacing: .08em; }
   .trilho [data-vivo] { font-size: max(var(--mt-piso, 0cqw), 22cqh); }
   .hora { font-size: max(var(--mt-piso, 0cqw), calc(40cqh * var(--mt-escala-titulo, 1))); }
 }

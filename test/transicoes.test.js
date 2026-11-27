@@ -118,5 +118,5 @@ test('sem piscar: a zona que muda e o palco remontado esmaecem por cima do novo'
   const css = ler('css/player.css');
   assert.match(css, /\.mt-zona-saindo \{[^}]*position: absolute; inset: 0; z-index: 4;[^}]*transition: opacity \.5s ease;/);
   assert.match(css, /\.mt-palco-saindo \{[^}]*display: grid;[^}]*padding: inherit; gap: inherit;[^}]*transition: opacity \.6s ease;/);
-  assert.match(ler('sw.js'), /mt-shell-v(5[5-9]|[6-9]\d)/, 'a TV não recebe o player novo');
+  assert.match(ler('sw.js'), /mt-shell-v(5[5-9]|[6-9]\d|\d{3})/, 'a TV não recebe o player novo');
 });
